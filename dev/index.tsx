@@ -113,7 +113,7 @@ const App: Component = () => {
         <div style={{ resize: 'both', height: '100px', width: '100px', overflow: 'hidden' }}>
           <Show
             when={mode() === 'solid'}
-            fallback={
+            /* fallback={
               <tm-textarea
                 line-height={16}
                 editable={editable()}
@@ -129,7 +129,7 @@ const App: Component = () => {
                 }}
                 onInput={e => setValue(e.currentTarget.value)}
               />
-            }
+            } */
           >
             <TmTextarea
               lineHeight={16}

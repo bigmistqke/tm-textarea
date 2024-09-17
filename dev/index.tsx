@@ -96,21 +96,21 @@ const App: Component = () => {
       </div>
       <main>
         <div style={{ resize: 'both', height: '100px', width: '100px', overflow: 'hidden' }}>
-        <TmTextarea
-          lineHeight={16}
-          editable={editable()}
-          value={value()}
-          grammar={grammar()}
-          theme={theme()}
-          style={{
-            padding: `${padding()}px`,
-            'box-sizing': 'border-box',
-            resize: 'both',
-            width: '100%',
-            height: '100%',
-          }}
-          onInput={e => setValue(e.currentTarget.value)}
-        />
+          <TmTextarea
+            lineHeight={16}
+            editable={editable()}
+            value={value()}
+            grammar={grammar()}
+            theme={theme()}
+            style={{
+              padding: `${padding()}px`,
+              'box-sizing': 'border-box',
+              resize: 'both',
+              width: '100%',
+              height: '100%',
+            }}
+            onInput={e => setValue(e.currentTarget.value)}
+          />
         </div>
       </main>
     </div>

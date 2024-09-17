@@ -24,18 +24,17 @@ export default defineConfig({
       entry: {
         index: normalizePath(path.resolve(__dirname, 'src/index.tsx')),
         'custom-element': normalizePath(path.resolve(__dirname, 'src/custom-element.tsx')),
-        tm: normalizePath(path.resolve(__dirname, 'src/tm/index.ts')),
+        tm: normalizePath(path.resolve(__dirname, 'src/tm.ts')),
       },
-      name: 'solid-shiki-textarea',
+      name: 'solid-tm-textarea',
       formats: ['es'],
     },
     minify: false,
     rollupOptions: {
-      external: ['solid-js', 'solid-js/web', 'shiki', 'shiki/wasm'],
+      external: ['solid-js', 'solid-js/web'],
       output: {
         globals: {
           'solid-js': 'SolidJS',
-          shiki: 'Shiki',
         },
       },
     },

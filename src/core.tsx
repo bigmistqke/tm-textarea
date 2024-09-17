@@ -8,6 +8,7 @@ import {
   createSignal,
   Index,
   onMount,
+  Ref,
   Show,
   splitProps,
   type JSX,
@@ -52,6 +53,8 @@ export interface TextmateTextareaProps extends Omit<ComponentProps<'div'>, 'styl
   grammar: Grammar
   /** Custom CSS properties to apply to the editor. */
   style?: JSX.CSSProperties
+  /** Ref to the internal html-textarea-element. */
+  textareaRef?: Ref<HTMLTextAreaElement>
   /**
    * The theme to apply for syntax highlighting.
    */
@@ -150,6 +153,7 @@ export function createTmTextarea(styles: Record<string, string>) {
           </Index>
         </code>
         <textarea
+          ref={props.textareaRef}
           part="textarea"
           autocomplete="off"
           class={styles.textarea}
@@ -185,24 +189,15 @@ export function createTmTextarea(styles: Record<string, string>) {
               container.scrollTop = scrollTop
             }
           }}
-          onInput={e => {
+          on:input={e => {
             const target = e.currentTarget
             const value = target.value
 
             // local
             setSource(value)
 
-            // copy to custom element document fragment
-            const rootNode = target.getRootNode()
-            if (rootNode && rootNode instanceof ShadowRoot) {
-              rootNode.value = value
-            }
-
             // user provided callback
             config.onInput?.(e)
-
-            e.preventDefault()
-            e.stopPropagation()
           }}
         />
       </div>

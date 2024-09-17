@@ -7,7 +7,7 @@ import tsconfigPaths from 'vite-tsconfig-paths'
 export default defineConfig({
   resolve: {
     alias: {
-      'solid-shiki-textarea': path.resolve(__dirname, '../src'),
+      'solid-tm-textarea': path.resolve(__dirname, '../src'),
     },
   },
   base: './',

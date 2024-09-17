@@ -29,3 +29,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dev/dist # Adjust if your build output directory is different
+          publish_branch: gh-pages # Specify the branch to deploy to

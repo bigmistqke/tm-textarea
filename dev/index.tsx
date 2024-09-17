@@ -1,7 +1,8 @@
 import self from '.?raw'
-import { createEffect, createSignal, For, type Component } from 'solid-js'
+import { createEffect, createSignal, For, Show, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
 import { TmTextarea } from 'solid-tm-textarea'
+import 'solid-tm-textarea/custom-element'
 import { Grammar, GRAMMARS, Theme, THEMES } from 'solid-tm-textarea/tm'
 import './index.css'
 
@@ -15,6 +16,8 @@ type Source = keyof typeof sources
 
 const App: Component = () => {
   // Config
+  const [mode, setMode] = createSignal<'custom-element' | 'solid'>('solid')
+
   const [theme, setCurrentThemeName] = createSignal<Theme>('light-plus')
   const [grammar, setCurrentLanguageName] = createSignal<Grammar>('source.tsx')
 
@@ -32,6 +35,18 @@ const App: Component = () => {
       <div class="side-panel">
         <h1>Solid Textmate Textarea</h1>
         <footer>
+          <div>
+            <label for="mode">mode</label>
+            <button
+              id="mode"
+              onClick={() =>
+                setMode(type => (type === 'custom-element' ? 'solid' : 'custom-element'))
+              }
+            >
+              {mode()}
+            </button>
+          </div>
+          <br />
           <div>
             <label for="theme">themes</label>
             <select
@@ -96,21 +111,42 @@ const App: Component = () => {
       </div>
       <main>
         <div style={{ resize: 'both', height: '100px', width: '100px', overflow: 'hidden' }}>
-          <TmTextarea
-            lineHeight={16}
-            editable={editable()}
-            value={value()}
-            grammar={grammar()}
-            theme={theme()}
-            style={{
-              padding: `${padding()}px`,
-              'box-sizing': 'border-box',
-              resize: 'both',
-              width: '100%',
-              height: '100%',
-            }}
-            onInput={e => setValue(e.currentTarget.value)}
-          />
+          <Show
+            when={mode() === 'solid'}
+            fallback={
+              <tm-textarea
+                line-height={16}
+                editable={editable()}
+                value={value()}
+                grammar={grammar()}
+                theme={theme()}
+                style={{
+                  padding: `${padding()}px`,
+                  'box-sizing': 'border-box',
+                  resize: 'both',
+                  width: '100%',
+                  height: '100%',
+                }}
+                onInput={e => setValue(e.currentTarget.value)}
+              />
+            }
+          >
+            <TmTextarea
+              lineHeight={16}
+              editable={editable()}
+              value={value()}
+              grammar={grammar()}
+              theme={theme()}
+              style={{
+                padding: `${padding()}px`,
+                'box-sizing': 'border-box',
+                resize: 'both',
+                width: '100%',
+                height: '100%',
+              }}
+              onInput={e => setValue(e.currentTarget.value)}
+            />
+          </Show>
         </div>
       </main>
     </div>

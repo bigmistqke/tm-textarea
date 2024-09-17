@@ -8,7 +8,6 @@ import {
   stringAttribute,
 } from '@lume/element'
 import { signal } from 'classy-solid'
-
 import { createTmTextarea } from './core'
 import classnames from './index.module.css?classnames'
 import css from './index.module.css?raw'
@@ -21,9 +20,9 @@ import { sheet } from './utils/sheet.js'
 /*                                                                                */
 /**********************************************************************************/
 
-interface ShikiTextareaAttributes
+interface TmTextareaAttributes
   extends Omit<
-    ElementAttributes<TmTextareaElement, 'language' | 'theme' | 'editable'>,
+    ElementAttributes<TmTextareaElement, 'grammar' | 'theme' | 'editable' | 'lineHeight'>,
     'onInput' | 'oninput'
   > {
   oninput?: (event: InputEvent & { currentTarget: TmTextareaElement }) => any
@@ -33,7 +32,7 @@ interface ShikiTextareaAttributes
 declare module 'solid-js/jsx-runtime' {
   namespace JSX {
     interface IntrinsicElements {
-      'tm-textarea': ShikiTextareaAttributes
+      'tm-textarea': TmTextareaAttributes
     }
   }
 }
@@ -41,7 +40,7 @@ declare module 'solid-js/jsx-runtime' {
 declare global {
   namespace JSX {
     interface IntrinsicElements {
-      'tm-textarea': ShikiTextareaAttributes
+      'tm-textarea': TmTextareaAttributes
     }
   }
 }
@@ -58,12 +57,11 @@ const TmTextareaStyleSheet = sheet(css)
 
 @element('tm-textarea')
 class TmTextareaElement extends Element {
-  @attribute() language: Grammar = 'source.tsx'
+  @attribute() grammar: Grammar = 'source.tsx'
   @attribute() theme: Theme = 'dark-plus'
   @stringAttribute stylesheet = ''
-  @numberAttribute lineHeight = 0
+  @numberAttribute lineHeight = 1
   @booleanAttribute editable = true
-
   @signal private _value = ''
 
   textarea: HTMLTextAreaElement = null!
@@ -79,12 +77,10 @@ class TmTextareaElement extends Element {
       adoptedStyleSheets.push(sheet(this.stylesheet))
     }
 
-    this.createEffect(() => console.log(this.language))
-
     return (
       <TmTextarea
         lineHeight={this.lineHeight}
-        grammar={this.language}
+        grammar={this.grammar}
         theme={this.theme}
         value={this._value}
         editable={this.editable}

@@ -1,9 +1,8 @@
 import self from '.?raw'
-import { createEffect, createSignal, For, Show, type Component } from 'solid-js'
+import { createEffect, createSignal, For, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
-import { ShikiTextarea } from 'solid-shiki-textarea'
-import 'solid-shiki-textarea/custom-element'
-import { Language, languages, Theme, themes } from 'solid-shiki-textarea/tm'
+import { TmTextarea } from 'solid-tm-textarea'
+import { Grammar, GRAMMARS, Theme, THEMES } from 'solid-tm-textarea/tm'
 import './index.css'
 
 const sources = {
@@ -16,63 +15,41 @@ type Source = keyof typeof sources
 
 const App: Component = () => {
   // Config
-  const [componentType, setComponentType] = createSignal<'custom-element' | 'solid'>('solid')
-  const [currentThemeName, setCurrentThemeName] = createSignal<Theme>('aurora-x')
-  const [currentLanguageName, setCurrentLanguageName] = createSignal<Language>('tsx')
+  const [theme, setCurrentThemeName] = createSignal<Theme>('light-plus')
+  const [grammar, setCurrentLanguageName] = createSignal<Grammar>('source.tsx')
 
   const [fontSize, setFontSize] = createSignal(10)
   const [padding, setPadding] = createSignal(5)
-  const [amount, setAmount] = createSignal(1)
-  const [sourceType, setSourceType] = createSignal<Source>('small')
+  const [sourceType, setSourceType] = createSignal<Source>('large')
   const [editable, setEditable] = createSignal(true)
 
   const [value, setValue] = createSignal(sources[sourceType()])
 
   createEffect(() => setValue(sources[sourceType()]))
 
-  // Derived imports
-  const theme = () =>
-    fetch(`https://esm.sh/tm-themes/themes/${currentThemeName()}.json`).then(value => value.json())
-  const language = () =>
-    fetch(`https://esm.sh/tm-grammars/grammars/${currentLanguageName()}.json`)
-      .then(value => value.json())
-      .then(value => [value])
-
   return (
     <div class="app">
       <div class="side-panel">
-        <h1>Solid Shiki Textarea</h1>
+        <h1>Solid Textmate Textarea</h1>
         <footer>
-          <div>
-            <label for="mode">mode</label>
-            <button
-              id="mode"
-              onClick={() =>
-                setComponentType(type => (type === 'custom-element' ? 'solid' : 'custom-element'))
-              }
-            >
-              {componentType()}
-            </button>
-          </div>
-          <br />
           <div>
             <label for="theme">themes</label>
             <select
               id="theme"
-              value={currentThemeName()}
+              value={theme()}
               onInput={e => setCurrentThemeName(e.currentTarget.value as Theme)}
             >
-              <For each={themes}>{theme => <option>{theme}</option>}</For>
+              <For each={Object.keys(THEMES)}>{theme => <option>{theme}</option>}</For>
             </select>
           </div>
           <div>
             <label for="lang">languages</label>
             <select
               id="lang"
-              value={currentLanguageName()}
-              onInput={e => setCurrentLanguageName(e.currentTarget.value as Language)}
+              value={grammar()}
+              onInput={e => setCurrentLanguageName(e.currentTarget.value as Grammar)}
             >
-              <For each={languages}>{language => <option>{language}</option>}</For>
+              <For each={Object.keys(GRAMMARS)}>{language => <option>{language}</option>}</For>
             </select>
           </div>
           <br />
@@ -117,41 +94,23 @@ const App: Component = () => {
           </div>
         </footer>
       </div>
-
       <main>
-        <div class="resize-container">
-          <Show
-            when={componentType() === 'custom-element'}
-            fallback={
-              <ShikiTextarea
-                editable={editable()}
-                code={value()}
-                language={language()}
-                theme={theme()}
-                style={{
-                  'font-size': `${fontSize()}pt`,
-                  padding: `${padding()}px`,
-                  'min-height': '100%',
-                  'min-width': '100%',
-                }}
-                onInput={e => setValue(e.currentTarget.value)}
-              />
-            }
-          >
-            <shiki-textarea
-              editable={editable()}
-              value={value()}
-              style={{
-                'font-size': `${fontSize()}pt`,
-                padding: `${padding()}px`,
-                'min-height': '100%',
-                'min-width': '100%',
-              }}
-              language={language()}
-              theme={theme()}
-              onInput={e => setValue(e.currentTarget.value)}
-            />
-          </Show>
+        <div style={{ resize: 'both', height: '100px', width: '100px', overflow: 'hidden' }}>
+        <TmTextarea
+          lineHeight={16}
+          editable={editable()}
+          value={value()}
+          grammar={grammar()}
+          theme={theme()}
+          style={{
+            padding: `${padding()}px`,
+            'box-sizing': 'border-box',
+            resize: 'both',
+            width: '100%',
+            height: '100%',
+          }}
+          onInput={e => setValue(e.currentTarget.value)}
+        />
         </div>
       </main>
     </div>

@@ -1,25 +1,22 @@
 import clsx from 'clsx'
 import {
-  getHighlighterCore,
-  LanguageRegistration,
-  ThemeRegistration,
-  ThemeRegistrationRaw,
-} from 'shiki'
-import {
   ComponentProps,
+  createMemo,
   createRenderEffect,
   createResource,
+  createSelector,
   createSignal,
-  onCleanup,
+  Index,
+  onMount,
   Ref,
+  Show,
   splitProps,
   type JSX,
 } from 'solid-js'
-import { Language, Theme } from './tm'
-import { Cache } from './utils/cache'
-import { hexToRgb, luminance } from './utils/colors'
-import { every, whenever } from './utils/conditionals'
-import { getTrailingNewlines } from './utils/get-trailing-newlines'
+import TextMateHighlighter from 'textmate-highlighter'
+import { Grammar, GRAMMARS, ONIGURUMA, Theme, THEMES } from './tm'
+import { getLeadingNewlines } from './utils/get-leading-newlines'
+import { getLongestLineSize } from './utils/get-longest-linesize'
 
 /**********************************************************************************/
 /*                                                                                */
@@ -27,241 +24,182 @@ import { getTrailingNewlines } from './utils/get-trailing-newlines'
 /*                                                                                */
 /**********************************************************************************/
 
-const HIGHLIGHTER = getHighlighterCore({
-  themes: [],
-  langs: [],
-  loadWasm: import('shiki/wasm'),
+const HIGHLIGHTER = new TextMateHighlighter<Grammar, Theme>({
+  getGrammar: grammar => {
+    return GRAMMARS[grammar]
+  },
+  getTheme: theme => {
+    return THEMES[theme]
+  },
+  getOniguruma: () => {
+    return ONIGURUMA
+  },
 })
-const THEME_CACHE = new Cache<Promise<ThemeRegistration>>()
-const LANG_CACHE = new Cache<Promise<LanguageRegistration[]>>()
-const LOADED_LANGS = new WeakMap<Omit<ShikiTextareaProps['language'], string>, Promise<any>>()
-const LOADED_THEMES = new WeakMap<Omit<ShikiTextareaProps['theme'], string>, Promise<any>>()
+
+const WINDOW = 10
 
 /**********************************************************************************/
 /*                                                                                */
-/*                                     Set Cdn                                    */
+/*                               Textmate Textarea                                */
 /*                                                                                */
 /**********************************************************************************/
 
-type Cdn = string | ((type: 'language' | 'theme', id: string) => string)
-let CDN: Cdn = 'https://esm.sh'
-
-/**
- * Sets the CDN from which the theme/lang of <shiki-textarea/> is fetched.
- *
- * Accepts as arguments
- * - url: string
- * - callback: (type: 'lang' | 'theme', id: string) => string
- *
- * When given an url, this will be used to fetch
- * - `${cdn}/tm-themes/themes/${theme}.json` for the `themes`
- * - `${cdn}/tm-grammars/grammars/${grammar}.json` for the `langs`
- *
- * When given a callback, the returned string will be used to fetch.
- */
-export function setCDN(cdn: Cdn) {
-  CDN = cdn
-}
-
-export function urlFromCdn(type: 'theme' | 'language', key: string) {
-  if (typeof CDN === 'function') {
-    return CDN(type, key)
-  }
-  return type === 'theme'
-    ? `${CDN}/tm-themes/themes/${key}.json`
-    : `${CDN}/tm-grammars/grammars/${key}.json`
-}
-
-/**********************************************************************************/
-/*                                                                                */
-/*                                 Shiki Textarea                                 */
-/*                                                                                */
-/**********************************************************************************/
-
-declare module 'solid-js/jsx-runtime' {
-  namespace JSX {
-    interface CustomEvents {
-      input: InputEvent
-    }
-  }
-}
-
-export type LanguageProp = Language | Promise<LanguageRegistration[]> | LanguageRegistration[]
-
-export type ThemeProp =
-  | Theme
-  | Promise<ThemeRegistrationRaw | ThemeRegistration>
-  | ThemeRegistrationRaw
-  | ThemeRegistration
-
-export interface ShikiTextareaProps extends Omit<ComponentProps<'div'>, 'style' | 'onInput'> {
+export interface TextmateTextareaProps extends Omit<ComponentProps<'div'>, 'style' | 'onInput'> {
   /** If textarea is editable or not. */
   editable?: boolean
   /**
-   * The programming language of the source code for syntax highlighting.
-   *
-   * @example static import
-   * ```tsx
-   * import tsx from "shiki/langs/tsx.mjs"
-   * return <ShikiTextArea language={tsx}/>
-   * ```
-   * @example dynamic import
-   * ```tsx
-   * return <ShikiTextArea language={import('shiki/langs/tsx.mjs')}/>
-   * ```
+   * The grammar of the source code for syntax highlighting.
    */
-  language: LanguageProp
+  grammar: Grammar
   /** Custom CSS properties to apply to the editor. */
   style?: JSX.CSSProperties
   /** Ref to the internal html-textarea-element. */
   textareaRef?: Ref<HTMLTextAreaElement>
   /**
    * The theme to apply for syntax highlighting.
-   *
-   * @example static import
-   * ```tsx
-   * import andromeeda from "shiki/theme/andromeeda.mjs"
-   * return <ShikiTextArea theme={andromeeda}/>
-   * ```
-   * @example dynamic import
-   * ```tsx
-   * return <ShikiTextArea theme={import('shiki/theme/andromeeda.mjs')}/>
-   * ```
    */
-  theme: ThemeProp
+  theme: Theme
   /** The source code to be displayed and edited. */
-  code: string
+  value: string
   /** Callback function to handle updates to the source code. */
   onInput?: (event: InputEvent & { currentTarget: HTMLTextAreaElement }) => void
+  lineHeight: number
 }
 
-export function createShikiTextarea(styles: Record<string, string>) {
-  return function ShikiTextarea(props: ShikiTextareaProps) {
+export function createTmTextarea(styles: Record<string, string>) {
+  return function TmTextarea(props: TextmateTextareaProps) {
     const [config, rest] = splitProps(props, [
       'class',
-      'language',
+      'grammar',
       'onInput',
-      'code',
+      'value',
       'style',
       'theme',
       'editable',
+      'onScroll',
     ])
-    const [source, setSource] = createSignal(config.code)
+    let container: HTMLDivElement
 
-    // lang
-    const [language] = createResource(
-      () => config.language,
-      async language => {
-        if (typeof language !== 'string') {
-          return language
-        }
+    const [source, setSource] = createSignal(config.value)
+    const [html] = createResource(
+      source,
+      async code =>
+        `\n`.repeat(getLeadingNewlines(code)) +
+        (await HIGHLIGHTER.highlightToHTML({
+          code,
+          grammar: props.grammar,
+          theme: props.theme,
+        })),
+    )
+    const segments = createMemo(
+      () =>
+        html()
+          ?.replace(/<pre[^>]*>/, '')
+          .replace(/<\/pre>/, '')
+          .split('\n'),
+    )
+    const lineSize = createMemo(() => getLongestLineSize(source()))
+    const lineCount = createMemo(() => source().split('\n').length)
 
-        const url = urlFromCdn('language', language)
-
-        onCleanup(() => LANG_CACHE.cleanup(url))
-
-        return LANG_CACHE.add(url, () =>
-          fetch(/* @vite-ignore */ url)
-            .then(result => result.json())
-            .then(result => [result] as any)
-            .catch(console.error),
-        )
-      },
+    const [domRect, setDomRect] = createSignal<DOMRectReadOnly>()
+    const [scrollTop, setScrollTop] = createSignal(0)
+    const min = createMemo(() => Math.floor(scrollTop() / props.lineHeight))
+    const max = createMemo(() =>
+      Math.floor((scrollTop() + (domRect()?.height || 0)) / props.lineHeight),
+    )
+    const isVisible = createSelector(
+      () => [min(), max()] as [number, number],
+      (index: number, [start, end]) => index + WINDOW > start && index - WINDOW < end,
     )
 
-    const [theme] = createResource(
-      () => config.theme,
-      async theme => {
-        if (typeof theme !== 'string') {
-          return theme
-        }
-
-        const url = urlFromCdn('theme', theme)
-
-        onCleanup(() => THEME_CACHE.cleanup(url))
-
-        return THEME_CACHE.add(url, () =>
-          fetch(/* @vite-ignore */ url)
-            .then(result => result.json())
-            .catch(console.error),
-        )
-      },
-    )
-
-    const [highlighter] = createResource(every(theme, language), async ([theme, lang]) => {
-      const highlighter = await HIGHLIGHTER
-      await (LOADED_LANGS.get(lang) ??
-        LOADED_LANGS.set(lang, highlighter.loadLanguage(lang)).get(lang))
-      await (LOADED_THEMES.get(theme) ??
-        LOADED_THEMES.set(theme, highlighter.loadTheme(theme)).get(theme))
-      return highlighter
-    })
-
-    let previous: ChildNode | null = null
-    const html = whenever(
-      every(language, theme, highlighter, () => !highlighter.loading),
-      ([[lang], theme, highlighter]) => {
-        const html = highlighter.codeToHtml(source(), {
-          lang: lang!.name,
-          theme: theme,
-        })
-        return (previous = Document.parseHTMLUnsafe(html).body.firstChild!.firstChild)
-      },
-    )
-
-    const themeStyles = whenever(every(theme, highlighter), ([theme, highlighter]) => {
-      const { fg, bg } = highlighter.getTheme(theme)
-      const commentLuminance = luminance(...hexToRgb(bg))
-      const opacity = commentLuminance > 0.9 ? 0.1 : commentLuminance < 0.1 ? 0.25 : 0.175
-
-      return {
-        '--selection-color': `rgba(98, 114, 164, ${opacity})`,
-        '--background-color': bg,
-        '--foreground-color': fg,
-      }
+    onMount(() => {
+      const observer = new ResizeObserver(([entry]) => setDomRect(entry?.contentRect))
+      observer.observe(container)
     })
 
     // NOTE:  Update to projection once this lands in solid 2.0
     //        Sync local source signal with config.source
-    createRenderEffect(() => setSource(config.code))
+    createRenderEffect(() => setSource(config.value))
 
     return (
       <div
         part="root"
-        class={clsx(styles.root, config.class)}
+        ref={container!}
+        class={clsx(styles.container, config.class)}
+        onScroll={e => {
+          setScrollTop(e.currentTarget.scrollTop)
+          props.onScroll?.(e)
+        }}
         style={{
-          ...themeStyles(),
+          background: 'white',
+          'line-height': `${props.lineHeight}px`,
+          '--line-size': lineSize(),
+          '--line-count': lineCount(),
           ...config.style,
         }}
         {...rest}
-        data-editable={config.editable}
       >
-        <div class={styles.container}>
-          <pre part="code" class={styles.code}>
-            {html() || previous}
-            {`\n`.repeat(getTrailingNewlines(source()))}
-          </pre>
-          <textarea
-            ref={props.textareaRef}
-            part="textarea"
-            inputmode="none"
-            autocomplete="off"
-            spellcheck={false}
-            class={styles.textarea}
-            disabled={!config.editable}
-            on:input={e => {
-              const target = e.currentTarget
-              const value = target.value
+        <code class={styles.segments}>
+          <Index each={segments()}>
+            {(line, index) => (
+              <Show when={line() && isVisible(index)}>
+                <pre
+                  class={styles.segment}
+                  innerHTML={line()}
+                  style={{ top: `${index * props.lineHeight}px` }}
+                />
+              </Show>
+            )}
+          </Index>
+        </code>
+        <textarea
+          ref={props.textareaRef}
+          part="textarea"
+          autocomplete="off"
+          class={styles.textarea}
+          disabled={!config.editable}
+          inputmode="none"
+          spellcheck={false}
+          value={config.value}
+          onScroll={e => {
+            e.preventDefault()
+            e.stopPropagation()
+          }}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
 
-              // local
-              setSource(value)
+              // Get current scroll position
+              const scrollTop = container.scrollTop
 
-              // user provided callback
-              config.onInput?.(e)
-            }}
-            value={config.code}
-          />
-        </div>
+              // Get current cursor position (caret)
+              const start = e.currentTarget.selectionStart
+              const end = e.currentTarget.selectionEnd
+
+              // Insert the new line at the cursor position
+              const value = e.currentTarget.value
+              e.currentTarget.value = setSource(
+                value.substring(0, start) + '\n' + value.substring(end),
+              )
+
+              // Move the cursor to just after the inserted new line
+              e.currentTarget.selectionStart = e.currentTarget.selectionEnd = start + 1
+
+              // Restore the scroll position
+              container.scrollTop = scrollTop
+            }
+          }}
+          on:input={e => {
+            const target = e.currentTarget
+            const value = target.value
+
+            // local
+            setSource(value)
+
+            // user provided callback
+            config.onInput?.(e)
+          }}
+        />
       </div>
     )
   }

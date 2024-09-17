@@ -1,5 +1,5 @@
 {
-  "name": "solid-shiki-textarea",
+  "name": "solid-tm-textarea",
   "version": "0.1.6",
   "description": "textarea with shiki syntax highlighting",
   "license": "MIT",
@@ -7,11 +7,11 @@
   "contributors": [],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bigmistqke/solid-shiki-textarea.git"
+    "url": "git+https://github.com/bigmistqke/solid-tm-textarea.git"
   },
-  "homepage": "https://github.com/bigmistqke/solid-shiki-textarea#readme",
+  "homepage": "https://github.com/bigmistqke/solid-tm-textarea#readme",
   "bugs": {
-    "url": "https://github.com/bigmistqke/solid-shiki-textarea/issues"
+    "url": "https://github.com/bigmistqke/solid-tm-textarea/issues"
   },
   "files": [
     "dist"
@@ -54,14 +54,14 @@
     "lint:types": "tsc --noEmit",
     "update-deps": "pnpm up -Li"
   },
+  "peerDependencies": {
+    "solid-js": "^1.6.0"
+  },
   "dependencies": {
     "@lume/element": "^0.12.0",
     "classy-solid": "^0.3.8",
-    "clsx": "^2.1.1"
-  },
-  "peerDependencies": {
-    "shiki": "^1.6.2",
-    "solid-js": "^1.6.0"
+    "clsx": "^2.1.1",
+    "textmate-highlighter": "^1.0.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.25.6",

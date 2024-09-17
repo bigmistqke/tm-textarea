@@ -1,58 +1,39 @@
-:host {
-  display: contents;
-
-  & .root {
-    padding: inherit;
-    padding-top: inherit;
-    padding-right: inherit;
-    padding-bottom: inherit;
-    padding-left: inherit;
-    min-width: inherit;
-    min-height: inherit;
-  }
-}
-
-.root {
-  display: flex;
-  box-sizing: border-box;
-  background-color: var(--background-color);
-  isolation: isolate;
-  width: fit-content;
-  height: fit-content;
-  caret-color: var(--foreground-color);
-}
-
 .container {
   display: flex;
   position: relative;
   flex: 1;
-  flex: 1;
+  z-index: 1;
   box-sizing: border-box;
+  overflow: auto;
 
-  & code {
+  .segments {
     display: block;
-    position: relative;
+    position: absolute;
     z-index: 1;
+    /* fixes color change when textarea is focused */
+    backface-visibility: hidden;
+    contain: layout;
     pointer-events: none;
+    font-size: inherit;
+    line-height: inherit;
     font-family: monospace;
     white-space: pre;
+
+    & .segment {
+      position: fixed;
+    }
   }
 
   & pre {
     margin: 0px;
-    background: transparent !important;
-    min-height: 1em;
-  }
 
-  & code {
-    /* fixes color change when textarea is focused */
-    backface-visibility: hidden;
-    font-size: inherit;
-    line-height: inherit;
+    & span {
+      margin: 0px;
+      background: transparent !important;
+    }
   }
 
   & .textarea {
-    position: absolute;
     top: 0px;
     right: 0px;
     bottom: 0px;
@@ -62,16 +43,21 @@
     border: none;
     background: transparent;
     padding: 0px;
+    min-width: calc(var(--line-size) * 1ch);
+    min-height: calc(var(--line-count) * 1em);
     overflow: hidden;
     resize: none;
     color: transparent;
+    caret-color: black;
     font-size: inherit;
+    line-height: inherit;
     line-height: inherit;
     font-family: monospace;
     text-align: inherit;
+    white-space: nowrap;
   }
 
   & .textarea::selection {
-    background: var(--selection-color);
+    background: rgb(232, 232, 236);
   }
 }

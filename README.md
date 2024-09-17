@@ -1,42 +1,42 @@
 <p>
-  <img width="100%" src="https://assets.solidjs.com/banner?type=solid-shiki-textarea&background=tiles&project=%20" alt="solid-shiki-textarea">
+  <img width="100%" src="https://assets.solidjs.com/banner?type=solid-tm-textarea&background=tiles&project=%20" alt="solid-tm-textarea">
 </p>
 
-# 📄 solid-shiki-textarea
+# 📄 solid-tm-textarea
 
 [![pnpm](https://img.shields.io/badge/maintained%20with-pnpm-cc00ff.svg?style=for-the-badge&logo=pnpm)](https://pnpm.io/)
 
 Textarea with syntax highlighting powered by [solid-js](https://github.com/solidjs/solid) and
-[shiki](https://github.com/shikijs/shiki).
+[textmate-highlighter](https://github.com/fabiospampinato/textmate-highlighter).
 
-https://github.com/bigmistqke/solid-shiki-textarea/assets/10504064/7bb4a2e1-a2c4-460d-b782-fe9bf7cac43a
+https://github.com/bigmistqke/solid-tm-textarea/assets/10504064/7bb4a2e1-a2c4-460d-b782-fe9bf7cac43a
 
 ## Installation
 
 ```bash
-npm i shiki solid-shiki-textarea
+npm i tm solid-tm-textarea
 # or
-yarn add shiki solid-shiki-textarea
+yarn add tm solid-tm-textarea
 # or
-pnpm add shiki solid-shiki-textarea
+pnpm add tm solid-tm-textarea
 ```
 
 ## Solid Component
 
-The main export of `solid-shiki-textarea` is a solid component.
+The main export of `solid-tm-textarea` is a solid component.
 
 <details>
 <summary>Prop Types</summary>
 
 ```ts
-import type { LanguageRegistration, ThemeRegistration } from 'shiki'
-import type { Language, Theme } from 'shiki-textarea/tm'
+import type { LanguageRegistration, ThemeRegistration } from 'tm'
+import type { Language, Theme } from 'tm-textarea/tm'
 
 type LanguageProps = Language | LanguageRegistration[] | Promise<LanguageRegistration[]>
 
 type ThemeProps = Theme | ThemeRegistration | Promise<ThemeRegistration>
 
-interface ShikiTextareaProps extends Omit<ComponentProps<'div'>, 'style'> {
+interface tmTextareaProps extends Omit<ComponentProps<'div'>, 'style'> {
   language: LanguageProps
   theme: ThemeProps
   code: string
@@ -53,12 +53,12 @@ interface ShikiTextareaProps extends Omit<ComponentProps<'div'>, 'style'> {
 **Static import of `theme/language`**
 
 ```tsx
-import { ShikiTextarea } from 'solid-shiki-textarea'
-import minLight from 'shiki/themes/min-light.mjs'
-import tsx from 'shiki/langs/tsx.mjs'
+import { tmTextarea } from 'solid-tm-textarea'
+import minLight from 'tm/themes/min-light.mjs'
+import tsx from 'tm/langs/tsx.mjs'
 
 export default () => (
-  <ShikiTextarea
+  <tmTextarea
     language={tsx}
     theme={minLight}
     code="const sum = (a: string, b: string) => a + b"
@@ -75,12 +75,12 @@ export default () => (
 **Dynamic import of `theme/language`**
 
 ```tsx
-import { ShikiTextarea } from 'solid-shiki-textarea'
+import { tmTextarea } from 'solid-tm-textarea'
 
 export default () => (
-  <ShikiTextarea
-    language={import('https://esm.sh/shiki/langs/tsx.mjs')}
-    theme={import('https://esm.sh/shiki/themes/min-light.mjs')}
+  <tmTextarea
+    language={import('https://esm.sh/tm/langs/tsx.mjs')}
+    theme={import('https://esm.sh/tm/themes/min-light.mjs')}
     code="const sum = (a: string, b: string) => a + b"
     editable={true}
     style={{
@@ -94,22 +94,22 @@ export default () => (
 
 ## Custom Element
 
-We also export a custom-element wrapper `<shiki-textarea/>` powered by
+We also export a custom-element wrapper `<tm-textarea/>` powered by
 [@lume/element](https://github.com/lume/element)
 
 <details>
 <summary>Attribute Types</summary>
 
 ```ts
-import { LanguageProps, ThemeProps } from 'shiki-textarea'
+import { LanguageProps, ThemeProps } from 'tm-textarea'
 
-interface ShikiTextareaAttributes extends ComponentProps<'div'> {
+interface tmTextareaAttributes extends ComponentProps<'div'> {
   language?: LanguageProps
   theme?: ThemeProps
   code?: string
   editable?: boolean
   stylesheet?: string | CSSStyleSheet
-  onInput?: (event: InputEvent & { currentTarget: ShikiTextareaElement }) => void
+  onInput?: (event: InputEvent & { currentTarget: tmTextareaElement }) => void
 }
 ```
 
@@ -118,13 +118,13 @@ interface ShikiTextareaAttributes extends ComponentProps<'div'> {
 ### Usage
 
 ```tsx
-import { setCDN } from 'solid-shiki-textarea'
-import 'solid-shiki-textarea/custom-element'
+import { setCDN } from 'solid-tm-textarea'
+import 'solid-tm-textarea/custom-element'
 
-setCDN('/shiki')
+setCDN('/tm')
 
 export default () => (
-  <shiki-textarea
+  <tm-textarea
     language="tsx"
     theme="andromeeda"
     code="const sum = (a: string, b: string) => a + b"
@@ -149,19 +149,19 @@ Some DOM [`::part()`](https://developer.mozilla.org/en-US/docs/Web/CSS/::part) a
 - `code` can be used to change the `code` tag.
 
 ```css
-shiki-textarea::part(root) {
+tm-textarea::part(root) {
   padding: 20px;
   background: transparent;
   font-size: 18px;
   line-height: 1.25;
 }
 
-shiki-textarea::part(textarea)::selection {
+tm-textarea::part(textarea)::selection {
   background: deepskyblue;
 }
 
 /* to size it to the container, will remove dead-zones */
-shiki-textarea {
+tm-textarea {
   min-height: 100%;
   min-width: 100%;
 }
@@ -169,10 +169,10 @@ shiki-textarea {
 
 The attribute `stylesheet` could be used as a last resort to customize the theme. In the following
 example we avoid italics in the rendered coded. The stylesheet is created, cached and reused on the
-different `shiki-textarea` instances.
+different `tm-textarea` instances.
 
 ```tsx
-<shiki-textarea
+<tm-textarea
   language="tsx"
   theme="andromeeda"
   code="const sum = (a: string, b: string) => a + b"
@@ -190,16 +190,16 @@ different `shiki-textarea` instances.
 
 ```tsx
 // from solid component
-import { setCDN } from 'solid-shiki-textarea'
+import { setCDN } from 'solid-tm-textarea'
 
 // Set base-url of CDN directly (defaults to https://esm.sh)
 setCDN('https://unpkg.com')
 
 // relative to the root
-setCDN('/assets/shiki')
+setCDN('/assets/tm')
 
 // Or use the callback-form
-setCDN((type, id) => `./shiki/${type}/${id}.json`)
+setCDN((type, id) => `./tm/${type}/${id}.json`)
 ```
 
 ## Themes & Languages
@@ -207,7 +207,7 @@ setCDN((type, id) => `./shiki/${type}/${id}.json`)
 Both, the languages and themes list are exported as `string[]`.
 
 ```tsx
-import type { Theme, Language } from 'solid-shiki-textarea/tm'
+import type { Theme, Language } from 'solid-tm-textarea/tm'
 
-import { themes, languages } from 'solid-shiki-textarea/tm'
+import { themes, languages } from 'solid-tm-textarea/tm'
 ```

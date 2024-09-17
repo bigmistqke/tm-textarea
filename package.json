@@ -1,7 +1,7 @@
 {
   "name": "solid-tm-textarea",
   "version": "0.1.6",
-  "description": "textarea with shiki syntax highlighting",
+  "description": "textarea with textmate syntax highlighting",
   "license": "MIT",
   "author": "bigmistqke",
   "contributors": [],

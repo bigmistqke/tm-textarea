@@ -1,18 +1,11 @@
 import self from '.?raw'
-import { createEffect, createSignal, For, Show, type Component } from 'solid-js'
+import { createSignal, For, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
-import { TmTextarea } from 'solid-tm-textarea'
 import 'solid-tm-textarea/custom-element'
+// import { Textarea } from 'solid-tm-textarea/oniguruma'
+import { TmTextarea } from 'solid-tm-textarea'
 import { Grammar, GRAMMARS, Theme, THEMES } from 'solid-tm-textarea/tm'
 import './index.css'
-
-const sources = {
-  large: Array.from({ length: 10 })
-    .map(() => self)
-    .join('\n'),
-  small: `const sum = (a: number, b: number) => a + b`,
-}
-type Source = keyof typeof sources
 
 const App: Component = () => {
   // Config
@@ -23,19 +16,32 @@ const App: Component = () => {
 
   const [fontSize, setFontSize] = createSignal(10)
   const [padding, setPadding] = createSignal(5)
-  const [sourceType, setSourceType] = createSignal<Source>('large')
   const [editable, setEditable] = createSignal(true)
 
-  const [value, setValue] = createSignal(sources[sourceType()])
+  const [_value, setValue] = createSignal(self)
 
-  createEffect(() => setValue(sources[sourceType()]))
+  const value = () => loopLines(_value(), LOC())
+
+  const [LOC, setLOC] = createSignal(800)
+
+  function loopLines(input: string, lineCount: number): string {
+    const lines = input.split('\n')
+    const totalLines = lines.length
+    let result = ''
+
+    for (let i = 0; i < lineCount; i++) {
+      result += lines[i % totalLines] + '\n'
+    }
+
+    return result.trim() // Trim to remove the trailing newline
+  }
 
   return (
     <div class="app">
       <div class="side-panel">
         <h1>Solid Textmate Textarea</h1>
         <footer>
-          <div>
+          {/* <div>
             <label for="mode">mode</label>
             <button
               id="mode"
@@ -46,7 +52,7 @@ const App: Component = () => {
               {mode()}
             </button>
           </div>
-          <br />
+          <br /> */}
           <div>
             <label for="theme">themes</label>
             <select
@@ -69,14 +75,13 @@ const App: Component = () => {
           </div>
           <br />
           <div>
-            <label for="source">source</label>
-            <select
-              id="source"
-              value={sourceType()}
-              onInput={e => setSourceType(e.currentTarget.value as Source)}
-            >
-              <For each={Object.keys(sources)}>{source => <option>{source}</option>}</For>
-            </select>
+            <label for="LOC">LOC</label>
+            <input
+              id="LOC"
+              type="number"
+              value={LOC()}
+              onInput={e => setLOC(+e.currentTarget.value)}
+            />
           </div>
           <div>
             <label for="padding">padding</label>
@@ -111,42 +116,13 @@ const App: Component = () => {
       </div>
       <main>
         <div style={{ resize: 'both', height: '100px', width: '100px', overflow: 'hidden' }}>
-          <Show
-            when={mode() === 'solid'}
-            /* fallback={
-              <tm-textarea
-                line-height={16}
-                editable={editable()}
-                value={value()}
-                grammar={grammar()}
-                theme={theme()}
-                style={{
-                  padding: `${padding()}px`,
-                  'box-sizing': 'border-box',
-                  resize: 'both',
-                  width: '100%',
-                  height: '100%',
-                }}
-                onInput={e => setValue(e.currentTarget.value)}
-              />
-            } */
-          >
-            <TmTextarea
-              lineHeight={16}
-              editable={editable()}
-              value={value()}
-              grammar={grammar()}
-              theme={theme()}
-              style={{
-                padding: `${padding()}px`,
-                'box-sizing': 'border-box',
-                resize: 'both',
-                width: '100%',
-                height: '100%',
-              }}
-              onInput={e => setValue(e.currentTarget.value)}
-            />
-          </Show>
+          <TmTextarea
+            lineHeight={16}
+            value={value()}
+            grammar="source.tsx"
+            theme="dark-plus"
+            style={{ height: '100%', width: '100%' }}
+          />
         </div>
       </main>
     </div>

@@ -4,7 +4,7 @@ import { render } from 'solid-js/web'
 import 'solid-tm-textarea/custom-element'
 // import { Textarea } from 'solid-tm-textarea/oniguruma'
 import { TmTextarea } from 'solid-tm-textarea'
-import { Grammar, GRAMMARS, Theme, THEMES } from 'solid-tm-textarea/tm'
+import { Grammar, grammars, Theme, themes } from 'solid-tm-textarea/tm'
 import './index.css'
 
 const App: Component = () => {
@@ -60,7 +60,7 @@ const App: Component = () => {
               value={theme()}
               onInput={e => setCurrentThemeName(e.currentTarget.value as Theme)}
             >
-              <For each={Object.keys(THEMES)}>{theme => <option>{theme}</option>}</For>
+              <For each={Object.keys(themes)}>{theme => <option>{theme}</option>}</For>
             </select>
           </div>
           <div>
@@ -70,7 +70,7 @@ const App: Component = () => {
               value={grammar()}
               onInput={e => setCurrentLanguageName(e.currentTarget.value as Grammar)}
             >
-              <For each={Object.keys(GRAMMARS)}>{language => <option>{language}</option>}</For>
+              <For each={Object.keys(grammars)}>{language => <option>{language}</option>}</For>
             </select>
           </div>
           <br />
@@ -119,9 +119,9 @@ const App: Component = () => {
           <TmTextarea
             lineHeight={16}
             value={value()}
-            grammar="source.tsx"
+            grammar="tsx"
             theme="dark-plus"
-            style={{ height: '100%', width: '100%' }}
+            style={{ height: '100%', width: '100%', padding: '20px' }}
           />
         </div>
       </main>

@@ -22,6 +22,7 @@ import { type Accessor, getOwner, runWithOwner, type Setter } from 'solid-js'
 import { createStore, type SetStoreFunction } from 'solid-js/store'
 import * as oniguruma from 'vscode-oniguruma'
 import * as textmate from 'vscode-textmate'
+import { hexToRgb, luminance } from './utils/colors'
 import { every, when } from './utils/conditionals'
 
 const DEBUG = false
@@ -68,10 +69,7 @@ class ThemeManager {
 
     if (this.#scopes[id]) return this.#scopes[id]
 
-    let finalStyle: { foreground?: string; fontStyle?: string } = {
-      foreground: undefined,
-      fontStyle: undefined,
-    }
+    let finalStyle: { foreground?: string; fontStyle?: string } = {}
 
     for (let i = 0; i < scope.length; i++) {
       const currentScope = scope[i]!
@@ -141,7 +139,9 @@ class Segment {
           .map(token => {
             const style = this.manager.theme.resolveScope(token.scopes)
             const tokenValue = line.slice(token.startIndex, token.endIndex)
-            return `<span style="color:${style.foreground}; text-decoration:${style.fontStyle}">${tokenValue}</span>`
+            return `<span style="${style.foreground ? `color:${style.foreground};` : ''}${
+              style.fontStyle ? `text-decoration:${style.fontStyle}` : ''
+            }">${tokenValue}</span>`
           })
           .join('')
       })
@@ -287,7 +287,9 @@ function equalScopes(scopeA: any, scopeB: any): boolean {
 /*                                                                                */
 /**********************************************************************************/
 
-type Cdn = string | ((type: 'theme' | 'grammar', id: string) => string)
+type CdnAssetType = 'theme' | 'grammar' | 'oniguruma'
+
+type Cdn = string | ((type: CdnAssetType, id: string) => string)
 
 let CDN: Cdn = 'https://esm.sh'
 const CACHE = {
@@ -300,11 +302,12 @@ const CACHE = {
  *
  * Accepts as arguments
  * - url: string
- * - callback: (type: 'lang' | 'theme', id: string) => string
+ * - callback: (type: 'lang' | 'theme' | 'oniguruma', id: string) => string
  *
  * When given an url, this will be used to fetch
  * - `${cdn}/tm-themes/themes/${theme}.json` for the `themes`
- * - `${cdn}/tm-grammars/grammars/${grammar}.json` for the `langs`
+ * - `${cdn}/tm-grammars/grammars/${grammar}.json` for the `grammars`
+ * - `${cdn}/vscode-oniguruma/release/onig.wasm` for the `oniguruma` wasm-file
  *
  * When given a callback, the returned string will be used to fetch.
  */
@@ -312,13 +315,18 @@ export function setCDN(cdn: Cdn) {
   CDN = cdn
 }
 
-function urlFromCDN(type: 'theme' | 'grammar', key: string) {
+function urlFromCDN(type: CdnAssetType, key: string) {
   if (typeof CDN === 'function') {
     return CDN(type, key)
   }
-  return type === 'theme'
-    ? `${CDN}/tm-themes/themes/${key}.json`
-    : `${CDN}/tm-grammars/grammars/${key}.json`
+  switch (type) {
+    case 'theme':
+      return `${CDN}/tm-themes/themes/${key}.json`
+    case 'grammar':
+      return `${CDN}/tm-grammars/grammars/${key}.json`
+    case 'oniguruma':
+      return `${CDN}/vscode-oniguruma/release/onig.wasm`
+  }
 }
 
 async function fetchFromCDN(type: 'theme' | 'grammar', key: string) {
@@ -339,11 +347,15 @@ async function fetchFromCDN(type: 'theme' | 'grammar', key: string) {
 const TOKENIZER_CACHE: Record<string, textmate.IGrammar | null> = {}
 const REGISTRY = new textmate.Registry({
   onigLib: oniguruma,
-  loadGrammar: async (grammar: string) => fetchFromCDN('grammar', grammar),
+  loadGrammar: (grammar: string) =>
+    fetchFromCDN('grammar', grammar).then(response => {
+      response.scopeName = grammar
+      return response
+    }),
 })
 const [WASM_LOADED] = createRoot(() =>
   createResource(async () =>
-    fetch('https://unpkg.com/vscode-oniguruma/release/onig.wasm')
+    fetch(urlFromCDN('oniguruma', null!))
       .then(buffer => buffer.arrayBuffer())
       .then(buffer => oniguruma.loadWASM(buffer))
       .then(() => true),
@@ -363,7 +375,7 @@ function createManager(props: TextmateTextareaProps) {
 
   const [theme] = createResource(
     () => props.theme,
-    theme => fetchFromCDN('theme', theme),
+    theme => fetchFromCDN('theme', theme).then(theme => new ThemeManager(theme)),
   )
 
   const manager = createMemo(
@@ -462,6 +474,13 @@ export function createTmTextarea(styles: Record<string, string>) {
       observer.observe(container)
     })
 
+    const selectionColor = when(manager, manager => {
+      const bg = manager.theme.getBackgroundColor()
+      const commentLuminance = luminance(...hexToRgb(bg))
+      const opacity = commentLuminance > 0.9 ? 0.1 : commentLuminance < 0.1 ? 0.25 : 0.175
+      return `rgba(98, 114, 164, ${opacity})`
+    })
+
     return (
       <div
         part="root"
@@ -472,10 +491,12 @@ export function createTmTextarea(styles: Record<string, string>) {
           props.onScroll?.(e)
         }}
         style={{
-          background: 'white',
           'line-height': `${props.lineHeight}px`,
+          '--foreground-color': manager()?.theme.getForegroundColor(),
+          '--background-color': manager()?.theme.getBackgroundColor(),
           '--line-size': lineSize(),
           '--line-count': manager()?.lines().length,
+          '--selection-color': selectionColor(),
           ...config.style,
         }}
         {...rest}

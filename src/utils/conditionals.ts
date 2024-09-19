@@ -1,6 +1,6 @@
 import { Accessor, Resource } from 'solid-js'
 
-export function when<
+export function once<
   T,
   const TAccessor extends Accessor<T> | T,
   const TValues extends TAccessor extends ((...args: any[]) => any) | undefined
@@ -9,7 +9,7 @@ export function when<
   const TResult,
 >(accessor: TAccessor, callback: (value: TValues) => TResult): TResult | undefined
 
-export function when<
+export function once<
   T,
   const TAccessor extends Accessor<T> | T,
   const TValues extends TAccessor extends ((...args: any[]) => any) | undefined
@@ -23,7 +23,7 @@ export function when<
   fallback: () => TFallbackResult,
 ): TResult | TFallbackResult
 
-export function when<
+export function once<
   T,
   const TAccessor extends Accessor<T> | T,
   const TValues extends TAccessor extends ((...args: any[]) => any) | undefined
@@ -47,7 +47,7 @@ export function when<
  * @param callback The callback function to be executed if the accessor's value is truthy.
  * @returns A function that can be called to execute the callback conditionally based on the accessor's value.
  */
-export function whenever<
+export function when<
   T,
   const TAccessor extends Accessor<T> | T,
   const TValues extends TAccessor extends ((...args: any[]) => any) | undefined
@@ -56,7 +56,7 @@ export function whenever<
   const TResult,
 >(accessor: TAccessor, callback: (value: TValues) => TResult): () => TResult | undefined
 
-export function whenever<
+export function when<
   const T,
   const TAccessor extends Accessor<T> | T,
   const TValues extends TAccessor extends ((...args: any[]) => any) | undefined
@@ -70,7 +70,7 @@ export function whenever<
   fallback: () => TFallbackResult,
 ): () => TResult | TFallbackResult
 
-export function whenever<
+export function when<
   T,
   const TAccessor extends Accessor<T> | T,
   const TValues extends TAccessor extends ((...args: any[]) => any) | undefined
@@ -84,7 +84,7 @@ export function whenever<
   fallback?: () => TFallbackResult,
 ): () => TResult | TFallbackResult | undefined {
   // @ts-expect-error
-  return () => when(accessor, callback, fallback)
+  return () => once(accessor, callback, fallback)
 }
 
 /**

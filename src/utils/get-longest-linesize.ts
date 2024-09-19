@@ -1,5 +1,4 @@
-export function getLongestLineSize(input: string): number {
-  const lines = input.split('\n')
+export function getLongestLineSize(lines: string[]): number {
   let maxLength = 0
 
   for (const line of lines) {

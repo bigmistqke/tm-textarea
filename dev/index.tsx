@@ -22,7 +22,7 @@ const App: Component = () => {
 
   const value = () => loopLines(_value(), LOC())
 
-  const [LOC, setLOC] = createSignal(800)
+  const [LOC, setLOC] = createSignal(10_000)
 
   function loopLines(input: string, lineCount: number): string {
     const lines = input.split('\n')

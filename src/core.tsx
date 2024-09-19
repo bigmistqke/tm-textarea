@@ -1,6 +1,7 @@
 import { createLazyMemo } from '@solid-primitives/memo'
 import clsx from 'clsx'
 import {
+  type Accessor,
   ComponentProps,
   createMemo,
   createRenderEffect,
@@ -8,22 +9,23 @@ import {
   createRoot,
   createSelector,
   createSignal,
+  getOwner,
   Index,
   type JSX,
   onMount,
   Ref,
+  runWithOwner,
+  type Setter,
   Show,
   splitProps,
 } from 'solid-js'
-import { Grammar, Theme } from './tm'
-import { getLongestLineSize } from './utils/get-longest-linesize'
-
-import { type Accessor, getOwner, runWithOwner, type Setter } from 'solid-js'
 import { createStore, type SetStoreFunction } from 'solid-js/store'
 import * as oniguruma from 'vscode-oniguruma'
 import * as textmate from 'vscode-textmate'
+import { Grammar, Theme } from './tm'
 import { hexToRgb, luminance } from './utils/colors'
 import { every, when } from './utils/conditionals'
+import { getLongestLineSize } from './utils/get-longest-linesize'
 
 const DEBUG = false
 const SEGMENT_SIZE = 100
@@ -104,6 +106,10 @@ class ThemeManager {
 /*                                                                                */
 /**********************************************************************************/
 
+function escapeHTML(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 // Segment class that tokenizes and renders lines
 class Segment {
   #generated: Accessor<string[]>
@@ -141,7 +147,7 @@ class Segment {
             const tokenValue = line.slice(token.startIndex, token.endIndex)
             return `<span style="${style.foreground ? `color:${style.foreground};` : ''}${
               style.fontStyle ? `text-decoration:${style.fontStyle}` : ''
-            }">${tokenValue}</span>`
+            }">${escapeHTML(tokenValue)}</span>`
           })
           .join('')
       })
@@ -438,6 +444,7 @@ export function createTmTextarea(styles: Record<string, string>) {
     const [dimensions, setDimensions] = createSignal<{ width: number; height: number }>()
     const [scrollTop, setScrollTop] = createSignal(0)
     const [manager, setSource] = createManager(props)
+    const [charHeight, setCharHeight] = createSignal<string>()
 
     const lineSize = createMemo(() => getLongestLineSize(manager()?.lines() || []))
 
@@ -491,16 +498,29 @@ export function createTmTextarea(styles: Record<string, string>) {
           props.onScroll?.(e)
         }}
         style={{
-          'line-height': `${props.lineHeight}px`,
-          '--foreground-color': manager()?.theme.getForegroundColor(),
           '--background-color': manager()?.theme.getBackgroundColor(),
-          '--line-size': lineSize(),
+          '--char-height': charHeight(),
+          '--foreground-color': manager()?.theme.getForegroundColor(),
           '--line-count': manager()?.lines().length,
+          '--line-height': `${props.lineHeight}px`,
+          '--line-size': lineSize(),
           '--selection-color': selectionColor(),
           ...config.style,
         }}
         {...rest}
       >
+        <code
+          ref={element => {
+            new ResizeObserver(() => {
+              const { height } = getComputedStyle(element)
+              setCharHeight(height)
+            }).observe(element)
+          }}
+          aria-hidden
+          class={styles.character}
+        >
+          &nbsp;
+        </code>
         <Show when={manager()}>
           {manager => (
             <code class={styles.segments}>
@@ -516,7 +536,8 @@ export function createTmTextarea(styles: Record<string, string>) {
                             class={styles.segment}
                             innerHTML={manager().getLine(segmentIndex * SEGMENT_SIZE + index)}
                             style={{
-                              top: `${(segmentIndex * SEGMENT_SIZE + index) * props.lineHeight}px`,
+                              '--line-number': segmentIndex * SEGMENT_SIZE + index,
+                              // top: `${(segmentIndex * SEGMENT_SIZE + index) * props.lineHeight}px`,
                             }}
                           />
                         </Show>

@@ -23,6 +23,7 @@
   background-color: var(--background-color);
   overflow: auto;
   color: var(--foreground-color);
+  line-height: var(--line-height);
 
   .segments {
     display: block;
@@ -38,8 +39,18 @@
     white-space: pre;
 
     & .segment {
-      position: fixed;
+      position: absolute;
+      top: calc(var(--line-number) * var(--char-height));
     }
+  }
+
+  & .character {
+    position: absolute;
+    align-self: start;
+    visibility: hidden;
+    pointer-events: none;
+    font-size: inherit;
+    line-height: inherit;
   }
 
   & pre {

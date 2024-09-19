@@ -1,26 +1,20 @@
-import self from '.?raw'
 import { createSignal, For, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
-import 'solid-tm-textarea/custom-element'
-// import { Textarea } from 'solid-tm-textarea/oniguruma'
 import { TmTextarea } from 'solid-tm-textarea'
+import 'solid-tm-textarea/custom-element'
 import { Grammar, grammars, Theme, themes } from 'solid-tm-textarea/tm'
 import './index.css'
+import test from './test?raw'
 
 const App: Component = () => {
-  // Config
-  const [mode, setMode] = createSignal<'custom-element' | 'solid'>('solid')
-
   const [theme, setCurrentThemeName] = createSignal<Theme>('light-plus')
-  const [grammar, setCurrentLanguageName] = createSignal<Grammar>('source.tsx')
+  const [grammar, setCurrentLanguageName] = createSignal<Grammar>('tsx')
 
   const [fontSize, setFontSize] = createSignal(10)
   const [padding, setPadding] = createSignal(5)
   const [editable, setEditable] = createSignal(true)
 
-  const [_value, setValue] = createSignal(self)
-
-  const value = () => loopLines(_value(), LOC())
+  const value = () => loopLines(test, LOC())
 
   const [LOC, setLOC] = createSignal(10_000)
 
@@ -41,18 +35,6 @@ const App: Component = () => {
       <div class="side-panel">
         <h1>Solid Textmate Textarea</h1>
         <footer>
-          {/* <div>
-            <label for="mode">mode</label>
-            <button
-              id="mode"
-              onClick={() =>
-                setMode(type => (type === 'custom-element' ? 'solid' : 'custom-element'))
-              }
-            >
-              {mode()}
-            </button>
-          </div>
-          <br /> */}
           <div>
             <label for="theme">themes</label>
             <select
@@ -70,7 +52,7 @@ const App: Component = () => {
               value={grammar()}
               onInput={e => setCurrentLanguageName(e.currentTarget.value as Grammar)}
             >
-              <For each={Object.keys(grammars)}>{language => <option>{language}</option>}</For>
+              <For each={Object.keys(grammars)}>{grammar => <option>{grammar}</option>}</For>
             </select>
           </div>
           <br />
@@ -119,8 +101,8 @@ const App: Component = () => {
           <TmTextarea
             lineHeight={16}
             value={value()}
-            grammar="tsx"
-            theme="dark-plus"
+            grammar={grammar()}
+            theme={theme()}
             style={{ height: '100%', width: '100%', padding: '20px' }}
           />
         </div>

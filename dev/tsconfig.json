@@ -4,8 +4,8 @@
     "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
-      "solid-tm-textarea/*": ["../src/*"],
-      "solid-tm-textarea": ["../src/index.tsx"]
+      "tm-textarea/*": ["../src/*"],
+      "tm-textarea": ["../src/custom-element.tsx"]
     }
   },
   "exclude": ["node_modules", "dist"],

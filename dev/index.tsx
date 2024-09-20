@@ -1,8 +1,8 @@
 import { createSignal, For, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
-import { TmTextarea } from 'solid-tm-textarea'
-import 'solid-tm-textarea/custom-element'
-import { Grammar, grammars, Theme, themes } from 'solid-tm-textarea/tm'
+import 'tm-textarea'
+import { TmTextarea } from 'tm-textarea/solid'
+import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
 import './index.css'
 import test from './test?raw'
 

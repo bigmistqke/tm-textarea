@@ -1,95 +1,24 @@
 <p>
-  <img width="100%" src="https://assets.solidjs.com/banner?type=solid-tm-textarea&background=tiles&project=%20" alt="solid-tm-textarea">
+  <img width="100%" src="https://assets.solidjs.com/banner?type=tm-textarea&background=tiles&project=%20" alt="tm-textarea">
 </p>
 
-# 📄 solid-tm-textarea
+# 📄 tm-textarea
 
 [![pnpm](https://img.shields.io/badge/maintained%20with-pnpm-cc00ff.svg?style=for-the-badge&logo=pnpm)](https://pnpm.io/)
 
 Textarea with syntax highlighting powered by [solid-js](https://github.com/solidjs/solid) and
 [vscode-oniguruma](https://github.com/microsoft/vscode-oniguruma).
 
-https://github.com/bigmistqke/solid-tm-textarea/assets/10504064/7bb4a2e1-a2c4-460d-b782-fe9bf7cac43a
+https://github.com/bigmistqke/tm-textarea/assets/10504064/7bb4a2e1-a2c4-460d-b782-fe9bf7cac43a
 
 ## Installation
 
 ```bash
-npm i tm solid-tm-textarea
+npm i tm tm-textarea
 # or
-yarn add tm solid-tm-textarea
+yarn add tm tm-textarea
 # or
-pnpm add tm solid-tm-textarea
-```
-
-## Solid Component
-
-The main export of `solid-tm-textarea` is a solid component.
-
-<details>
-<summary>Prop Types</summary>
-
-```ts
-import type { LanguageRegistration, ThemeRegistration } from 'tm'
-import type { Language, Theme } from 'tm-textarea/tm'
-
-type LanguageProps = Language | LanguageRegistration[] | Promise<LanguageRegistration[]>
-
-type ThemeProps = Theme | ThemeRegistration | Promise<ThemeRegistration>
-
-interface tmTextareaProps extends Omit<ComponentProps<'div'>, 'style'> {
-  language: LanguageProps
-  theme: ThemeProps
-  code: string
-  editable?: boolean
-  style?: JSX.CSSProperties
-  onInput?: (event: InputEvent & { currentTarget: HTMLTextAreaElement }) => void
-}
-```
-
-</details>
-
-### Usage
-
-**Static import of `theme/language`**
-
-```tsx
-import { tmTextarea } from 'solid-tm-textarea'
-import minLight from 'tm/themes/min-light.mjs'
-import tsx from 'tm/langs/tsx.mjs'
-
-export default () => (
-  <tmTextarea
-    language={tsx}
-    theme={minLight}
-    code="const sum = (a: string, b: string) => a + b"
-    editable={true}
-    style={{
-      padding: '10px',
-      'font-size': '16pt',
-    }}
-    onInput={e => console.log(e.currentTarget.value)}
-  />
-)
-```
-
-**Dynamic import of `theme/language`**
-
-```tsx
-import { tmTextarea } from 'solid-tm-textarea'
-
-export default () => (
-  <tmTextarea
-    language={import('https://esm.sh/tm/langs/tsx.mjs')}
-    theme={import('https://esm.sh/tm/themes/min-light.mjs')}
-    code="const sum = (a: string, b: string) => a + b"
-    editable={true}
-    style={{
-      padding: '10px',
-      'font-size': '16pt',
-    }}
-    onInput={e => console.log(e.currentTarget.value)}
-  />
-)
+pnpm add tm tm-textarea
 ```
 
 ## Custom Element
@@ -118,8 +47,8 @@ interface tmTextareaAttributes extends ComponentProps<'div'> {
 ### Usage
 
 ```tsx
-import { setCDN } from 'solid-tm-textarea'
-import 'solid-tm-textarea/custom-element'
+import { setCDN } from 'tm-textarea'
+import 'tm-textarea'
 
 setCDN('/tm')
 
@@ -186,11 +115,83 @@ different `tm-textarea` instances.
 />
 ```
 
+## Solid Component
+
+A solid component of `tm-textarea` is available at `tm-textarea/solid`
+
+<details>
+<summary>Prop Types</summary>
+
+```ts
+import type { LanguageRegistration, ThemeRegistration } from 'tm'
+import type { Language, Theme } from 'tm-textarea/tm'
+
+type LanguageProps = Language | LanguageRegistration[] | Promise<LanguageRegistration[]>
+
+type ThemeProps = Theme | ThemeRegistration | Promise<ThemeRegistration>
+
+interface tmTextareaProps extends Omit<ComponentProps<'div'>, 'style'> {
+  language: LanguageProps
+  theme: ThemeProps
+  code: string
+  editable?: boolean
+  style?: JSX.CSSProperties
+  onInput?: (event: InputEvent & { currentTarget: HTMLTextAreaElement }) => void
+}
+```
+
+</details>
+
+### Usage
+
+**Static import of `theme/language`**
+
+```tsx
+import { TmTextarea } from 'tm-textarea/solid'
+import minLight from 'tm/themes/min-light.mjs'
+import tsx from 'tm/langs/tsx.mjs'
+
+export default () => (
+  <TmTextarea
+    language={tsx}
+    theme={minLight}
+    code="const sum = (a: string, b: string) => a + b"
+    editable={true}
+    style={{
+      padding: '10px',
+      'font-size': '16pt',
+    }}
+    onInput={e => console.log(e.currentTarget.value)}
+  />
+)
+```
+
+**Dynamic import of `theme/language`**
+
+```tsx
+import { TmTextarea } from 'tm-textarea/solid'
+
+export default () => (
+  <TmTextarea
+    language={import('https://esm.sh/tm/langs/tsx.mjs')}
+    theme={import('https://esm.sh/tm/themes/min-light.mjs')}
+    code="const sum = (a: string, b: string) => a + b"
+    editable={true}
+    style={{
+      padding: '10px',
+      'font-size': '16pt',
+    }}
+    onInput={e => console.log(e.currentTarget.value)}
+  />
+)
+```
+
+
 ## CDN
 
 ```tsx
 // from solid component
-import { setCDN } from 'solid-tm-textarea'
+import { setCDN } from 'tm-textarea'
 
 // Set base-url of CDN directly (defaults to https://esm.sh)
 setCDN('https://unpkg.com')
@@ -207,7 +208,7 @@ setCDN((type, id) => `./tm/${type}/${id}.json`)
 Both, the languages and themes list are exported as `string[]`.
 
 ```tsx
-import type { Theme, Language } from 'solid-tm-textarea/tm'
+import type { Theme, Language } from 'tm-textarea/tm'
 
-import { themes, languages } from 'solid-tm-textarea/tm'
+import { themes, languages } from 'tm-textarea/tm'
 ```

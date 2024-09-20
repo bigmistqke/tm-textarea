@@ -22,8 +22,8 @@ export default defineConfig({
   build: {
     lib: {
       entry: {
-        index: normalizePath(path.resolve(__dirname, 'src/index.tsx')),
-        'custom-element': normalizePath(path.resolve(__dirname, 'src/custom-element.tsx')),
+        index: normalizePath(path.resolve(__dirname, 'src/custom-element.tsx')),
+        solid: normalizePath(path.resolve(__dirname, 'src/solid.tsx')),
         tm: normalizePath(path.resolve(__dirname, 'src/tm.ts')),
       },
       name: 'solid-tm-textarea',

@@ -110,10 +110,7 @@ const App: Component = () => {
         </footer>
       </div>
       <main>
-        <div
-          class="resize-container"
-          onMouseDown={e => e.target === e.currentTarget && e.stopPropagation()}
-        >
+        <div class="resize-container" on:mousedown={e => e.currentTarget && e.stopPropagation()}>
           <TmTextarea
             lineHeight={16}
             value={value()}

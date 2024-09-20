@@ -99,3 +99,12 @@ main {
   overflow: auto;
   resize: both;
 }
+
+.line-numbers pre::before {
+  display: inline-block;
+  opacity: 0.5;
+  counter-reset: variable var(--line-number);
+  min-width: 7ch;
+  content: counter(variable);
+  color: var(--foreground-color);
+}

@@ -11,8 +11,9 @@ const App: Component = () => {
   const [grammar, setCurrentLanguageName] = createSignal<Grammar>('tsx')
 
   const [fontSize, setFontSize] = createSignal(10)
-  const [padding, setPadding] = createSignal(5)
+  const [padding, setPadding] = createSignal(20)
   const [editable, setEditable] = createSignal(true)
+  const [lineNumbers, setLineNumbers] = createSignal(false)
 
   const value = () => loopLines(test, LOC())
 
@@ -65,6 +66,7 @@ const App: Component = () => {
               onInput={e => setLOC(+e.currentTarget.value)}
             />
           </div>
+
           <div>
             <label for="padding">padding</label>
             <input
@@ -84,11 +86,22 @@ const App: Component = () => {
             />
           </div>
           <div>
+            <label for="line-numbers">Line Numbers</label>
+            <button
+              id="line-numbers"
+              onClick={e => {
+                setLineNumbers(bool => !bool)
+              }}
+            >
+              {lineNumbers() ? 'enabled' : 'disabled'}
+            </button>
+          </div>
+          <div>
             <label for="editable">editable</label>
             <button
               id="editable"
               onClick={e => {
-                setEditable(editable => !editable)
+                setEditable(bool => !bool)
               }}
             >
               {editable() ? 'enabled' : 'disabled'}
@@ -97,13 +110,14 @@ const App: Component = () => {
         </footer>
       </div>
       <main>
-        <div style={{ resize: 'both', height: '100px', width: '100px', overflow: 'hidden' }}>
+        <div style={{ resize: 'both', height: '300px', width: '500px', overflow: 'hidden' }}>
           <TmTextarea
             lineHeight={16}
             value={value()}
             grammar={grammar()}
             theme={theme()}
             style={{ height: '100%', width: '100%', padding: `${padding()}px` }}
+            class={lineNumbers() ? 'line-numbers' : undefined}
           />
         </div>
       </main>

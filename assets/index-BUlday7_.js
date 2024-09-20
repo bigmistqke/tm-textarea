@@ -1292,1551 +1292,6 @@ function cleanChildren(parent, current, marker, replacement) {
   return [node];
 }
 
-const self$1 = `import self from '.?raw'
-import { createSignal, For, type Component } from 'solid-js'
-import { render } from 'solid-js/web'
-import 'solid-tm-textarea/custom-element'
-// import { Textarea } from 'solid-tm-textarea/oniguruma'
-import { TmTextarea } from 'solid-tm-textarea'
-import { Grammar, grammars, Theme, themes } from 'solid-tm-textarea/tm'
-import './index.css'
-
-const App: Component = () => {
-  // Config
-  const [mode, setMode] = createSignal<'custom-element' | 'solid'>('solid')
-
-  const [theme, setCurrentThemeName] = createSignal<Theme>('light-plus')
-  const [grammar, setCurrentLanguageName] = createSignal<Grammar>('source.tsx')
-
-  const [fontSize, setFontSize] = createSignal(10)
-  const [padding, setPadding] = createSignal(5)
-  const [editable, setEditable] = createSignal(true)
-
-  const [_value, setValue] = createSignal(self)
-
-  const value = () => loopLines(_value(), LOC())
-
-  const [LOC, setLOC] = createSignal(10_000)
-
-  function loopLines(input: string, lineCount: number): string {
-    const lines = input.split('\\n')
-    const totalLines = lines.length
-    let result = ''
-
-    for (let i = 0; i < lineCount; i++) {
-      result += lines[i % totalLines] + '\\n'
-    }
-
-    return result.trim() // Trim to remove the trailing newline
-  }
-
-  return (
-    <div class="app">
-      <div class="side-panel">
-        <h1>Solid Textmate Textarea</h1>
-        <footer>
-          {/* <div>
-            <label for="mode">mode</label>
-            <button
-              id="mode"
-              onClick={() =>
-                setMode(type => (type === 'custom-element' ? 'solid' : 'custom-element'))
-              }
-            >
-              {mode()}
-            </button>
-          </div>
-          <br /> */}
-          <div>
-            <label for="theme">themes</label>
-            <select
-              id="theme"
-              value={theme()}
-              onInput={e => setCurrentThemeName(e.currentTarget.value as Theme)}
-            >
-              <For each={Object.keys(themes)}>{theme => <option>{theme}</option>}</For>
-            </select>
-          </div>
-          <div>
-            <label for="lang">languages</label>
-            <select
-              id="lang"
-              value={grammar()}
-              onInput={e => setCurrentLanguageName(e.currentTarget.value as Grammar)}
-            >
-              <For each={Object.keys(grammars)}>{language => <option>{language}</option>}</For>
-            </select>
-          </div>
-          <br />
-          <div>
-            <label for="LOC">LOC</label>
-            <input
-              id="LOC"
-              type="number"
-              value={LOC()}
-              onInput={e => setLOC(+e.currentTarget.value)}
-            />
-          </div>
-          <div>
-            <label for="padding">padding</label>
-            <input
-              id="padding"
-              type="number"
-              onInput={e => setPadding(+e.currentTarget.value)}
-              value={padding()}
-            />
-          </div>
-          <div>
-            <label for="font-size">font-size</label>
-            <input
-              id="font-size"
-              type="number"
-              onInput={e => setFontSize(+e.currentTarget.value)}
-              value={fontSize()}
-            />
-          </div>
-          <div>
-            <label for="editable">editable</label>
-            <button
-              id="editable"
-              onClick={e => {
-                setEditable(editable => !editable)
-              }}
-            >
-              {editable() ? 'enabled' : 'disabled'}
-            </button>
-          </div>
-        </footer>
-      </div>
-      <main>
-        <div style={{ resize: 'both', height: '100px', width: '100px', overflow: 'hidden' }}>
-          <TmTextarea
-            lineHeight={16}
-            value={value()}
-            grammar="tsx"
-            theme="dark-plus"
-            style={{ height: '100%', width: '100%', padding: '20px' }}
-          />
-        </div>
-      </main>
-    </div>
-  )
-}
-
-export default App
-
-render(() => <App />, document.getElementById('root')!)
-`;
-
-/**
- * NOTE: Experimental
- *
- * Create a stoppable effect.
- *
- * ```js
- * const effect = createStoppableEffect(() => {...})
- *
- * // ...later, stop the effect from running again.
- * effect.stop()
- * ```
- *
- * Note, this is experimental because when inside of a parent reactive context
- * that is long-lived (f.e. for life time of the app), each new effect created
- * with this and subsequently stopped will stick around and not be GC'd until
- * the parent context is cleaned up (which could be never).
- *
- * Stopped effects will currently only be GC'd freely when they are created
- * outside of a reactive context.
- */
-function createStoppableEffect(fn) {
-  const [running, setRunning] = createSignal(true);
-  createEffect(() => running() && fn());
-  return {
-    stop: () => setRunning(false),
-    resume: () => setRunning(true)
-  };
-}
-
-/**
- * @class Effectful -
- *
- * `mixin`
- *
- * Create Solid.js effects using `this.createEffect(fn)` and easily stop them
- * all by calling `this.stopEffects()`.
- *
- * Example:
- *
- * ```js
- * import {reactive, signal} from 'classy-solid'
- * import {foo} from 'somewhere'
- * import {bar} from 'elsewhere'
- *
- * class MyClass extends Effectful(BaseClass) {
- *   constructor() {
- *     super()
- *
- *     // Log `foo` and `bar` any time either of them change.
- *     this.createEffect(() => {
- *       console.log('foo, bar:', foo(), bar())
- *     })
- *
- *     // Log only `bar` any time it changes.
- *     this.createEffect(() => {
- *       console.log('bar:', bar())
- *     })
- *   }
- *
- *   dispose() {
- *     // Later, stop both of the effects.
- *     this.stopEffects()
- *   }
- * }
- * ```
- */
-function Effectful(Base) {
-  return class Effectful extends Base {
-    #effects = new Set();
-
-    /**
-     * Create a Solid.js effect. The difference from regular
-     * `createEffect()` is that `this` tracks the effects created, so that
-     * they can all be stopped with `this.stopEffects()`.
-     *
-     * Effects can also be stopped or resumed individually:
-     *
-     * ```js
-     * const effect1 = this.createEffect(() => {...})
-     * const effect2 = this.createEffect(() => {...})
-     *
-     * // ...later
-     * effect1.stop()
-     *
-     * // ...later
-     * effect1.resume()
-     * ```
-     */
-    createEffect(fn) {
-      this.#createEffect2(fn); // works with nesting, without leaks
-    }
-
-    /**
-     * Stop all of the effects that were created.
-     */
-    stopEffects() {
-      this.#stopEffects2();
-    }
-
-    // Method 1 //////////////////////////////////////////
-    // Works fine when not in a parent context, or else currently leaks or has the above mentioned bug while a parent exists.
-
-    #createEffect1(fn) {
-      let effect = null;
-      effect = createStoppableEffect(() => {
-        if (effect) this.#effects.add(effect);
-        // nest the user's effect so that if it re-runs a lot it is not deleting/adding from/to our #effects Set a lot.
-        createEffect(fn);
-        onCleanup(() => this.#effects.delete(effect));
-      });
-      this.#effects.add(effect);
-    }
-    #stopEffects1() {
-      for (const effect of this.#effects) effect.stop();
-    }
-
-    // Method 2 //////////////////////////////////////////
-    // Works, with nesting, no leaks.
-
-    #owner = null;
-    #dispose = null;
-    #createEffect2(fn) {
-      if (!this.#owner) {
-        createRoot(dispose => {
-          this.#owner = getOwner();
-          this.#dispose = dispose;
-          this.#createEffect2(fn);
-        });
-      } else {
-        let owner = getOwner();
-        while (owner && owner !== this.#owner) owner = owner?.owner ?? null;
-
-        // this.#owner found in the parents of current owner therefore,
-        // run with current nested owner like a regular solid
-        // createEffect()
-        if (owner === this.#owner) return createEffect(fn);
-
-        // this.#owner wasn't found on the parent owners
-        // run with this.#owner
-        runWithOwner(this.#owner, () => createEffect(fn));
-      }
-    }
-    #stopEffects2() {
-      this.#dispose?.();
-    }
-  };
-}
-
-/** Like Object.getOwnPropertyDescriptor, but looks up the prototype chain for the descriptor. */
-function getInheritedDescriptor(obj, key) {
-    let currentProto = obj;
-    let descriptor;
-    while (currentProto) {
-        descriptor = Object.getOwnPropertyDescriptor(currentProto, key);
-        if (descriptor) {
-            descriptor.owner = currentProto;
-            return descriptor;
-        }
-        currentProto = currentProto.__proto__;
-    }
-    return void 0;
-}
-
-const signalifiedProps = new WeakMap();
-
-/**
- * Convert properties on an object into Solid signal-backed properties.
- *
- * There are two ways to use this: either by defining which properties to
- * convert to signal-backed properties by providing an array as property names
- * in the second arg, which is useful on plain objects, or by passing in `this`
- * and `this.constructor` within the `constructor` of a class that has
- * properties decorated with `@signal`.
- *
- * Example with a class:
- *
- * ```js
- * import {signalify} from 'classy-solid'
- * import {createEffect} from 'solid-js'
- *
- * class Counter {
- *   count = 0
- *
- *   constructor() {
- *     signalify(this, 'count')
- *     setInterval(() => this.count++, 1000)
- *   }
- * }
- *
- * const counter = new Counter
- *
- * createEffect(() => {
- *   console.log('count:', counter.count)
- * })
- * ```
- *
- * Example with a plain object:
- *
- * ```js
- * import {signalify} from 'classy-solid'
- * import {createEffect} from 'solid-js'
- *
- * const counter = {
- *   count: 0
- * }
- *
- * signalify(counter, 'count')
- * setInterval(() => counter.count++, 1000)
- *
- * createEffect(() => {
- *   console.log('count:', counter.count)
- * })
- * ```
- */
-
-function signalify(obj, ...props) {
-  // We cast from PropertyKey[] to PropKey[] because numbers can't actually be keys, only string | symbol.
-  const _props = props.length ? props : Object.keys(obj).concat(Object.getOwnPropertySymbols(obj));
-  for (const prop of _props) createSignalAccessor$1(obj, prop);
-  return obj;
-}
-let gotCreateSignalAccessor = false;
-
-/**
- * This ensures that `createSignalAccessor` is kept internal to classy-solid only.
- */
-function getCreateSignalAccessor() {
-  if (gotCreateSignalAccessor) throw new Error('Export "createSignalAccessor" is internal to classy-solid only.');
-  gotCreateSignalAccessor = true;
-  return createSignalAccessor$1;
-}
-
-// propsSetAtLeastOnce is a Set that tracks which reactive properties have been
-// set at least once.
-const propsSetAtLeastOnce = new WeakMap();
-
-// @lume/element uses this to detect if a reactive prop has been set, and if so
-// will not overwrite the value with any pre-existing value from custom element
-// pre-upgrade.
-function __isPropSetAtLeastOnce(instance, prop) {
-  return !!propsSetAtLeastOnce.get(instance)?.has(prop);
-}
-function trackPropSetAtLeastOnce(instance, prop) {
-  if (!propsSetAtLeastOnce.has(instance)) propsSetAtLeastOnce.set(instance, new Set());
-  propsSetAtLeastOnce.get(instance).add(prop);
-}
-const isSignalGetter = new WeakSet();
-function createSignalAccessor$1(obj, prop,
-// Untrack here to be extra safe this doesn't count as a dependency and
-// cause a reactivity loop.
-initialVal = untrack(() => obj[prop]),
-// If an object already has a particular signalified property, override it
-// with a new one anyway (useful for maintaining consistency with class
-// inheritance where class fields always override fields from base classes
-// due to their [[Define]] semantics). False is a good default for signalify()
-// usage where someone is augmenting an existing object, but true is more
-// useful with usage of @signal on class fields.
-//
-// Note that if @signal were to specify this as false, it would cause
-// @signal-decorated subclass fields to override base class
-// @signal-decorated fields with a new value descriptor but without
-// signalifiying the field, effectively disabling reactivity, which is a bug
-// (a field decorated with @signal *must* be reactive). The test named
-// "maintains reactivity in subclass overridden fields" was added to ensure
-// that the subclass use case works.
-override = false) {
-  if (!override && signalifiedProps.get(obj)?.has(prop)) return;
-
-  // Special case for Solid proxies: if the object is already a solid proxy,
-  // all properties are already reactive, no need to signalify.
-  // @ts-expect-error special indexed access
-  const proxy = obj[$PROXY];
-  if (proxy) return;
-  let descriptor = getInheritedDescriptor(obj, prop);
-  let originalGet;
-  let originalSet;
-  if (descriptor) {
-    originalGet = descriptor.get;
-    originalSet = descriptor.set;
-
-    // Even if override is true, if we have a signal accessor, there's no
-    // need to replace it with another signal accessor. We only need to
-    // override when the current descriptor is not a signal accessor.
-    // TODO this needs tests.
-    if (originalGet && isSignalGetter.has(originalGet)) return;
-    if (originalGet || originalSet) {
-      // reactivity requires both
-      if (!originalGet || !originalSet) {
-        console.warn(`The \`@signal\` decorator was used on an accessor named "${prop.toString()}" which had a getter or a setter, but not both. Reactivity on accessors works only when accessors have both get and set. In this case the decorator does not do anything.`);
-        return;
-      }
-      delete descriptor.get;
-      delete descriptor.set;
-    } else {
-      // If there was a value descriptor, trust it as the source of truth
-      // for initialVal. For example, if the user class modifies the value
-      // after the initializer, it will have a different value than what
-      // we tracked from the initializer.
-      initialVal = descriptor.value;
-
-      // if it isn't writable, we don't need to make a reactive variable because
-      // the value won't change
-      if (!descriptor.writable) {
-        console.warn(`The \`@signal\` decorator was used on a property named "${prop.toString()}" that is not writable. Reactivity is not enabled for non-writable properties.`);
-        return;
-      }
-      delete descriptor.value;
-      delete descriptor.writable;
-    }
-  }
-  const s = createSignal(initialVal, {
-    equals: false
-  });
-  descriptor = {
-    configurable: true,
-    enumerable: true,
-    ...descriptor,
-    get: originalGet ? function () {
-      s[0](); // read
-      return originalGet.call(this);
-    } : function () {
-      return s[0](); // read
-    },
-    set: originalSet ? function (newValue) {
-      originalSet.call(this, newValue);
-      trackPropSetAtLeastOnce(this, prop);
-
-      // write
-      if (typeof newValue === 'function') s[1](() => newValue);else s[1](newValue);
-    } : function (newValue) {
-      trackPropSetAtLeastOnce(this, prop);
-
-      // write
-      if (typeof newValue === 'function') s[1](() => newValue);else s[1](newValue);
-    }
-  };
-  isSignalGetter.add(descriptor.get);
-  Object.defineProperty(obj, prop, descriptor);
-  if (!signalifiedProps.has(obj)) signalifiedProps.set(obj, new Set());
-  signalifiedProps.get(obj).add(prop);
-}
-
-let propsToSignalify = new Map();
-let accessKey$1 = null;
-
-/**
- * Provides a key for accessing internal APIs. If any other module tries to get
- * this, an error will be thrown, and signal and reactive decorators will not
- * work.
- */
-function getKey() {
-  if (accessKey$1) throw new Error('Attempted use of classy-solid internals.');
-  accessKey$1 = Symbol();
-  return accessKey$1;
-}
-
-/**
- * This function provides propsToSignalify to only one external module
- * (reactive.ts). The purpose of this is to keep the API private for reactive.ts
- * only, otherwise an error will be thrown that breaks signal/reactive
- * functionality.
- */
-function getPropsToSignalify(key) {
-  if (key !== accessKey$1) throw new Error('Attempted use of classy-solid internals.');
-  return propsToSignalify;
-}
-
-/**
- * Only the module that first gets the key can call this function (it should be
- * reactive.ts)
- */
-function resetPropsToSignalify(key) {
-  if (key !== accessKey$1) throw new Error('Attempted use of classy-solid internals.');
-  propsToSignalify = new Map();
-}
-function isMemberDecorator(context) {
-  return !!('private' in context);
-}
-
-/**
- * @decorator
- * Decorate properties of a class with `@signal` to back them with Solid
- * signals, making them reactive. Don't forget that the class in which `@signal`
- * is used must be decorated with `@reactive`.
- *
- * Related: See the Solid.js `createSignal` API for creating signals.
- *
- * Example:
- *
- * ```js
- * import {reactive, signal} from 'classy-solid'
- * import {createEffect} from 'solid-js'
- *
- * ⁣@reactive
- * class Counter {
- *   ⁣@signal count = 0
- *
- *   constructor() {
- *     setInterval(() => this.count++, 1000)
- *   }
- * }
- *
- * const counter = new Counter
- *
- * createEffect(() => {
- *   console.log('count:', counter.count)
- * })
- * ```
- */
-function signal(_, context) {
-  const {
-    kind,
-    name
-  } = context;
-  const props = propsToSignalify;
-  if (isMemberDecorator(context)) {
-    if (context.private) throw new Error('@signal is not supported on private fields yet.');
-    if (context.static) throw new Error('@signal is not supported on static fields yet.');
-  }
-  if (kind === 'field') {
-    props.set(name, {
-      initialValue: undefined
-    });
-    return function (initialValue) {
-      props.get(name).initialValue = initialValue;
-      return initialValue;
-    };
-  } else if (kind === 'getter' || kind === 'setter') {
-    props.set(name, {
-      initialValue: undefined
-    });
-  } else {
-    throw new Error('The @signal decorator is only for use on fields, getters, and setters. Auto accessor support is coming next if there is demand for it.');
-  }
-
-  // @prod-prune
-  queueReactiveDecoratorChecker(props);
-}
-let checkerQueued = false;
-
-/**
- * This throws an error in some cases of an end dev forgetting to decorate a
- * class with `@reactive` if they used `@signal` on that class's fields.
- *
- * This doesn't work all the time, only when the very last class decorated is
- * missing @reactive, but something is better than nothing. There's another
- * similar check performed in the `@reactive` decorator.
- */
-function queueReactiveDecoratorChecker(props) {
-  if (checkerQueued) return;
-  checkerQueued = true;
-  queueMicrotask(() => {
-    checkerQueued = false;
-
-    // If the refs are still equal, it means @reactive did not run (forgot
-    // to decorate a class that uses @signal with @reactive).
-    if (props === propsToSignalify) {
-      throw new Error(
-      // Array.from(map.keys()) instead of [...map.keys()] because it breaks in Oculus browser.
-      `Stray @signal-decorated properties detected: ${Array.from(props.keys()).join(', ')}. Did you forget to use the \`@reactive\` decorator on a class that has properties decorated with \`@signal\`?`);
-    }
-  });
-}
-
-/**
- * Access key for classy-solid private internal APIs.
- */
-const accessKey = getKey();
-const createSignalAccessor = getCreateSignalAccessor();
-const hasOwnProperty = Object.prototype.hasOwnProperty;
-
-/**
- * A decorator that makes a class reactive, allowing it have properties
- * decorated with `@signal` to make those properties reactive Solid signals.
- *
- * Example:
- *
- * ```js
- * import {reactive, signal} from 'classy-solid'
- * import {createEffect} from 'solid-js'
- *
- * ⁣@reactive
- * class Counter {
- *   ⁣@signal count = 0
- *
- *   constructor() {
- *     setInterval(() => this.count++, 1000)
- *   }
- * }
- *
- * const counter = new Counter
- *
- * createEffect(() => {
- *   console.log('count:', counter.count)
- * })
- * ```
- */
-function reactive(value, context) {
-  // context may be undefined when unsing reactive() without decorators
-  if (typeof value !== 'function' || context && context.kind !== 'class') throw new TypeError('The @reactive decorator is only for use on classes.');
-  const Class = value;
-  const signalProps = getPropsToSignalify(accessKey);
-
-  // For the current class decorated with @reactive, we reset the map, so that
-  // for the next class decorated with @reactive we track only that next
-  // class's properties that were decorated with @signal. We do this because
-  // field decorators do not have access to the class or its prototype.
-  //
-  // In the future maybe we can use decorator metadata for this
-  // (https://github.com/tc39/proposal-decorator-metadata)?
-  resetPropsToSignalify(accessKey);
-  class ReactiveDecorator extends Class {
-    constructor(...args) {
-      let instance;
-
-      // Ensure that if we're in an effect that `new`ing a class does not
-      // track signal reads, otherwise we'll get into an infinite loop. If
-      // someone want to trigger an effect based on properties of the
-      // `new`ed instance, they can explicitly read the properties
-      // themselves in the effect, making their intent clear.
-      if (getListener()) untrack(() => instance = Reflect.construct(Class, args, new.target)); // super()
-      else super(...args), instance = this;
-      for (const [prop, {
-        initialValue
-      }] of signalProps) {
-        // @prod-prune
-        if (!(hasOwnProperty.call(instance, prop) || hasOwnProperty.call(Class.prototype, prop))) {
-          throw new Error(`Property "${prop.toString()}" not found on instance of class decorated with \`@reactive\`. Did you forget to use the \`@reactive\` decorator on one of your classes that has a "${prop.toString()}" property decorated with \`@signal\`?`);
-        }
-
-        // For now at least, we always override like class fields with
-        // [[Define]] semantics. Perhaps when @signal is used on a
-        // getter/setter, we should not override in that case, but patch
-        // the prototype getter/setter (that'll be a bit of work to
-        // implement though).
-        const override = true;
-        createSignalAccessor(instance, prop, initialValue, override);
-      }
-      return instance;
-    }
-  }
-  return ReactiveDecorator;
-}
-
-var _a;
-// TODO `templateMode: 'append' | 'replace'`, which allows a subclass to specify
-// if template content replaces the content of `root`, or is appended to `root`.
-let ctor;
-const HTMLElement = globalThis.HTMLElement ??
-    class HTMLElement {
-        constructor() {
-            throw new Error("@lume/element needs a DOM to operate with! If this code is running during server-side rendering, it means your app is trying to instantiate elements when it shouldn't be, and should be refactored to avoid doing that when no DOM is present.");
-        }
-    };
-const root = Symbol('root');
-// TODO Make LumeElement `abstract`
-class LumeElement extends Effectful(HTMLElement) {
-    /**
-     * The default tag name of the elements this class instantiates. When using
-     * the `@element` decorator, this property will be set to the value defined
-     * by the decorator.
-     */
-    static elementName = '';
-    /**
-     * Define this class for the given element `name`, or using its default name
-     * (`elementName`) if no `name` given. Defaults to using the global
-     * `customElements` registry unless another registry is provided (for
-     * example a ShadowRoot-scoped registry).
-     *
-     * If a `name` is given, then the class will be extended with an empty
-     * subclass so that a new class is used for each new name, because otherwise
-     * a CustomElementRegistry does not allow the same exact class to be used
-     * more than once regardless of the name.
-     *
-     * @returns Returns the defined element class, which is only going to be a
-     * different subclass of the class this is called on if passing in a custom
-     * `name`, otherwise returns the same class this is called on.
-     */
-    static defineElement(name, registry = customElements) {
-        if (!name) {
-            name = this.elementName;
-            if (registry.get(name)) {
-                console.warn(`defineElement(): An element class was already defined for tag name ${name}.`);
-                return this;
-            }
-            registry.define(name, this);
-            return this;
-        }
-        else {
-            if (registry.get(name)) {
-                console.warn(`defineElement(): An element class was already defined for tag name ${name}.`);
-                return this;
-            }
-            else {
-                // Allow the same element to be defined more than once using
-                // alternative names.
-                const Class = class extends this {
-                };
-                Class.elementName = name;
-                registry.define(name, Class);
-                return Class;
-            }
-        }
-    }
-    /**
-     * Non-decorator users can use this to specify a list of attributes, and the
-     * attributes will automatically be mapped to reactive properties. All
-     * attributes in the list will be treated with the equivalent of the
-     * `@attribute` decorator.
-     *
-     * The ability to provide a map of attribute names to attribute handlers
-     * (`Record<string, AttributeHandler>`) has been deprecaated, and instead
-     * that map should be provided via the `static observedAttributeHandlers`
-     * property, while this property is now typed to accept only a string array
-     * as per DOM spec.
-     */
-    static observedAttributes;
-    /**
-     * Non-decorator users can use this instead of `observedAttributes` to
-     * specify a map of attribute names to attribute handlers. The named
-     * attributes will automatically be mapped to reactive properties, and each
-     * attribute will be treated with the corresponding attribute handler.
-     *
-     * Example:
-     *
-     * ```js
-     * element('my-el')(
-     *   class MyEl extends LumeElement {
-     *     static observedAttributeHandlers = {
-     *       foo: attribute.string(),
-     *       bar: attribute.number(),
-     *       baz: attribute.boolean(),
-     *     }
-     *
-     *     // The initial values defined here will be the values that these
-     *     // properties revert to when the respective attributes are removed.
-     *     foo = 'hello'
-     *     bar = 123
-     *     baz = false
-     *   }
-     * )
-     * ```
-     */
-    static observedAttributeHandlers;
-    #handleInitialPropertyValuesIfAny() {
-        // We need to delete initial value-descriptor properties (if they exist)
-        // and store the initial values in the storage for our @signal property
-        // accessors.
-        //
-        // If we don't do this, then DOM APIs like cloneNode will create our
-        // node without first upgrading it, and then if someone sets a property
-        // (while our reactive accessors are not yet present in the class
-        // prototype) it means those values will be set as value descriptor
-        // properties on the instance instead of interacting with our accessors
-        // (i.e. the new properties will override our accessors that the
-        // instance will gain on its prototype chain once the upgrade process
-        // places our class prototype in the instance's prototype chain).
-        //
-        // This can also happen if we set properties on an element that isn't
-        // upgraded into a custom element yet, and thus will not yet have our
-        // accessors.
-        //
-        // Assumption: any enumerable own props must've been set on the
-        // element before it was upgraded. Builtin DOM properties are
-        // not enumerable.
-        const preUpgradeKeys = Object.keys(this);
-        this._preUpgradeValues = new Map();
-        for (const propName of preUpgradeKeys) {
-            const descriptor = Object.getOwnPropertyDescriptor(this, propName);
-            // Handle only value descriptors.
-            if ('value' in descriptor) {
-                // Delete the pre-upgrade value descriptor (1/2)...
-                delete this[propName];
-                // The @element decorator reads this, and the class finisher
-                // will set pre-upgrade values.
-                this._preUpgradeValues.set(propName, descriptor.value);
-                // NOTE, for classes not decorated with @element, deferring
-                // allows preexisting preupgrade values to be handled *after*
-                // class fields have been set during Custom Element upgrade
-                // construction (otherwise those class fields would override the
-                // preupgrade values we're trying to assign here).
-                // TODO Once decorators are out everywhere, deprecate
-                // non-decorator usage, and eventually remove code intended for
-                // non-decorator usage such as this.
-                queueMicrotask(() => {
-                    const propSetAtLeastOnce = __isPropSetAtLeastOnce(this, propName);
-                    // ... (2/2) and re-assign the value so that it goes through
-                    // a @signal accessor that got defined, or through an
-                    // inherited accessor that the preupgrade value shadowed.
-                    //
-                    // If the property has been set between the time LumeElement
-                    // constructor ran and the deferred microtask, then we don't
-                    // overwrite the property's value with the pre-upgrade value
-                    // because it has already been intentionally set to a
-                    // desired value post-construction.
-                    // (NOTE: Avoid setting properties in constructors because
-                    // that will set the signals at least once. Instead,
-                    // override with a new @attribute or @signal class field.)
-                    //
-                    // AND we handle inherited props or signal props only
-                    // (because that means there may be an accessor that needs
-                    // the value to be passed in). The @element decorator otherwise
-                    // handles non-inherited props before construction
-                    // finishes. {{
-                    if (propSetAtLeastOnce)
-                        return;
-                    const inheritsProperty = propName in this.__proto__;
-                    if (inheritsProperty)
-                        this[propName] = descriptor.value;
-                    // }}
-                });
-            }
-        }
-    }
-    // This property MUST be defined before any other non-static non-declared
-    // class properties so that the initializer runs before any other properties
-    // are defined, in order to detect and handle instance properties that
-    // already pre-exist from custom element pre-upgrade time.
-    // TODO Should we handle initial attributes too?
-    // @ts-expect-error unused
-    #___init___ = this.#handleInitialPropertyValuesIfAny();
-    /**
-     * When `true`, the custom element will have a `ShadowRoot`. Set to `false`
-     * to not use a `ShadowRoot`. When `false`, styles will not be scoped via
-     * the built-in `ShadowRoot` scoping mechanism, but by a much more simple
-     * shared style sheet placed at the nearest root node, with `:host`
-     * selectors converted to tag names.
-     */
-    hasShadow = true;
-    [root] = null;
-    /**
-     * Subclasses can override this to provide an alternate Node to render into
-     * (f.e. a subclass can `return this` to render into itself instead of
-     * making a root) regardless of the value of `hasShadow`.
-     */
-    get root() {
-        if (!this.hasShadow)
-            return this;
-        if (this[root])
-            return this[root];
-        if (this.shadowRoot)
-            return (this[root] = this.shadowRoot);
-        // TODO use `this.attachInternals()` (ElementInternals API) to get the root instead.
-        return (this[root] = this.attachShadow({ mode: 'open' }));
-    }
-    set root(v) {
-        if (!this.hasShadow)
-            throw new Error('Can not set root, element.hasShadow is false.');
-        // @prod-prune
-        if (this[root] || this.shadowRoot)
-            throw new Error('Element root can only be set once if there is no ShadowRoot.');
-        this[root] = v;
-    }
-    /**
-     * Define which `Node` to append style sheets to when `hasShadow` is `true`.
-     * Defaults to the `this.root`, which in turn defaults to the element's
-     * `ShadowRoot`.  When `hasShadow` is `true`, an alternate `styleRoot` is
-     * sometimes needed for styles to be appended elsewhere than the root. For
-     * example, return some other `Node` within the root to append styles to.
-     * This is ignored if `hasShadow` is `false`.
-     *
-     * This can be useful for fixing issues where the default append of a style
-     * sheet into the `ShadowRoot` conflicts with how DOM is created in
-     * `template` (f.e.  if the user's DOM creation in `template` clears the
-     * `ShadowRoot` content, or etc, then we want to place the stylesheet
-     * somewhere else).
-     */
-    get styleRoot() {
-        return this.root;
-    }
-    attachShadow(options) {
-        if (this[root])
-            console.warn('Element already has a root defined.');
-        return (this[root] = super.attachShadow(options));
-    }
-    #disposeTemplate;
-    connectedCallback() {
-        const template = this.template;
-        if (template)
-            this.#disposeTemplate = render(typeof template === 'function' ? template.bind(this) : () => template, this.root);
-        this.#setStyle();
-    }
-    disconnectedCallback() {
-        this.stopEffects();
-        this.#disposeTemplate?.();
-        this.#cleanupStyle();
-    }
-    static #styleRootNodeRefCountPerTagName = new WeakMap();
-    #styleRootNode = null;
-    #defaultHostStyle = (hostSelector) => /*css*/ `${hostSelector} {
-		display: block;
-	}`;
-    static #elementId = 0;
-    #id = _a.#elementId++;
-    #dynamicStyle = null;
-    #setStyle() {
-        ctor = this.constructor;
-        const staticCSS = typeof ctor.css === 'function' ? (ctor.css = ctor.css()) : ctor.css || '';
-        const instanceCSS = typeof this.css === 'function' ? this.css() : this.css || '';
-        if (this.hasShadow) {
-            const hostSelector = ':host';
-            const staticStyle = document.createElement('style');
-            staticStyle.innerHTML = `
-				${this.#defaultHostStyle(hostSelector)}
-				${staticCSS}
-				${instanceCSS}
-			`;
-            // If this element has a shadow root, put the style there. This is the
-            // standard way to scope styles to a component.
-            this.styleRoot.appendChild(staticStyle);
-            // TODO use adoptedStyleSheets when that is supported by FF and Safari
-        }
-        else {
-            // When this element doesn't have a shadow root, then we want to append the
-            // style only once to the rootNode where it lives (a ShadoowRoot or
-            // Document). If there are multiple of this same element in the rootNode,
-            // then the style will be added only once and will style all the elements
-            // in the same rootNode.
-            // Because we're connected, getRootNode will return either the
-            // Document, or a ShadowRoot.
-            const rootNode = this.getRootNode();
-            this.#styleRootNode = rootNode === document ? document.head : rootNode;
-            let refCountPerTagName = _a.#styleRootNodeRefCountPerTagName.get(this.#styleRootNode);
-            if (!refCountPerTagName)
-                _a.#styleRootNodeRefCountPerTagName.set(this.#styleRootNode, (refCountPerTagName = {}));
-            const refCount = refCountPerTagName[this.tagName] || 0;
-            refCountPerTagName[this.tagName] = refCount + 1;
-            if (refCount === 0) {
-                const hostSelector = this.tagName.toLowerCase();
-                const staticStyle = document.createElement('style');
-                staticStyle.innerHTML = `
-					${this.#defaultHostStyle(hostSelector)}
-					${staticCSS ? staticCSS.replaceAll(':host', hostSelector) : staticCSS}
-				`;
-                staticStyle.id = this.tagName.toLowerCase();
-                this.#styleRootNode.appendChild(staticStyle);
-            }
-            if (instanceCSS) {
-                // For dynamic per-instance styles, make one style element per
-                // element instance so it contains that element's unique styles,
-                // associated to a unique attribute selector.
-                const id = this.tagName.toLowerCase() + '-' + this.#id;
-                // Add the unique attribute that the style selector will target.
-                this.setAttribute(id, '');
-                // TODO Instead of creating one style element per custom
-                // element, we can add the styles to a single style element. We
-                // can use the CSS OM instead of innerHTML to make it faster
-                // (but innerHTML is nice for dev mode because it shows the
-                // content in the DOM when looking in element inspector, so
-                // allow option for both).
-                const instanceStyle = (this.#dynamicStyle = document.createElement('style'));
-                instanceStyle.id = id;
-                instanceStyle.innerHTML = instanceCSS.replaceAll(':host', `[${id}]`);
-                const rootNode = this.getRootNode();
-                this.#styleRootNode = rootNode === document ? document.head : rootNode;
-                this.#styleRootNode.appendChild(instanceStyle);
-            }
-        }
-    }
-    #cleanupStyle() {
-        do {
-            if (this.hasShadow)
-                break;
-            const refCountPerTagName = _a.#styleRootNodeRefCountPerTagName.get(this.#styleRootNode);
-            if (!refCountPerTagName)
-                break;
-            let refCount = refCountPerTagName[this.tagName];
-            if (refCount === undefined)
-                break;
-            refCountPerTagName[this.tagName] = --refCount;
-            if (refCount === 0) {
-                delete refCountPerTagName[this.tagName];
-                // TODO PERF Improve performance by saving the style
-                // instance on a static var, instead of querying for it.
-                const style = this.#styleRootNode.querySelector('#' + this.tagName);
-                style?.remove();
-            }
-        } while (false);
-        if (this.#dynamicStyle)
-            this.#dynamicStyle.remove();
-    }
-    // not used currently, but we'll leave this here so that child classes can
-    // call super, and that way we can add an implementation later when needed.
-    adoptedCallback() { }
-}
-_a = LumeElement;
-
-// Until decorators land natively, we need this shim so that we can use
-// decorator metadata. https://github.com/microsoft/TypeScript/issues/53461
-// @ts-expect-error readonly
-Symbol.metadata ??= Symbol.for('Symbol.metadata');
-
-/**
- * This is an identity "template string tag function", which when applied to a
- * template string returns the equivalent of not having used a template tag on
- * a template string to begin with.
- *
- * For example, The following two strings are equivalent:
- *
- * ```js
- * const number = 42
- * const string1 = `meaning of life: ${number}`
- * const string2 = identityTemplateTag`meaning of life: ${number}`
- * ```
- *
- * This can be useful when assigning it to variables like `css` or `html` in
- * order to trigger syntax checking and highlighting inside template strings
- * without actually doing anything to the string (a no-op).
- */
-function camelCaseToDash(str) {
-    return str.replace(/([a-zA-Z])(?=[A-Z])/g, '$1-').toLowerCase();
-}
-function defineProp(obj, prop, value) {
-    Object.defineProperty(obj, prop, {
-        value,
-        writable: true,
-        configurable: true,
-        enumerable: true,
-    });
-}
-// EXAMPLES
-// type foo0 = JoinToCamelCase<'fooBarBaz'> // Becomes "foobabaz"
-// type foo3 = JoinToCamelCase<'foo-bar-baz'> // Becomes "fooBarBaz"
-// type foo5 = JoinToCamelCase<'foo bar baz', ' '> // Becomes "fooBarBaz"
-// type foo6 = JoinToCamelCase<'foo_bar_baz', '_'> // Becomes "fooBarBaz"
-// type foo14 = JoinToCamelCase<'foo:bar:baz', ':'> // Becomes "fooBarBaz"
-// type foo4 = JoinToCamelCase<'foobarbaz'> // the same
-// type foo7 = SplitCamelCase<'fooBar'> // Becomes "foo-bar"
-// type foo12 = SplitCamelCase<'fooBar', '_'> // Becomes "foo_bar"
-// type foo13 = SplitCamelCase<'fooBar', ' '> // Becomes "foo bar"
-// type foo11 = SplitCamelCase<'foo-bar'> // the same
-// type foo8 = SplitCamelCase<'foo bar'> // the same
-// type foo9 = SplitCamelCase<'foo_bar'> // the same
-// type foo10 = SplitCamelCase<'foobar'> // the same
-// type t = Join<['foo', 'bar'], ':'> // Becomes "foo:bar"
-//
-// interface KebabCased {
-//     "foo-bar": string;
-//     foo: number;
-// }
-// type CamelCased = CamelCasedProps<KebabCased>;
-// Becomes
-// {
-//    fooBar: string;
-//    foo: number;
-// }
-
-const __classFinishers = [];
-function attribute(handlerOrValue, context) {
-    // if used as a decorator directly with no options
-    if (arguments.length === 2)
-        return handleAttributeDecoration(handlerOrValue, context, undefined);
-    // otherwise used as a decorator factory, possibly being passed options, like `@attribute({...})`
-    const handler = handlerOrValue;
-    return (value, context) => handleAttributeDecoration(value, context, handler);
-    // TODO throw an error for cases when @element is not used on a class with @attribute decorations, similar to classy-solid @signal/@reactive.
-}
-function handleAttributeDecoration(value, context, attributeHandler = {}) {
-    const { kind, name, private: isPrivate, static: isStatic, metadata } = context;
-    // Check only own metadata.noSignal, we don't want to use the one inherited from a base class.
-    const noSignal = (Object.hasOwn(metadata, 'noSignal') && metadata.noSignal) || undefined;
-    const useSignal = !noSignal?.has(name);
-    if (typeof name === 'symbol')
-        throw new Error('@attribute is not supported on symbol fields yet.');
-    if (isPrivate)
-        throw new Error('@attribute is not supported on private fields yet.');
-    if (isStatic)
-        throw new Error('@attribute is not supported on static fields.');
-    // TODO decorate on prototype? Or decorate on instance?
-    __classFinishers.push((Class) => __setUpAttribute(Class, name, attributeHandler));
-    if (kind === 'field') {
-        const signalInitializer = useSignal ? signal(value, context) : (v) => v;
-        return function (initialValue) {
-            initialValue = signalInitializer(initialValue);
-            // Typically the first initializer to run for a class field (on
-            // instantiation of the first instance of its class) will be our
-            // source of truth for our default attribute value, but we check for
-            // 'default' in attributeHandler just in case that a an attribute
-            // decorator was passed an explicit default, f.e.
-            // `@attribute({default: 123})`.
-            if (!('default' in attributeHandler))
-                attributeHandler.default = initialValue;
-            return initialValue;
-        };
-    }
-    else if (kind === 'getter' || kind === 'setter') {
-        if (useSignal)
-            signal(value, context);
-    }
-    else {
-        throw new Error('@attribute is only for use on fields, getters, and setters. Auto accessor support is coming next if there is demand for it.');
-    }
-    return undefined; // shush TS
-}
-// TODO Do similar as with the following attributeChangedCallback prototype
-// patch, but also with (dis)connected callbacks which can call an instance's
-// template method, so users don't have to extend from the LumeElement base class.
-// Extending from the LumeElement base class will be the method that non-decorator
-// users must use.
-function __setUpAttribute(ctor, propName, attributeHandler) {
-    if (
-    //
-    !ctor.observedAttributes ||
-        !ctor.hasOwnProperty('observedAttributes')) {
-        const inheritedAttrs = ctor.__proto__.observedAttributes;
-        // @prod-prune
-        if (inheritedAttrs && !Array.isArray(inheritedAttrs)) {
-            throw new TypeError('observedAttributes is in the wrong format. Did you forget to decorate your custom element class with the `@element` decorator?');
-        }
-        defineProp(ctor, 'observedAttributes', [...(inheritedAttrs || [])]);
-    }
-    // @prod-prune
-    if (!Array.isArray(ctor.observedAttributes)) {
-        throw new TypeError('observedAttributes is in the wrong format. Maybe you forgot to decorate your custom element class with the `@element` decorator.');
-    }
-    const attrName = camelCaseToDash(propName);
-    if (!ctor.observedAttributes.includes(attrName))
-        ctor.observedAttributes.push(attrName);
-    mapAttributeToProp(ctor.prototype, attrName, propName, attributeHandler);
-}
-const hasAttributeChangedCallback = Symbol('hasAttributeChangedCallback');
-const attributesToProps = Symbol('attributesToProps');
-// This stores attribute definitions as an inheritance chain on the constructor.
-function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
-    // Only define attributeChangedCallback once.
-    if (!prototype[hasAttributeChangedCallback]) {
-        prototype[hasAttributeChangedCallback] = true;
-        const originalAttrChanged = prototype.attributeChangedCallback;
-        prototype.attributeChangedCallback = function (attr, oldVal, newVal) {
-            // If the class already has an attributeChangedCallback, let is run,
-            // and let it call or not call super.attributeChangedCallback.
-            if (originalAttrChanged) {
-                originalAttrChanged.call(this, attr, oldVal, newVal);
-            }
-            // Otherwise, let's not intentionally break inheritance and be sure
-            // we call the super method (if it exists).
-            else {
-                // This is equivalent to `super.attributeChangedCallback?()`
-                prototype.__proto__?.attributeChangedCallback?.call(this, attr, oldVal, newVal);
-            }
-            // map from attribute to property
-            const prop = this[attributesToProps]?.[attr];
-            if (prop) {
-                const handler = prop.attributeHandler;
-                // prettier-ignore
-                this[prop.name] = !handler
-                    ? newVal
-                    : newVal === null // attribute removed
-                        ? 'default' in handler
-                            ? handler.default
-                            : null
-                        : handler.from
-                            ? handler.from(newVal)
-                            : newVal;
-            }
-        };
-    }
-    // Extend the current prototype's attributesToProps object from the super
-    // prototype's attributesToProps object.
-    //
-    // We use inheritance here or else all classes would pile their
-    // attribute-prop definitions on a shared base class (they can clash,
-    // override each other willy nilly and seemingly randomly).
-    if (!prototype.hasOwnProperty(attributesToProps)) {
-        // using defineProperty so that it is non-writable, non-enumerable, non-configurable
-        Object.defineProperty(prototype, attributesToProps, {
-            value: {
-                __proto__: prototype[attributesToProps] || Object.prototype,
-            },
-        });
-        // Object.create(prototype[attributesToProps] || Object.prototype)
-    }
-    prototype[attributesToProps][attr] = { name: prop, attributeHandler };
-}
-const toString = (str) => str;
-/**
- * An attribute type for use in the `static observedAttributeHandlers` map
- * when not using decorators.
- *
- * Example usage without decorators:
- *
- * ```js
- * element('my-el')(
- *   class MyEl extends LumeElement {
- *     static observedAttributeHandlers = {
- *       name: attribute.string()
- *     }
- *
- *     name = "honeybun" // default value when attribute removed
- *   }
- * )
- * ```
- */
-attribute.string = (() => ({ from: toString }));
-/**
- * This is essentially an alias for `@attribute`. You can just use `@attribute`
- * if you want a more concise definition.
- *
- * A decorator for mapping a string-valued attribute to a JS property. All
- * attribute values get passed as-is, except for `null` (i.e. when an attribute
- * is removed) which gets converted into an empty string or the default value of
- * the class field. The handling of `null` (on attribute removed) is the only
- * difference between this and plain `@attribute`, where `@attribute` will pass
- * along `null`.
- *
- * Example decorator usage:
- *
- * ```js
- * ⁣@element('my-el')
- * class MyEl extends LumeElement {
- *   ⁣@stringAttribute color = "skyblue"
- * }
- * ```
- *
- * Example HTML attribute usage:
- *
- * ```html
- * <!-- el.color === "", because an attribute without a written value has an empty string value. -->
- * <my-el color></my-el>
- *
- * <!-- el.color === "skyblue", based on the default value defined on the class field. -->
- * <my-el></my-el>
- *
- * <!-- el.color === "deeppink" -->
- * <my-el color="deeppink"></my-el>
- *
- * <!-- el.color === "4.5" -->
- * <my-el color="4.5"></my-el>
- *
- * <!-- el.color === "any string in here" -->
- * <my-el color="any string in here"></my-el>
- * ```
- */
-function stringAttribute(value, context) {
-    return attribute(attribute.string())(value, context);
-}
-const toNumber = (str) => +str;
-/**
- * An attribute type for use in the `static observedAttributeHandlers` map
- * when not using decorators.
- *
- * Example usage without decorators:
- *
- * ```js
- * element('my-el')(
- *   class MyEl extends LumeElement {
- *     static observedAttributeHandlers = {
- *       money: attribute.number()
- *     }
- *
- *     money = 1000 // default value when attribute removed
- *   }
- * )
- * ```
- */
-attribute.number = (() => ({ from: toNumber }));
-/**
- * A decorator for mapping a number attribute to a JS property. The string value
- * of the attribute will be parsed into a number.
- *
- * Example decorator usage:
- *
- * ```js
- * ⁣@element('my-el')
- * class MyEl extends LumeElement {
- *   ⁣@numberAttribute money = 123
- * }
- * ```
- *
- * Example HTML attribute usage:
- *
- * ```html
- * <!-- el.money === 0, because an empty string gets coerced into 0. -->
- * <my-el money></my-el>
- *
- * <!-- el.money === 123, based on the default value defined on the class field. -->
- * <my-el></my-el>
- *
- * <!-- el.money === 10 -->
- * <my-el money="10"></my-el>
- *
- * <!-- el.money === 4.5 -->
- * <my-el money="4.5"></my-el>
- *
- * <!-- el.money === Infinity -->
- * <my-el money="Infinity"></my-el>
- *
- * <!-- el.money === NaN -->
- * <my-el money="NaN"></my-el>
- *
- * <!-- el.money === NaN -->
- * <my-el money="blahblah"></my-el>
- * ```
- */
-function numberAttribute(value, context) {
-    return attribute(attribute.number())(value, context);
-}
-const toBoolean = (str) => str !== 'false';
-/**
- * An attribute type for use in the `static observedAttributeHandlers` map
- * when not using decorators.
- *
- * Example usage without decorators:
- *
- * ```js
- * element('my-el')(
- *   class MyEl extends LumeElement {
- *     static observedAttributeHandlers = {
- *       hasCash: attribute.boolean()
- *     }
- *
- *     hasCash = true // default value when attribute removed
- *   }
- * )
- * ```
- */
-attribute.boolean = (() => ({ from: toBoolean }));
-/**
- * A decorator for mapping a boolean attribute to a JS property. The string
- * value of the attribute will be converted into a boolean value on the JS
- * property. A string value of `"false"` and a value of `null` (attribute
- * removed) will be converted into a `false` value on the JS property. All other
- * attribute values (strings) will be converted into `true`.
- *
- * Example decorator usage:
- *
- * ```js
- * ⁣@element('my-el')
- * class MyEl extends LumeElement {
- *   ⁣@booleanAttribute hasMoney = true
- *   ⁣@booleanAttribute excited = false
- * }
- * ```
- *
- * Example HTML attribute usage:
- *
- * ```html
- * <!-- el.hasMoney === true, el.excited === true -->
- * <my-el has-money excited></my-el>
- *
- * <!-- el.hasMoney === true, el.excited === false, based on the default values defined
- * on the class fields. Start the a class field with a value of `false` to have
- * behavior similar to traditional DOM boolean attributes where the presence of
- * the attribute determines the boolean value of its respective JS property. -->
- * <my-el></my-el>
- *
- * <!-- el.hasMoney === false, el.excited === true -->
- * <my-el has-money="false"></my-el>
- *
- * <!-- el.hasMoney === true, el.excited === true -->
- * <my-el has-money="true"></my-el>
- *
- * <!-- el.hasMoney === true, el.excited === true -->
- * <my-el has-money=""></my-el>
- *
- * <!-- el.hasMoney === true, el.excited === true -->
- * <my-el has-money="blahblah"></my-el>
- * ```
- */
-function booleanAttribute(value, context) {
-    return attribute(attribute.boolean())(value, context);
-}
-
-function element(tagNameOrClass, autoDefineOrContext) {
-    let tagName = '';
-    let autoDefine = !!(true);
-    // when called as a decorator factory, f.e. `@element('foo-bar') class MyEl ...` or `element('my-el')(class MyEl ...)`
-    {
-        tagName = tagNameOrClass;
-        return (Class, context) => {
-            return applyElementDecoration(Class, context, tagName, autoDefine);
-        };
-    }
-}
-function applyElementDecoration(Class, context, tagName, autoDefine) {
-    if (typeof Class !== 'function' || (context && context.kind !== 'class'))
-        throw new Error('@element is only for use on classes.');
-    const { metadata = {} } = context ?? {}; // context may be undefined with plain-JS element() usage.
-    // Check only own metadata.noSignal, we don't want to use the one inherited from a base class.
-    const noSignal = (Object.hasOwn(metadata, 'noSignal') && metadata.noSignal) || undefined;
-    let Ctor = Class;
-    const attrs = Ctor.observedAttributes;
-    if (Ctor.hasOwnProperty('elementName'))
-        tagName = Ctor.elementName || tagName;
-    else
-        Ctor.elementName = tagName;
-    if (Array.isArray(attrs)) ;
-    else if (attrs && typeof attrs === 'object') {
-        // When we're not using decorators, our users have the option to
-        // provide an observedAttributes object (instead of the usual
-        // array) to specify attribute types. In this case, we need to
-        // track the types, and convert observedAttributes to an array so
-        // the browser will understand it like usual.
-        // Delete it, so that it will be re-created as an array by the
-        // following __setUpAttribute calls.
-        Ctor.observedAttributes = undefined;
-        const stack = new Error().stack;
-        console.warn('Defining the static observedAttributes property as a map of attribute names to attribute handlers is now deprecated, please use the static observedAttributeHandlers property to define the map instead.\n' +
-            stack);
-        const _attrs = attrs;
-        for (const prop in _attrs)
-            __setUpAttribute(Ctor, prop, attrs[prop]);
-    }
-    const handlers = Ctor.observedAttributeHandlers;
-    // if (handlers) for (const prop in handlers) __setUpAttribute(Ctor, prop, handlers[prop]!)
-    if (handlers)
-        for (const prop of Object.keys(handlers))
-            __setUpAttribute(Ctor, prop, handlers[prop]);
-    // We need to compose with @reactive so that it will signalify any @signal properties.
-    Ctor = reactive(Ctor, context);
-    class ElementDecorator extends Ctor {
-        constructor(...args) {
-            // @ts-expect-error we don't know what the user's args will be, just pass them all.
-            super(...args);
-            // Untrack to be sure we don't cause dependencies during creation of
-            // objects (super() is already untracked by the reactive decorator).
-            untrack(() => {
-                handlePreUpgradeValues(this);
-                const propsToSignalify = [];
-                const attrsToProps = ElementDecorator.prototype[attributesToProps] ?? {};
-                for (const propSpec of Object.values(attrsToProps)) {
-                    const prop = propSpec.name;
-                    const useSignal = !noSignal?.has(prop);
-                    if (useSignal)
-                        propsToSignalify.push(prop);
-                    const handler = propSpec.attributeHandler;
-                    // Default values for fields are handled in their initializer,
-                    // and this catches default values for getters/setters.
-                    if (handler && !('default' in handler))
-                        handler.default = this[prop];
-                }
-                // This is signalifying any attribute props that may have been
-                // defined in `static observedAttribute` rather than with @attribute
-                // decorator (which composes @signal), so that we also cover
-                // non-decorator usage until native decorators are out.
-                //
-                // Note, `signalify()` returns early if a property was already
-                // signalified by @attribute (@signal), so this isn't going to
-                // double-signalify.
-                //
-                // TODO: Once native decorators are out, remove this, and remove
-                // non-decorator usage because everyone will be able to use
-                // decorators. We can also then delete `noSignal` from `metadata`
-                // here in the class as it is no longer needed at class
-                // instantiation time.
-                //
-                // Having to duplicate keys in observedAttributes as well as class
-                // fields is more room for human error, so it'll be nice to remove
-                // non-decorator usage.
-                if (propsToSignalify.length)
-                    signalify(this, ...propsToSignalify);
-            });
-        }
-    }
-    const classFinishers = [...__classFinishers];
-    __classFinishers.length = 0;
-    function finishClass() {
-        for (const finisher of classFinishers)
-            finisher(ElementDecorator);
-        if (tagName && autoDefine)
-            // guard against missing DOM API (f.e. SSR)
-            globalThis.window?.customElements?.define(tagName, ElementDecorator);
-    }
-    if (context?.addInitializer) {
-        // Use addInitializer to run logic after the class is fully defined
-        // (after class static initializers have ran, otherwise the class
-        // decorator runs before any static members are initialized)
-        context.addInitializer(finishClass);
-    }
-    else {
-        // For JS without decorator support fall back manually running the
-        // initializer because `context` will be `undefined` in that scenario,
-        // so there won't be a `context.addInitializer` function to call.
-        // In this case all static members are already initialized too.
-        //
-        // TODO: Once decorators are out natively, deprecate and remove this
-        // non-decorator support
-        finishClass();
-    }
-    return ElementDecorator;
-}
-function handlePreUpgradeValues(self) {
-    if (!(self instanceof LumeElement))
-        return;
-    // @ts-expect-error, protected access is ok
-    for (const [key, value] of self._preUpgradeValues) {
-        // If the key is missing, it has already been handled, continue.
-        if (!(key in self))
-            continue;
-        // Untrack the pre-upgrade value so that a subclass
-        // of this class won't re-run this same logic again.
-        // TODO needs testing.
-        // @ts-expect-error, protected access is ok
-        self._preUpgradeValues.delete(key);
-        // Unshadow any possible inherited accessor only if
-        // there is not an accessor. If there is an accessor it
-        // handles inheritance its own way.
-        const desc = Object.getOwnPropertyDescriptor(self, key);
-        if (desc && 'value' in desc) {
-            // @ts-expect-error dynamic decorator stuff, has no impact on user types.
-            delete self[key];
-        }
-        // Set the pre-upgrade value (allowing any inherited
-        // accessor to operate on it).
-        // @ts-expect-error dynamic decorator stuff, has no impact on user types.
-        self[key] = value;
-    }
-}
-
 var EQUALS_FALSE_OPTIONS = { equals: false };
 
 function createLazyMemo(calc, value, options) {
@@ -2857,16 +1312,6 @@ function createLazyMemo(calc, value, options) {
 }
 
 function r(e){var t,f,n="";if("string"==typeof e||"number"==typeof e)n+=e;else if("object"==typeof e)if(Array.isArray(e)){var o=e.length;for(t=0;t<o;t++)e[t]&&(f=r(e[t]))&&(n&&(n+=" "),n+=f);}else for(f in e)e[f]&&(n&&(n+=" "),n+=f);return n}function clsx(){for(var e,t,f=0,n="",o=arguments.length;f<o;f++)(e=arguments[f])&&(t=r(e))&&(n&&(n+=" "),n+=t);return n}
-
-function getLongestLineSize(lines) {
-  let maxLength = 0;
-  for (const line of lines) {
-    if (line.length > maxLength) {
-      maxLength = line.length;
-    }
-  }
-  return maxLength;
-}
 
 const $RAW = Symbol("store-raw"),
   $NODE = Symbol("store-node"),
@@ -5089,7 +3534,17 @@ function every(...accessors) {
   return callback;
 }
 
-var _tmpl$$1 = /* @__PURE__ */ template(`<div part=root><textarea part=textarea autocomplete=off inputmode=none>`), _tmpl$2$1 = /* @__PURE__ */ template(`<code>`), _tmpl$3 = /* @__PURE__ */ template(`<pre>`);
+function getLongestLineSize(lines) {
+  let maxLength = 0;
+  for (const line of lines) {
+    if (line.length > maxLength) {
+      maxLength = line.length;
+    }
+  }
+  return maxLength;
+}
+
+var _tmpl$$1 = /* @__PURE__ */ template(`<div part=root><textarea part=textarea autocomplete=off inputmode=none></textarea><code aria-hidden>&nbsp;`), _tmpl$2$1 = /* @__PURE__ */ template(`<code>`), _tmpl$3 = /* @__PURE__ */ template(`<pre>`);
 const SEGMENT_SIZE = 100;
 const WINDOW = 100;
 class ThemeManager {
@@ -5128,6 +3583,9 @@ class ThemeManager {
     return this.themeData.colors?.["editor.foreground"] || "#000000";
   }
 }
+function escapeHTML(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 class Segment {
   constructor(manager, previous, index) {
     this.manager = manager;
@@ -5149,7 +3607,7 @@ class Segment {
         return tokens.map((token) => {
           const style = this.manager.theme.resolveScope(token.scopes);
           const tokenValue = line.slice(token.startIndex, token.endIndex);
-          return `<span style="${style.foreground ? `color:${style.foreground};` : ""}${style.fontStyle ? `text-decoration:${style.fontStyle}` : ""}">${tokenValue}</span>`;
+          return `<span style="${style.foreground ? `color:${style.foreground};` : ""}${style.fontStyle ? `text-decoration:${style.fontStyle}` : ""}">${escapeHTML(tokenValue)}</span>`;
         }).join("");
       });
       this.setStack(currentStack);
@@ -5170,11 +3628,11 @@ class SegmentManager {
     this.theme = theme;
     this.source = source;
     [this.#segments, this.#setSegments] = createStore([]);
-    const owner = getOwner();
     this.lines = createMemo(() => {
       const lines = source().split("\n");
       return lines;
     });
+    const owner = getOwner();
     createRenderEffect(() => runWithOwner(owner, () => {
       const newLineCount = this.lines().length;
       const currentSegmentCount = this.#segments.length;
@@ -5280,6 +3738,7 @@ function createTmTextarea(styles) {
   return function TmTextarea(props) {
     const [config, rest] = splitProps(props, ["class", "grammar", "onInput", "value", "style", "theme", "editable", "onScroll"]);
     let container;
+    const [charHeight, setCharHeight] = createSignal();
     const [dimensions, setDimensions] = createSignal();
     const [scrollTop, setScrollTop] = createSignal(0);
     const [manager, setSource] = createManager(props);
@@ -5296,10 +3755,7 @@ function createTmTextarea(styles) {
       const segmentMax = Math.ceil((index + WINDOW) / SEGMENT_SIZE);
       return segmentMin <= viewportMin && segmentMax >= viewportMax || segmentMin >= viewportMin && segmentMin <= viewportMax || segmentMax >= viewportMin && segmentMax <= viewportMax;
     });
-    onMount(() => {
-      const observer = new ResizeObserver(([entry]) => setDimensions(entry?.contentRect));
-      observer.observe(container);
-    });
+    onMount(() => new ResizeObserver(([entry]) => setDimensions(entry?.contentRect)).observe(container));
     const selectionColor = when(manager, (manager2) => {
       const bg = manager2.theme.getBackgroundColor();
       const commentLuminance = luminance(...hexToRgb(bg));
@@ -5307,7 +3763,7 @@ function createTmTextarea(styles) {
       return `rgba(98, 114, 164, ${opacity})`;
     });
     return (() => {
-      var _el$ = _tmpl$$1(), _el$2 = _el$.firstChild;
+      var _el$ = _tmpl$$1(), _el$2 = _el$.firstChild, _el$3 = _el$2.nextSibling;
       _el$.addEventListener("scroll", (e) => {
         setScrollTop(e.currentTarget.scrollTop);
         props.onScroll?.(e);
@@ -5320,11 +3776,12 @@ function createTmTextarea(styles) {
         },
         get style() {
           return {
-            "line-height": `${props.lineHeight}px`,
-            "--foreground-color": manager()?.theme.getForegroundColor(),
             "--background-color": manager()?.theme.getBackgroundColor(),
-            "--line-size": lineSize(),
+            "--char-height": charHeight(),
+            "--foreground-color": manager()?.theme.getForegroundColor(),
             "--line-count": manager()?.lines().length,
+            "--line-height": `${props.lineHeight}px`,
+            "--line-size": lineSize(),
             "--selection-color": selectionColor(),
             ...config.style
           };
@@ -5335,8 +3792,8 @@ function createTmTextarea(styles) {
           return manager();
         },
         children: (manager2) => (() => {
-          var _el$3 = _tmpl$2$1();
-          insert(_el$3, createComponent(Index, {
+          var _el$4 = _tmpl$2$1();
+          insert(_el$4, createComponent(Index, {
             get each() {
               return Array.from({
                 length: Math.ceil(manager2().lines().length / SEGMENT_SIZE)
@@ -5358,27 +3815,26 @@ function createTmTextarea(styles) {
                       return isVisible(segmentIndex * SEGMENT_SIZE + index);
                     },
                     get children() {
-                      var _el$4 = _tmpl$3();
+                      var _el$5 = _tmpl$3();
+                      segmentIndex * SEGMENT_SIZE + index != null ? _el$5.style.setProperty("--line-number", segmentIndex * SEGMENT_SIZE + index) : _el$5.style.removeProperty("--line-number");
                       createRenderEffect((_p$) => {
-                        var _v$ = styles.segment, _v$2 = manager2().getLine(segmentIndex * SEGMENT_SIZE + index), _v$3 = `${(segmentIndex * SEGMENT_SIZE + index) * props.lineHeight}px`;
-                        _v$ !== _p$.e && className(_el$4, _p$.e = _v$);
-                        _v$2 !== _p$.t && (_el$4.innerHTML = _p$.t = _v$2);
-                        _v$3 !== _p$.a && ((_p$.a = _v$3) != null ? _el$4.style.setProperty("top", _v$3) : _el$4.style.removeProperty("top"));
+                        var _v$3 = styles.segment, _v$4 = manager2().getLine(segmentIndex * SEGMENT_SIZE + index);
+                        _v$3 !== _p$.e && className(_el$5, _p$.e = _v$3);
+                        _v$4 !== _p$.t && (_el$5.innerHTML = _p$.t = _v$4);
                         return _p$;
                       }, {
                         e: void 0,
-                        t: void 0,
-                        a: void 0
+                        t: void 0
                       });
-                      return _el$4;
+                      return _el$5;
                     }
                   })
                 });
               }
             })
           }));
-          createRenderEffect(() => className(_el$3, styles.segments));
-          return _el$3;
+          createRenderEffect(() => className(_el$4, styles.segments));
+          return _el$4;
         })()
       }), _el$2);
       _el$2.$$keydown = (e) => {
@@ -5406,7 +3862,23 @@ function createTmTextarea(styles) {
         setSource(value);
         config.onInput?.(e);
       });
-      createRenderEffect(() => className(_el$2, styles.textarea));
+      use((element) => {
+        new ResizeObserver(() => {
+          const {
+            height
+          } = getComputedStyle(element);
+          setCharHeight(height);
+        }).observe(element);
+      }, _el$3);
+      createRenderEffect((_p$) => {
+        var _v$ = styles.textarea, _v$2 = styles.character;
+        _v$ !== _p$.e && className(_el$2, _p$.e = _v$);
+        _v$2 !== _p$.t && className(_el$3, _p$.t = _v$2);
+        return _p$;
+      }, {
+        e: void 0,
+        t: void 0
+      });
       createRenderEffect(() => _el$2.value = config.value);
       return _el$;
     })();
@@ -5414,9 +3886,1433 @@ function createTmTextarea(styles) {
 }
 delegateEvents(["keydown"]);
 
-const classnames = ["container","segments","segment","textarea"];
+const container = "_container_19uok_4";
+const segments = "_segments_19uok_28";
+const segment = "_segment_19uok_28";
+const character = "_character_19uok_47";
+const textarea = "_textarea_19uok_65";
+const styles = {
+	container: container,
+	segments: segments,
+	segment: segment,
+	character: character,
+	textarea: textarea
+};
 
-const css = ":host {\n  display: contents;\n\n  & .container {\n    padding: inherit;\n    padding-top: inherit;\n    padding-right: inherit;\n    padding-bottom: inherit;\n    padding-left: inherit;\n    width: inherit;\n    min-width: inherit;\n    height: inherit;\n    min-height: inherit;\n  }\n}\n\n.container {\n  display: flex;\n  position: relative;\n  flex: 1;\n  z-index: 1;\n  box-sizing: border-box;\n  background-color: var(--background-color);\n  overflow: auto;\n  color: var(--foreground-color);\n\n  .segments {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: layout;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .segment {\n      position: fixed;\n    }\n  }\n\n  & pre {\n    margin: 0px;\n\n    & span {\n      margin: 0px;\n      background: transparent !important;\n    }\n  }\n\n  & .textarea {\n    top: 0px;\n    right: 0px;\n    bottom: 0px;\n    left: 0px;\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    min-width: calc(var(--line-size) * 1ch);\n    min-height: calc(var(--line-count) * 1em);\n    overflow: hidden;\n    resize: none;\n    color: transparent;\n    caret-color: var(--foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n    white-space: nowrap;\n  }\n\n  & .textarea::selection {\n    background: var(--selection-color);\n  }\n}\n";
+const TmTextarea$1 = createTmTextarea(styles);
+
+/**
+ * NOTE: Experimental
+ *
+ * Create a stoppable effect.
+ *
+ * ```js
+ * const effect = createStoppableEffect(() => {...})
+ *
+ * // ...later, stop the effect from running again.
+ * effect.stop()
+ * ```
+ *
+ * Note, this is experimental because when inside of a parent reactive context
+ * that is long-lived (f.e. for life time of the app), each new effect created
+ * with this and subsequently stopped will stick around and not be GC'd until
+ * the parent context is cleaned up (which could be never).
+ *
+ * Stopped effects will currently only be GC'd freely when they are created
+ * outside of a reactive context.
+ */
+function createStoppableEffect(fn) {
+  const [running, setRunning] = createSignal(true);
+  createEffect(() => running() && fn());
+  return {
+    stop: () => setRunning(false),
+    resume: () => setRunning(true)
+  };
+}
+
+/**
+ * @class Effectful -
+ *
+ * `mixin`
+ *
+ * Create Solid.js effects using `this.createEffect(fn)` and easily stop them
+ * all by calling `this.stopEffects()`.
+ *
+ * Example:
+ *
+ * ```js
+ * import {reactive, signal} from 'classy-solid'
+ * import {foo} from 'somewhere'
+ * import {bar} from 'elsewhere'
+ *
+ * class MyClass extends Effectful(BaseClass) {
+ *   constructor() {
+ *     super()
+ *
+ *     // Log `foo` and `bar` any time either of them change.
+ *     this.createEffect(() => {
+ *       console.log('foo, bar:', foo(), bar())
+ *     })
+ *
+ *     // Log only `bar` any time it changes.
+ *     this.createEffect(() => {
+ *       console.log('bar:', bar())
+ *     })
+ *   }
+ *
+ *   dispose() {
+ *     // Later, stop both of the effects.
+ *     this.stopEffects()
+ *   }
+ * }
+ * ```
+ */
+function Effectful(Base) {
+  return class Effectful extends Base {
+    #effects = new Set();
+
+    /**
+     * Create a Solid.js effect. The difference from regular
+     * `createEffect()` is that `this` tracks the effects created, so that
+     * they can all be stopped with `this.stopEffects()`.
+     *
+     * Effects can also be stopped or resumed individually:
+     *
+     * ```js
+     * const effect1 = this.createEffect(() => {...})
+     * const effect2 = this.createEffect(() => {...})
+     *
+     * // ...later
+     * effect1.stop()
+     *
+     * // ...later
+     * effect1.resume()
+     * ```
+     */
+    createEffect(fn) {
+      this.#createEffect2(fn); // works with nesting, without leaks
+    }
+
+    /**
+     * Stop all of the effects that were created.
+     */
+    stopEffects() {
+      this.#stopEffects2();
+    }
+
+    // Method 1 //////////////////////////////////////////
+    // Works fine when not in a parent context, or else currently leaks or has the above mentioned bug while a parent exists.
+
+    #createEffect1(fn) {
+      let effect = null;
+      effect = createStoppableEffect(() => {
+        if (effect) this.#effects.add(effect);
+        // nest the user's effect so that if it re-runs a lot it is not deleting/adding from/to our #effects Set a lot.
+        createEffect(fn);
+        onCleanup(() => this.#effects.delete(effect));
+      });
+      this.#effects.add(effect);
+    }
+    #stopEffects1() {
+      for (const effect of this.#effects) effect.stop();
+    }
+
+    // Method 2 //////////////////////////////////////////
+    // Works, with nesting, no leaks.
+
+    #owner = null;
+    #dispose = null;
+    #createEffect2(fn) {
+      if (!this.#owner) {
+        createRoot(dispose => {
+          this.#owner = getOwner();
+          this.#dispose = dispose;
+          this.#createEffect2(fn);
+        });
+      } else {
+        let owner = getOwner();
+        while (owner && owner !== this.#owner) owner = owner?.owner ?? null;
+
+        // this.#owner found in the parents of current owner therefore,
+        // run with current nested owner like a regular solid
+        // createEffect()
+        if (owner === this.#owner) return createEffect(fn);
+
+        // this.#owner wasn't found on the parent owners
+        // run with this.#owner
+        runWithOwner(this.#owner, () => createEffect(fn));
+      }
+    }
+    #stopEffects2() {
+      this.#dispose?.();
+    }
+  };
+}
+
+/** Like Object.getOwnPropertyDescriptor, but looks up the prototype chain for the descriptor. */
+function getInheritedDescriptor(obj, key) {
+    let currentProto = obj;
+    let descriptor;
+    while (currentProto) {
+        descriptor = Object.getOwnPropertyDescriptor(currentProto, key);
+        if (descriptor) {
+            descriptor.owner = currentProto;
+            return descriptor;
+        }
+        currentProto = currentProto.__proto__;
+    }
+    return void 0;
+}
+
+const signalifiedProps = new WeakMap();
+
+/**
+ * Convert properties on an object into Solid signal-backed properties.
+ *
+ * There are two ways to use this: either by defining which properties to
+ * convert to signal-backed properties by providing an array as property names
+ * in the second arg, which is useful on plain objects, or by passing in `this`
+ * and `this.constructor` within the `constructor` of a class that has
+ * properties decorated with `@signal`.
+ *
+ * Example with a class:
+ *
+ * ```js
+ * import {signalify} from 'classy-solid'
+ * import {createEffect} from 'solid-js'
+ *
+ * class Counter {
+ *   count = 0
+ *
+ *   constructor() {
+ *     signalify(this, 'count')
+ *     setInterval(() => this.count++, 1000)
+ *   }
+ * }
+ *
+ * const counter = new Counter
+ *
+ * createEffect(() => {
+ *   console.log('count:', counter.count)
+ * })
+ * ```
+ *
+ * Example with a plain object:
+ *
+ * ```js
+ * import {signalify} from 'classy-solid'
+ * import {createEffect} from 'solid-js'
+ *
+ * const counter = {
+ *   count: 0
+ * }
+ *
+ * signalify(counter, 'count')
+ * setInterval(() => counter.count++, 1000)
+ *
+ * createEffect(() => {
+ *   console.log('count:', counter.count)
+ * })
+ * ```
+ */
+
+function signalify(obj, ...props) {
+  // We cast from PropertyKey[] to PropKey[] because numbers can't actually be keys, only string | symbol.
+  const _props = props.length ? props : Object.keys(obj).concat(Object.getOwnPropertySymbols(obj));
+  for (const prop of _props) createSignalAccessor$1(obj, prop);
+  return obj;
+}
+let gotCreateSignalAccessor = false;
+
+/**
+ * This ensures that `createSignalAccessor` is kept internal to classy-solid only.
+ */
+function getCreateSignalAccessor() {
+  if (gotCreateSignalAccessor) throw new Error('Export "createSignalAccessor" is internal to classy-solid only.');
+  gotCreateSignalAccessor = true;
+  return createSignalAccessor$1;
+}
+
+// propsSetAtLeastOnce is a Set that tracks which reactive properties have been
+// set at least once.
+const propsSetAtLeastOnce = new WeakMap();
+
+// @lume/element uses this to detect if a reactive prop has been set, and if so
+// will not overwrite the value with any pre-existing value from custom element
+// pre-upgrade.
+function __isPropSetAtLeastOnce(instance, prop) {
+  return !!propsSetAtLeastOnce.get(instance)?.has(prop);
+}
+function trackPropSetAtLeastOnce(instance, prop) {
+  if (!propsSetAtLeastOnce.has(instance)) propsSetAtLeastOnce.set(instance, new Set());
+  propsSetAtLeastOnce.get(instance).add(prop);
+}
+const isSignalGetter = new WeakSet();
+function createSignalAccessor$1(obj, prop,
+// Untrack here to be extra safe this doesn't count as a dependency and
+// cause a reactivity loop.
+initialVal = untrack(() => obj[prop]),
+// If an object already has a particular signalified property, override it
+// with a new one anyway (useful for maintaining consistency with class
+// inheritance where class fields always override fields from base classes
+// due to their [[Define]] semantics). False is a good default for signalify()
+// usage where someone is augmenting an existing object, but true is more
+// useful with usage of @signal on class fields.
+//
+// Note that if @signal were to specify this as false, it would cause
+// @signal-decorated subclass fields to override base class
+// @signal-decorated fields with a new value descriptor but without
+// signalifiying the field, effectively disabling reactivity, which is a bug
+// (a field decorated with @signal *must* be reactive). The test named
+// "maintains reactivity in subclass overridden fields" was added to ensure
+// that the subclass use case works.
+override = false) {
+  if (!override && signalifiedProps.get(obj)?.has(prop)) return;
+
+  // Special case for Solid proxies: if the object is already a solid proxy,
+  // all properties are already reactive, no need to signalify.
+  // @ts-expect-error special indexed access
+  const proxy = obj[$PROXY];
+  if (proxy) return;
+  let descriptor = getInheritedDescriptor(obj, prop);
+  let originalGet;
+  let originalSet;
+  if (descriptor) {
+    originalGet = descriptor.get;
+    originalSet = descriptor.set;
+
+    // Even if override is true, if we have a signal accessor, there's no
+    // need to replace it with another signal accessor. We only need to
+    // override when the current descriptor is not a signal accessor.
+    // TODO this needs tests.
+    if (originalGet && isSignalGetter.has(originalGet)) return;
+    if (originalGet || originalSet) {
+      // reactivity requires both
+      if (!originalGet || !originalSet) {
+        console.warn(`The \`@signal\` decorator was used on an accessor named "${prop.toString()}" which had a getter or a setter, but not both. Reactivity on accessors works only when accessors have both get and set. In this case the decorator does not do anything.`);
+        return;
+      }
+      delete descriptor.get;
+      delete descriptor.set;
+    } else {
+      // If there was a value descriptor, trust it as the source of truth
+      // for initialVal. For example, if the user class modifies the value
+      // after the initializer, it will have a different value than what
+      // we tracked from the initializer.
+      initialVal = descriptor.value;
+
+      // if it isn't writable, we don't need to make a reactive variable because
+      // the value won't change
+      if (!descriptor.writable) {
+        console.warn(`The \`@signal\` decorator was used on a property named "${prop.toString()}" that is not writable. Reactivity is not enabled for non-writable properties.`);
+        return;
+      }
+      delete descriptor.value;
+      delete descriptor.writable;
+    }
+  }
+  const s = createSignal(initialVal, {
+    equals: false
+  });
+  descriptor = {
+    configurable: true,
+    enumerable: true,
+    ...descriptor,
+    get: originalGet ? function () {
+      s[0](); // read
+      return originalGet.call(this);
+    } : function () {
+      return s[0](); // read
+    },
+    set: originalSet ? function (newValue) {
+      originalSet.call(this, newValue);
+      trackPropSetAtLeastOnce(this, prop);
+
+      // write
+      if (typeof newValue === 'function') s[1](() => newValue);else s[1](newValue);
+    } : function (newValue) {
+      trackPropSetAtLeastOnce(this, prop);
+
+      // write
+      if (typeof newValue === 'function') s[1](() => newValue);else s[1](newValue);
+    }
+  };
+  isSignalGetter.add(descriptor.get);
+  Object.defineProperty(obj, prop, descriptor);
+  if (!signalifiedProps.has(obj)) signalifiedProps.set(obj, new Set());
+  signalifiedProps.get(obj).add(prop);
+}
+
+let propsToSignalify = new Map();
+let accessKey$1 = null;
+
+/**
+ * Provides a key for accessing internal APIs. If any other module tries to get
+ * this, an error will be thrown, and signal and reactive decorators will not
+ * work.
+ */
+function getKey() {
+  if (accessKey$1) throw new Error('Attempted use of classy-solid internals.');
+  accessKey$1 = Symbol();
+  return accessKey$1;
+}
+
+/**
+ * This function provides propsToSignalify to only one external module
+ * (reactive.ts). The purpose of this is to keep the API private for reactive.ts
+ * only, otherwise an error will be thrown that breaks signal/reactive
+ * functionality.
+ */
+function getPropsToSignalify(key) {
+  if (key !== accessKey$1) throw new Error('Attempted use of classy-solid internals.');
+  return propsToSignalify;
+}
+
+/**
+ * Only the module that first gets the key can call this function (it should be
+ * reactive.ts)
+ */
+function resetPropsToSignalify(key) {
+  if (key !== accessKey$1) throw new Error('Attempted use of classy-solid internals.');
+  propsToSignalify = new Map();
+}
+function isMemberDecorator(context) {
+  return !!('private' in context);
+}
+
+/**
+ * @decorator
+ * Decorate properties of a class with `@signal` to back them with Solid
+ * signals, making them reactive. Don't forget that the class in which `@signal`
+ * is used must be decorated with `@reactive`.
+ *
+ * Related: See the Solid.js `createSignal` API for creating signals.
+ *
+ * Example:
+ *
+ * ```js
+ * import {reactive, signal} from 'classy-solid'
+ * import {createEffect} from 'solid-js'
+ *
+ * ⁣@reactive
+ * class Counter {
+ *   ⁣@signal count = 0
+ *
+ *   constructor() {
+ *     setInterval(() => this.count++, 1000)
+ *   }
+ * }
+ *
+ * const counter = new Counter
+ *
+ * createEffect(() => {
+ *   console.log('count:', counter.count)
+ * })
+ * ```
+ */
+function signal(_, context) {
+  const {
+    kind,
+    name
+  } = context;
+  const props = propsToSignalify;
+  if (isMemberDecorator(context)) {
+    if (context.private) throw new Error('@signal is not supported on private fields yet.');
+    if (context.static) throw new Error('@signal is not supported on static fields yet.');
+  }
+  if (kind === 'field') {
+    props.set(name, {
+      initialValue: undefined
+    });
+    return function (initialValue) {
+      props.get(name).initialValue = initialValue;
+      return initialValue;
+    };
+  } else if (kind === 'getter' || kind === 'setter') {
+    props.set(name, {
+      initialValue: undefined
+    });
+  } else {
+    throw new Error('The @signal decorator is only for use on fields, getters, and setters. Auto accessor support is coming next if there is demand for it.');
+  }
+
+  // @prod-prune
+  queueReactiveDecoratorChecker(props);
+}
+let checkerQueued = false;
+
+/**
+ * This throws an error in some cases of an end dev forgetting to decorate a
+ * class with `@reactive` if they used `@signal` on that class's fields.
+ *
+ * This doesn't work all the time, only when the very last class decorated is
+ * missing @reactive, but something is better than nothing. There's another
+ * similar check performed in the `@reactive` decorator.
+ */
+function queueReactiveDecoratorChecker(props) {
+  if (checkerQueued) return;
+  checkerQueued = true;
+  queueMicrotask(() => {
+    checkerQueued = false;
+
+    // If the refs are still equal, it means @reactive did not run (forgot
+    // to decorate a class that uses @signal with @reactive).
+    if (props === propsToSignalify) {
+      throw new Error(
+      // Array.from(map.keys()) instead of [...map.keys()] because it breaks in Oculus browser.
+      `Stray @signal-decorated properties detected: ${Array.from(props.keys()).join(', ')}. Did you forget to use the \`@reactive\` decorator on a class that has properties decorated with \`@signal\`?`);
+    }
+  });
+}
+
+/**
+ * Access key for classy-solid private internal APIs.
+ */
+const accessKey = getKey();
+const createSignalAccessor = getCreateSignalAccessor();
+const hasOwnProperty = Object.prototype.hasOwnProperty;
+
+/**
+ * A decorator that makes a class reactive, allowing it have properties
+ * decorated with `@signal` to make those properties reactive Solid signals.
+ *
+ * Example:
+ *
+ * ```js
+ * import {reactive, signal} from 'classy-solid'
+ * import {createEffect} from 'solid-js'
+ *
+ * ⁣@reactive
+ * class Counter {
+ *   ⁣@signal count = 0
+ *
+ *   constructor() {
+ *     setInterval(() => this.count++, 1000)
+ *   }
+ * }
+ *
+ * const counter = new Counter
+ *
+ * createEffect(() => {
+ *   console.log('count:', counter.count)
+ * })
+ * ```
+ */
+function reactive(value, context) {
+  // context may be undefined when unsing reactive() without decorators
+  if (typeof value !== 'function' || context && context.kind !== 'class') throw new TypeError('The @reactive decorator is only for use on classes.');
+  const Class = value;
+  const signalProps = getPropsToSignalify(accessKey);
+
+  // For the current class decorated with @reactive, we reset the map, so that
+  // for the next class decorated with @reactive we track only that next
+  // class's properties that were decorated with @signal. We do this because
+  // field decorators do not have access to the class or its prototype.
+  //
+  // In the future maybe we can use decorator metadata for this
+  // (https://github.com/tc39/proposal-decorator-metadata)?
+  resetPropsToSignalify(accessKey);
+  class ReactiveDecorator extends Class {
+    constructor(...args) {
+      let instance;
+
+      // Ensure that if we're in an effect that `new`ing a class does not
+      // track signal reads, otherwise we'll get into an infinite loop. If
+      // someone want to trigger an effect based on properties of the
+      // `new`ed instance, they can explicitly read the properties
+      // themselves in the effect, making their intent clear.
+      if (getListener()) untrack(() => instance = Reflect.construct(Class, args, new.target)); // super()
+      else super(...args), instance = this;
+      for (const [prop, {
+        initialValue
+      }] of signalProps) {
+        // @prod-prune
+        if (!(hasOwnProperty.call(instance, prop) || hasOwnProperty.call(Class.prototype, prop))) {
+          throw new Error(`Property "${prop.toString()}" not found on instance of class decorated with \`@reactive\`. Did you forget to use the \`@reactive\` decorator on one of your classes that has a "${prop.toString()}" property decorated with \`@signal\`?`);
+        }
+
+        // For now at least, we always override like class fields with
+        // [[Define]] semantics. Perhaps when @signal is used on a
+        // getter/setter, we should not override in that case, but patch
+        // the prototype getter/setter (that'll be a bit of work to
+        // implement though).
+        const override = true;
+        createSignalAccessor(instance, prop, initialValue, override);
+      }
+      return instance;
+    }
+  }
+  return ReactiveDecorator;
+}
+
+var _a;
+// TODO `templateMode: 'append' | 'replace'`, which allows a subclass to specify
+// if template content replaces the content of `root`, or is appended to `root`.
+let ctor;
+const HTMLElement = globalThis.HTMLElement ??
+    class HTMLElement {
+        constructor() {
+            throw new Error("@lume/element needs a DOM to operate with! If this code is running during server-side rendering, it means your app is trying to instantiate elements when it shouldn't be, and should be refactored to avoid doing that when no DOM is present.");
+        }
+    };
+const root = Symbol('root');
+// TODO Make LumeElement `abstract`
+class LumeElement extends Effectful(HTMLElement) {
+    /**
+     * The default tag name of the elements this class instantiates. When using
+     * the `@element` decorator, this property will be set to the value defined
+     * by the decorator.
+     */
+    static elementName = '';
+    /**
+     * Define this class for the given element `name`, or using its default name
+     * (`elementName`) if no `name` given. Defaults to using the global
+     * `customElements` registry unless another registry is provided (for
+     * example a ShadowRoot-scoped registry).
+     *
+     * If a `name` is given, then the class will be extended with an empty
+     * subclass so that a new class is used for each new name, because otherwise
+     * a CustomElementRegistry does not allow the same exact class to be used
+     * more than once regardless of the name.
+     *
+     * @returns Returns the defined element class, which is only going to be a
+     * different subclass of the class this is called on if passing in a custom
+     * `name`, otherwise returns the same class this is called on.
+     */
+    static defineElement(name, registry = customElements) {
+        if (!name) {
+            name = this.elementName;
+            if (registry.get(name)) {
+                console.warn(`defineElement(): An element class was already defined for tag name ${name}.`);
+                return this;
+            }
+            registry.define(name, this);
+            return this;
+        }
+        else {
+            if (registry.get(name)) {
+                console.warn(`defineElement(): An element class was already defined for tag name ${name}.`);
+                return this;
+            }
+            else {
+                // Allow the same element to be defined more than once using
+                // alternative names.
+                const Class = class extends this {
+                };
+                Class.elementName = name;
+                registry.define(name, Class);
+                return Class;
+            }
+        }
+    }
+    /**
+     * Non-decorator users can use this to specify a list of attributes, and the
+     * attributes will automatically be mapped to reactive properties. All
+     * attributes in the list will be treated with the equivalent of the
+     * `@attribute` decorator.
+     *
+     * The ability to provide a map of attribute names to attribute handlers
+     * (`Record<string, AttributeHandler>`) has been deprecaated, and instead
+     * that map should be provided via the `static observedAttributeHandlers`
+     * property, while this property is now typed to accept only a string array
+     * as per DOM spec.
+     */
+    static observedAttributes;
+    /**
+     * Non-decorator users can use this instead of `observedAttributes` to
+     * specify a map of attribute names to attribute handlers. The named
+     * attributes will automatically be mapped to reactive properties, and each
+     * attribute will be treated with the corresponding attribute handler.
+     *
+     * Example:
+     *
+     * ```js
+     * element('my-el')(
+     *   class MyEl extends LumeElement {
+     *     static observedAttributeHandlers = {
+     *       foo: attribute.string(),
+     *       bar: attribute.number(),
+     *       baz: attribute.boolean(),
+     *     }
+     *
+     *     // The initial values defined here will be the values that these
+     *     // properties revert to when the respective attributes are removed.
+     *     foo = 'hello'
+     *     bar = 123
+     *     baz = false
+     *   }
+     * )
+     * ```
+     */
+    static observedAttributeHandlers;
+    #handleInitialPropertyValuesIfAny() {
+        // We need to delete initial value-descriptor properties (if they exist)
+        // and store the initial values in the storage for our @signal property
+        // accessors.
+        //
+        // If we don't do this, then DOM APIs like cloneNode will create our
+        // node without first upgrading it, and then if someone sets a property
+        // (while our reactive accessors are not yet present in the class
+        // prototype) it means those values will be set as value descriptor
+        // properties on the instance instead of interacting with our accessors
+        // (i.e. the new properties will override our accessors that the
+        // instance will gain on its prototype chain once the upgrade process
+        // places our class prototype in the instance's prototype chain).
+        //
+        // This can also happen if we set properties on an element that isn't
+        // upgraded into a custom element yet, and thus will not yet have our
+        // accessors.
+        //
+        // Assumption: any enumerable own props must've been set on the
+        // element before it was upgraded. Builtin DOM properties are
+        // not enumerable.
+        const preUpgradeKeys = Object.keys(this);
+        this._preUpgradeValues = new Map();
+        for (const propName of preUpgradeKeys) {
+            const descriptor = Object.getOwnPropertyDescriptor(this, propName);
+            // Handle only value descriptors.
+            if ('value' in descriptor) {
+                // Delete the pre-upgrade value descriptor (1/2)...
+                delete this[propName];
+                // The @element decorator reads this, and the class finisher
+                // will set pre-upgrade values.
+                this._preUpgradeValues.set(propName, descriptor.value);
+                // NOTE, for classes not decorated with @element, deferring
+                // allows preexisting preupgrade values to be handled *after*
+                // class fields have been set during Custom Element upgrade
+                // construction (otherwise those class fields would override the
+                // preupgrade values we're trying to assign here).
+                // TODO Once decorators are out everywhere, deprecate
+                // non-decorator usage, and eventually remove code intended for
+                // non-decorator usage such as this.
+                queueMicrotask(() => {
+                    const propSetAtLeastOnce = __isPropSetAtLeastOnce(this, propName);
+                    // ... (2/2) and re-assign the value so that it goes through
+                    // a @signal accessor that got defined, or through an
+                    // inherited accessor that the preupgrade value shadowed.
+                    //
+                    // If the property has been set between the time LumeElement
+                    // constructor ran and the deferred microtask, then we don't
+                    // overwrite the property's value with the pre-upgrade value
+                    // because it has already been intentionally set to a
+                    // desired value post-construction.
+                    // (NOTE: Avoid setting properties in constructors because
+                    // that will set the signals at least once. Instead,
+                    // override with a new @attribute or @signal class field.)
+                    //
+                    // AND we handle inherited props or signal props only
+                    // (because that means there may be an accessor that needs
+                    // the value to be passed in). The @element decorator otherwise
+                    // handles non-inherited props before construction
+                    // finishes. {{
+                    if (propSetAtLeastOnce)
+                        return;
+                    const inheritsProperty = propName in this.__proto__;
+                    if (inheritsProperty)
+                        this[propName] = descriptor.value;
+                    // }}
+                });
+            }
+        }
+    }
+    // This property MUST be defined before any other non-static non-declared
+    // class properties so that the initializer runs before any other properties
+    // are defined, in order to detect and handle instance properties that
+    // already pre-exist from custom element pre-upgrade time.
+    // TODO Should we handle initial attributes too?
+    // @ts-expect-error unused
+    #___init___ = this.#handleInitialPropertyValuesIfAny();
+    /**
+     * When `true`, the custom element will have a `ShadowRoot`. Set to `false`
+     * to not use a `ShadowRoot`. When `false`, styles will not be scoped via
+     * the built-in `ShadowRoot` scoping mechanism, but by a much more simple
+     * shared style sheet placed at the nearest root node, with `:host`
+     * selectors converted to tag names.
+     */
+    hasShadow = true;
+    [root] = null;
+    /**
+     * Subclasses can override this to provide an alternate Node to render into
+     * (f.e. a subclass can `return this` to render into itself instead of
+     * making a root) regardless of the value of `hasShadow`.
+     */
+    get root() {
+        if (!this.hasShadow)
+            return this;
+        if (this[root])
+            return this[root];
+        if (this.shadowRoot)
+            return (this[root] = this.shadowRoot);
+        // TODO use `this.attachInternals()` (ElementInternals API) to get the root instead.
+        return (this[root] = this.attachShadow({ mode: 'open' }));
+    }
+    set root(v) {
+        if (!this.hasShadow)
+            throw new Error('Can not set root, element.hasShadow is false.');
+        // @prod-prune
+        if (this[root] || this.shadowRoot)
+            throw new Error('Element root can only be set once if there is no ShadowRoot.');
+        this[root] = v;
+    }
+    /**
+     * Define which `Node` to append style sheets to when `hasShadow` is `true`.
+     * Defaults to the `this.root`, which in turn defaults to the element's
+     * `ShadowRoot`.  When `hasShadow` is `true`, an alternate `styleRoot` is
+     * sometimes needed for styles to be appended elsewhere than the root. For
+     * example, return some other `Node` within the root to append styles to.
+     * This is ignored if `hasShadow` is `false`.
+     *
+     * This can be useful for fixing issues where the default append of a style
+     * sheet into the `ShadowRoot` conflicts with how DOM is created in
+     * `template` (f.e.  if the user's DOM creation in `template` clears the
+     * `ShadowRoot` content, or etc, then we want to place the stylesheet
+     * somewhere else).
+     */
+    get styleRoot() {
+        return this.root;
+    }
+    attachShadow(options) {
+        if (this[root])
+            console.warn('Element already has a root defined.');
+        return (this[root] = super.attachShadow(options));
+    }
+    #disposeTemplate;
+    connectedCallback() {
+        const template = this.template;
+        if (template)
+            this.#disposeTemplate = render(typeof template === 'function' ? template.bind(this) : () => template, this.root);
+        this.#setStyle();
+    }
+    disconnectedCallback() {
+        this.stopEffects();
+        this.#disposeTemplate?.();
+        this.#cleanupStyle();
+    }
+    static #styleRootNodeRefCountPerTagName = new WeakMap();
+    #styleRootNode = null;
+    #defaultHostStyle = (hostSelector) => /*css*/ `${hostSelector} {
+		display: block;
+	}`;
+    static #elementId = 0;
+    #id = _a.#elementId++;
+    #dynamicStyle = null;
+    #setStyle() {
+        ctor = this.constructor;
+        const staticCSS = typeof ctor.css === 'function' ? (ctor.css = ctor.css()) : ctor.css || '';
+        const instanceCSS = typeof this.css === 'function' ? this.css() : this.css || '';
+        if (this.hasShadow) {
+            const hostSelector = ':host';
+            const staticStyle = document.createElement('style');
+            staticStyle.innerHTML = `
+				${this.#defaultHostStyle(hostSelector)}
+				${staticCSS}
+				${instanceCSS}
+			`;
+            // If this element has a shadow root, put the style there. This is the
+            // standard way to scope styles to a component.
+            this.styleRoot.appendChild(staticStyle);
+            // TODO use adoptedStyleSheets when that is supported by FF and Safari
+        }
+        else {
+            // When this element doesn't have a shadow root, then we want to append the
+            // style only once to the rootNode where it lives (a ShadoowRoot or
+            // Document). If there are multiple of this same element in the rootNode,
+            // then the style will be added only once and will style all the elements
+            // in the same rootNode.
+            // Because we're connected, getRootNode will return either the
+            // Document, or a ShadowRoot.
+            const rootNode = this.getRootNode();
+            this.#styleRootNode = rootNode === document ? document.head : rootNode;
+            let refCountPerTagName = _a.#styleRootNodeRefCountPerTagName.get(this.#styleRootNode);
+            if (!refCountPerTagName)
+                _a.#styleRootNodeRefCountPerTagName.set(this.#styleRootNode, (refCountPerTagName = {}));
+            const refCount = refCountPerTagName[this.tagName] || 0;
+            refCountPerTagName[this.tagName] = refCount + 1;
+            if (refCount === 0) {
+                const hostSelector = this.tagName.toLowerCase();
+                const staticStyle = document.createElement('style');
+                staticStyle.innerHTML = `
+					${this.#defaultHostStyle(hostSelector)}
+					${staticCSS ? staticCSS.replaceAll(':host', hostSelector) : staticCSS}
+				`;
+                staticStyle.id = this.tagName.toLowerCase();
+                this.#styleRootNode.appendChild(staticStyle);
+            }
+            if (instanceCSS) {
+                // For dynamic per-instance styles, make one style element per
+                // element instance so it contains that element's unique styles,
+                // associated to a unique attribute selector.
+                const id = this.tagName.toLowerCase() + '-' + this.#id;
+                // Add the unique attribute that the style selector will target.
+                this.setAttribute(id, '');
+                // TODO Instead of creating one style element per custom
+                // element, we can add the styles to a single style element. We
+                // can use the CSS OM instead of innerHTML to make it faster
+                // (but innerHTML is nice for dev mode because it shows the
+                // content in the DOM when looking in element inspector, so
+                // allow option for both).
+                const instanceStyle = (this.#dynamicStyle = document.createElement('style'));
+                instanceStyle.id = id;
+                instanceStyle.innerHTML = instanceCSS.replaceAll(':host', `[${id}]`);
+                const rootNode = this.getRootNode();
+                this.#styleRootNode = rootNode === document ? document.head : rootNode;
+                this.#styleRootNode.appendChild(instanceStyle);
+            }
+        }
+    }
+    #cleanupStyle() {
+        do {
+            if (this.hasShadow)
+                break;
+            const refCountPerTagName = _a.#styleRootNodeRefCountPerTagName.get(this.#styleRootNode);
+            if (!refCountPerTagName)
+                break;
+            let refCount = refCountPerTagName[this.tagName];
+            if (refCount === undefined)
+                break;
+            refCountPerTagName[this.tagName] = --refCount;
+            if (refCount === 0) {
+                delete refCountPerTagName[this.tagName];
+                // TODO PERF Improve performance by saving the style
+                // instance on a static var, instead of querying for it.
+                const style = this.#styleRootNode.querySelector('#' + this.tagName);
+                style?.remove();
+            }
+        } while (false);
+        if (this.#dynamicStyle)
+            this.#dynamicStyle.remove();
+    }
+    // not used currently, but we'll leave this here so that child classes can
+    // call super, and that way we can add an implementation later when needed.
+    adoptedCallback() { }
+}
+_a = LumeElement;
+
+// Until decorators land natively, we need this shim so that we can use
+// decorator metadata. https://github.com/microsoft/TypeScript/issues/53461
+// @ts-expect-error readonly
+Symbol.metadata ??= Symbol.for('Symbol.metadata');
+
+/**
+ * This is an identity "template string tag function", which when applied to a
+ * template string returns the equivalent of not having used a template tag on
+ * a template string to begin with.
+ *
+ * For example, The following two strings are equivalent:
+ *
+ * ```js
+ * const number = 42
+ * const string1 = `meaning of life: ${number}`
+ * const string2 = identityTemplateTag`meaning of life: ${number}`
+ * ```
+ *
+ * This can be useful when assigning it to variables like `css` or `html` in
+ * order to trigger syntax checking and highlighting inside template strings
+ * without actually doing anything to the string (a no-op).
+ */
+function camelCaseToDash(str) {
+    return str.replace(/([a-zA-Z])(?=[A-Z])/g, '$1-').toLowerCase();
+}
+function defineProp(obj, prop, value) {
+    Object.defineProperty(obj, prop, {
+        value,
+        writable: true,
+        configurable: true,
+        enumerable: true,
+    });
+}
+// EXAMPLES
+// type foo0 = JoinToCamelCase<'fooBarBaz'> // Becomes "foobabaz"
+// type foo3 = JoinToCamelCase<'foo-bar-baz'> // Becomes "fooBarBaz"
+// type foo5 = JoinToCamelCase<'foo bar baz', ' '> // Becomes "fooBarBaz"
+// type foo6 = JoinToCamelCase<'foo_bar_baz', '_'> // Becomes "fooBarBaz"
+// type foo14 = JoinToCamelCase<'foo:bar:baz', ':'> // Becomes "fooBarBaz"
+// type foo4 = JoinToCamelCase<'foobarbaz'> // the same
+// type foo7 = SplitCamelCase<'fooBar'> // Becomes "foo-bar"
+// type foo12 = SplitCamelCase<'fooBar', '_'> // Becomes "foo_bar"
+// type foo13 = SplitCamelCase<'fooBar', ' '> // Becomes "foo bar"
+// type foo11 = SplitCamelCase<'foo-bar'> // the same
+// type foo8 = SplitCamelCase<'foo bar'> // the same
+// type foo9 = SplitCamelCase<'foo_bar'> // the same
+// type foo10 = SplitCamelCase<'foobar'> // the same
+// type t = Join<['foo', 'bar'], ':'> // Becomes "foo:bar"
+//
+// interface KebabCased {
+//     "foo-bar": string;
+//     foo: number;
+// }
+// type CamelCased = CamelCasedProps<KebabCased>;
+// Becomes
+// {
+//    fooBar: string;
+//    foo: number;
+// }
+
+const __classFinishers = [];
+function attribute(handlerOrValue, context) {
+    // if used as a decorator directly with no options
+    if (arguments.length === 2)
+        return handleAttributeDecoration(handlerOrValue, context, undefined);
+    // otherwise used as a decorator factory, possibly being passed options, like `@attribute({...})`
+    const handler = handlerOrValue;
+    return (value, context) => handleAttributeDecoration(value, context, handler);
+    // TODO throw an error for cases when @element is not used on a class with @attribute decorations, similar to classy-solid @signal/@reactive.
+}
+function handleAttributeDecoration(value, context, attributeHandler = {}) {
+    const { kind, name, private: isPrivate, static: isStatic, metadata } = context;
+    // Check only own metadata.noSignal, we don't want to use the one inherited from a base class.
+    const noSignal = (Object.hasOwn(metadata, 'noSignal') && metadata.noSignal) || undefined;
+    const useSignal = !noSignal?.has(name);
+    if (typeof name === 'symbol')
+        throw new Error('@attribute is not supported on symbol fields yet.');
+    if (isPrivate)
+        throw new Error('@attribute is not supported on private fields yet.');
+    if (isStatic)
+        throw new Error('@attribute is not supported on static fields.');
+    // TODO decorate on prototype? Or decorate on instance?
+    __classFinishers.push((Class) => __setUpAttribute(Class, name, attributeHandler));
+    if (kind === 'field') {
+        const signalInitializer = useSignal ? signal(value, context) : (v) => v;
+        return function (initialValue) {
+            initialValue = signalInitializer(initialValue);
+            // Typically the first initializer to run for a class field (on
+            // instantiation of the first instance of its class) will be our
+            // source of truth for our default attribute value, but we check for
+            // 'default' in attributeHandler just in case that a an attribute
+            // decorator was passed an explicit default, f.e.
+            // `@attribute({default: 123})`.
+            if (!('default' in attributeHandler))
+                attributeHandler.default = initialValue;
+            return initialValue;
+        };
+    }
+    else if (kind === 'getter' || kind === 'setter') {
+        if (useSignal)
+            signal(value, context);
+    }
+    else {
+        throw new Error('@attribute is only for use on fields, getters, and setters. Auto accessor support is coming next if there is demand for it.');
+    }
+    return undefined; // shush TS
+}
+// TODO Do similar as with the following attributeChangedCallback prototype
+// patch, but also with (dis)connected callbacks which can call an instance's
+// template method, so users don't have to extend from the LumeElement base class.
+// Extending from the LumeElement base class will be the method that non-decorator
+// users must use.
+function __setUpAttribute(ctor, propName, attributeHandler) {
+    if (
+    //
+    !ctor.observedAttributes ||
+        !ctor.hasOwnProperty('observedAttributes')) {
+        const inheritedAttrs = ctor.__proto__.observedAttributes;
+        // @prod-prune
+        if (inheritedAttrs && !Array.isArray(inheritedAttrs)) {
+            throw new TypeError('observedAttributes is in the wrong format. Did you forget to decorate your custom element class with the `@element` decorator?');
+        }
+        defineProp(ctor, 'observedAttributes', [...(inheritedAttrs || [])]);
+    }
+    // @prod-prune
+    if (!Array.isArray(ctor.observedAttributes)) {
+        throw new TypeError('observedAttributes is in the wrong format. Maybe you forgot to decorate your custom element class with the `@element` decorator.');
+    }
+    const attrName = camelCaseToDash(propName);
+    if (!ctor.observedAttributes.includes(attrName))
+        ctor.observedAttributes.push(attrName);
+    mapAttributeToProp(ctor.prototype, attrName, propName, attributeHandler);
+}
+const hasAttributeChangedCallback = Symbol('hasAttributeChangedCallback');
+const attributesToProps = Symbol('attributesToProps');
+// This stores attribute definitions as an inheritance chain on the constructor.
+function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
+    // Only define attributeChangedCallback once.
+    if (!prototype[hasAttributeChangedCallback]) {
+        prototype[hasAttributeChangedCallback] = true;
+        const originalAttrChanged = prototype.attributeChangedCallback;
+        prototype.attributeChangedCallback = function (attr, oldVal, newVal) {
+            // If the class already has an attributeChangedCallback, let is run,
+            // and let it call or not call super.attributeChangedCallback.
+            if (originalAttrChanged) {
+                originalAttrChanged.call(this, attr, oldVal, newVal);
+            }
+            // Otherwise, let's not intentionally break inheritance and be sure
+            // we call the super method (if it exists).
+            else {
+                // This is equivalent to `super.attributeChangedCallback?()`
+                prototype.__proto__?.attributeChangedCallback?.call(this, attr, oldVal, newVal);
+            }
+            // map from attribute to property
+            const prop = this[attributesToProps]?.[attr];
+            if (prop) {
+                const handler = prop.attributeHandler;
+                // prettier-ignore
+                this[prop.name] = !handler
+                    ? newVal
+                    : newVal === null // attribute removed
+                        ? 'default' in handler
+                            ? handler.default
+                            : null
+                        : handler.from
+                            ? handler.from(newVal)
+                            : newVal;
+            }
+        };
+    }
+    // Extend the current prototype's attributesToProps object from the super
+    // prototype's attributesToProps object.
+    //
+    // We use inheritance here or else all classes would pile their
+    // attribute-prop definitions on a shared base class (they can clash,
+    // override each other willy nilly and seemingly randomly).
+    if (!prototype.hasOwnProperty(attributesToProps)) {
+        // using defineProperty so that it is non-writable, non-enumerable, non-configurable
+        Object.defineProperty(prototype, attributesToProps, {
+            value: {
+                __proto__: prototype[attributesToProps] || Object.prototype,
+            },
+        });
+        // Object.create(prototype[attributesToProps] || Object.prototype)
+    }
+    prototype[attributesToProps][attr] = { name: prop, attributeHandler };
+}
+const toString = (str) => str;
+/**
+ * An attribute type for use in the `static observedAttributeHandlers` map
+ * when not using decorators.
+ *
+ * Example usage without decorators:
+ *
+ * ```js
+ * element('my-el')(
+ *   class MyEl extends LumeElement {
+ *     static observedAttributeHandlers = {
+ *       name: attribute.string()
+ *     }
+ *
+ *     name = "honeybun" // default value when attribute removed
+ *   }
+ * )
+ * ```
+ */
+attribute.string = (() => ({ from: toString }));
+/**
+ * This is essentially an alias for `@attribute`. You can just use `@attribute`
+ * if you want a more concise definition.
+ *
+ * A decorator for mapping a string-valued attribute to a JS property. All
+ * attribute values get passed as-is, except for `null` (i.e. when an attribute
+ * is removed) which gets converted into an empty string or the default value of
+ * the class field. The handling of `null` (on attribute removed) is the only
+ * difference between this and plain `@attribute`, where `@attribute` will pass
+ * along `null`.
+ *
+ * Example decorator usage:
+ *
+ * ```js
+ * ⁣@element('my-el')
+ * class MyEl extends LumeElement {
+ *   ⁣@stringAttribute color = "skyblue"
+ * }
+ * ```
+ *
+ * Example HTML attribute usage:
+ *
+ * ```html
+ * <!-- el.color === "", because an attribute without a written value has an empty string value. -->
+ * <my-el color></my-el>
+ *
+ * <!-- el.color === "skyblue", based on the default value defined on the class field. -->
+ * <my-el></my-el>
+ *
+ * <!-- el.color === "deeppink" -->
+ * <my-el color="deeppink"></my-el>
+ *
+ * <!-- el.color === "4.5" -->
+ * <my-el color="4.5"></my-el>
+ *
+ * <!-- el.color === "any string in here" -->
+ * <my-el color="any string in here"></my-el>
+ * ```
+ */
+function stringAttribute(value, context) {
+    return attribute(attribute.string())(value, context);
+}
+const toNumber = (str) => +str;
+/**
+ * An attribute type for use in the `static observedAttributeHandlers` map
+ * when not using decorators.
+ *
+ * Example usage without decorators:
+ *
+ * ```js
+ * element('my-el')(
+ *   class MyEl extends LumeElement {
+ *     static observedAttributeHandlers = {
+ *       money: attribute.number()
+ *     }
+ *
+ *     money = 1000 // default value when attribute removed
+ *   }
+ * )
+ * ```
+ */
+attribute.number = (() => ({ from: toNumber }));
+/**
+ * A decorator for mapping a number attribute to a JS property. The string value
+ * of the attribute will be parsed into a number.
+ *
+ * Example decorator usage:
+ *
+ * ```js
+ * ⁣@element('my-el')
+ * class MyEl extends LumeElement {
+ *   ⁣@numberAttribute money = 123
+ * }
+ * ```
+ *
+ * Example HTML attribute usage:
+ *
+ * ```html
+ * <!-- el.money === 0, because an empty string gets coerced into 0. -->
+ * <my-el money></my-el>
+ *
+ * <!-- el.money === 123, based on the default value defined on the class field. -->
+ * <my-el></my-el>
+ *
+ * <!-- el.money === 10 -->
+ * <my-el money="10"></my-el>
+ *
+ * <!-- el.money === 4.5 -->
+ * <my-el money="4.5"></my-el>
+ *
+ * <!-- el.money === Infinity -->
+ * <my-el money="Infinity"></my-el>
+ *
+ * <!-- el.money === NaN -->
+ * <my-el money="NaN"></my-el>
+ *
+ * <!-- el.money === NaN -->
+ * <my-el money="blahblah"></my-el>
+ * ```
+ */
+function numberAttribute(value, context) {
+    return attribute(attribute.number())(value, context);
+}
+const toBoolean = (str) => str !== 'false';
+/**
+ * An attribute type for use in the `static observedAttributeHandlers` map
+ * when not using decorators.
+ *
+ * Example usage without decorators:
+ *
+ * ```js
+ * element('my-el')(
+ *   class MyEl extends LumeElement {
+ *     static observedAttributeHandlers = {
+ *       hasCash: attribute.boolean()
+ *     }
+ *
+ *     hasCash = true // default value when attribute removed
+ *   }
+ * )
+ * ```
+ */
+attribute.boolean = (() => ({ from: toBoolean }));
+/**
+ * A decorator for mapping a boolean attribute to a JS property. The string
+ * value of the attribute will be converted into a boolean value on the JS
+ * property. A string value of `"false"` and a value of `null` (attribute
+ * removed) will be converted into a `false` value on the JS property. All other
+ * attribute values (strings) will be converted into `true`.
+ *
+ * Example decorator usage:
+ *
+ * ```js
+ * ⁣@element('my-el')
+ * class MyEl extends LumeElement {
+ *   ⁣@booleanAttribute hasMoney = true
+ *   ⁣@booleanAttribute excited = false
+ * }
+ * ```
+ *
+ * Example HTML attribute usage:
+ *
+ * ```html
+ * <!-- el.hasMoney === true, el.excited === true -->
+ * <my-el has-money excited></my-el>
+ *
+ * <!-- el.hasMoney === true, el.excited === false, based on the default values defined
+ * on the class fields. Start the a class field with a value of `false` to have
+ * behavior similar to traditional DOM boolean attributes where the presence of
+ * the attribute determines the boolean value of its respective JS property. -->
+ * <my-el></my-el>
+ *
+ * <!-- el.hasMoney === false, el.excited === true -->
+ * <my-el has-money="false"></my-el>
+ *
+ * <!-- el.hasMoney === true, el.excited === true -->
+ * <my-el has-money="true"></my-el>
+ *
+ * <!-- el.hasMoney === true, el.excited === true -->
+ * <my-el has-money=""></my-el>
+ *
+ * <!-- el.hasMoney === true, el.excited === true -->
+ * <my-el has-money="blahblah"></my-el>
+ * ```
+ */
+function booleanAttribute(value, context) {
+    return attribute(attribute.boolean())(value, context);
+}
+
+function element(tagNameOrClass, autoDefineOrContext) {
+    let tagName = '';
+    let autoDefine = !!(true);
+    // when called as a decorator factory, f.e. `@element('foo-bar') class MyEl ...` or `element('my-el')(class MyEl ...)`
+    {
+        tagName = tagNameOrClass;
+        return (Class, context) => {
+            return applyElementDecoration(Class, context, tagName, autoDefine);
+        };
+    }
+}
+function applyElementDecoration(Class, context, tagName, autoDefine) {
+    if (typeof Class !== 'function' || (context && context.kind !== 'class'))
+        throw new Error('@element is only for use on classes.');
+    const { metadata = {} } = context ?? {}; // context may be undefined with plain-JS element() usage.
+    // Check only own metadata.noSignal, we don't want to use the one inherited from a base class.
+    const noSignal = (Object.hasOwn(metadata, 'noSignal') && metadata.noSignal) || undefined;
+    let Ctor = Class;
+    const attrs = Ctor.observedAttributes;
+    if (Ctor.hasOwnProperty('elementName'))
+        tagName = Ctor.elementName || tagName;
+    else
+        Ctor.elementName = tagName;
+    if (Array.isArray(attrs)) ;
+    else if (attrs && typeof attrs === 'object') {
+        // When we're not using decorators, our users have the option to
+        // provide an observedAttributes object (instead of the usual
+        // array) to specify attribute types. In this case, we need to
+        // track the types, and convert observedAttributes to an array so
+        // the browser will understand it like usual.
+        // Delete it, so that it will be re-created as an array by the
+        // following __setUpAttribute calls.
+        Ctor.observedAttributes = undefined;
+        const stack = new Error().stack;
+        console.warn('Defining the static observedAttributes property as a map of attribute names to attribute handlers is now deprecated, please use the static observedAttributeHandlers property to define the map instead.\n' +
+            stack);
+        const _attrs = attrs;
+        for (const prop in _attrs)
+            __setUpAttribute(Ctor, prop, attrs[prop]);
+    }
+    const handlers = Ctor.observedAttributeHandlers;
+    // if (handlers) for (const prop in handlers) __setUpAttribute(Ctor, prop, handlers[prop]!)
+    if (handlers)
+        for (const prop of Object.keys(handlers))
+            __setUpAttribute(Ctor, prop, handlers[prop]);
+    // We need to compose with @reactive so that it will signalify any @signal properties.
+    Ctor = reactive(Ctor, context);
+    class ElementDecorator extends Ctor {
+        constructor(...args) {
+            // @ts-expect-error we don't know what the user's args will be, just pass them all.
+            super(...args);
+            // Untrack to be sure we don't cause dependencies during creation of
+            // objects (super() is already untracked by the reactive decorator).
+            untrack(() => {
+                handlePreUpgradeValues(this);
+                const propsToSignalify = [];
+                const attrsToProps = ElementDecorator.prototype[attributesToProps] ?? {};
+                for (const propSpec of Object.values(attrsToProps)) {
+                    const prop = propSpec.name;
+                    const useSignal = !noSignal?.has(prop);
+                    if (useSignal)
+                        propsToSignalify.push(prop);
+                    const handler = propSpec.attributeHandler;
+                    // Default values for fields are handled in their initializer,
+                    // and this catches default values for getters/setters.
+                    if (handler && !('default' in handler))
+                        handler.default = this[prop];
+                }
+                // This is signalifying any attribute props that may have been
+                // defined in `static observedAttribute` rather than with @attribute
+                // decorator (which composes @signal), so that we also cover
+                // non-decorator usage until native decorators are out.
+                //
+                // Note, `signalify()` returns early if a property was already
+                // signalified by @attribute (@signal), so this isn't going to
+                // double-signalify.
+                //
+                // TODO: Once native decorators are out, remove this, and remove
+                // non-decorator usage because everyone will be able to use
+                // decorators. We can also then delete `noSignal` from `metadata`
+                // here in the class as it is no longer needed at class
+                // instantiation time.
+                //
+                // Having to duplicate keys in observedAttributes as well as class
+                // fields is more room for human error, so it'll be nice to remove
+                // non-decorator usage.
+                if (propsToSignalify.length)
+                    signalify(this, ...propsToSignalify);
+            });
+        }
+    }
+    const classFinishers = [...__classFinishers];
+    __classFinishers.length = 0;
+    function finishClass() {
+        for (const finisher of classFinishers)
+            finisher(ElementDecorator);
+        if (tagName && autoDefine)
+            // guard against missing DOM API (f.e. SSR)
+            globalThis.window?.customElements?.define(tagName, ElementDecorator);
+    }
+    if (context?.addInitializer) {
+        // Use addInitializer to run logic after the class is fully defined
+        // (after class static initializers have ran, otherwise the class
+        // decorator runs before any static members are initialized)
+        context.addInitializer(finishClass);
+    }
+    else {
+        // For JS without decorator support fall back manually running the
+        // initializer because `context` will be `undefined` in that scenario,
+        // so there won't be a `context.addInitializer` function to call.
+        // In this case all static members are already initialized too.
+        //
+        // TODO: Once decorators are out natively, deprecate and remove this
+        // non-decorator support
+        finishClass();
+    }
+    return ElementDecorator;
+}
+function handlePreUpgradeValues(self) {
+    if (!(self instanceof LumeElement))
+        return;
+    // @ts-expect-error, protected access is ok
+    for (const [key, value] of self._preUpgradeValues) {
+        // If the key is missing, it has already been handled, continue.
+        if (!(key in self))
+            continue;
+        // Untrack the pre-upgrade value so that a subclass
+        // of this class won't re-run this same logic again.
+        // TODO needs testing.
+        // @ts-expect-error, protected access is ok
+        self._preUpgradeValues.delete(key);
+        // Unshadow any possible inherited accessor only if
+        // there is not an accessor. If there is an accessor it
+        // handles inheritance its own way.
+        const desc = Object.getOwnPropertyDescriptor(self, key);
+        if (desc && 'value' in desc) {
+            // @ts-expect-error dynamic decorator stuff, has no impact on user types.
+            delete self[key];
+        }
+        // Set the pre-upgrade value (allowing any inherited
+        // accessor to operate on it).
+        // @ts-expect-error dynamic decorator stuff, has no impact on user types.
+        self[key] = value;
+    }
+}
+
+const classnames = ["container","segments","segment","character","textarea"];
+
+const css = ":host {\n  display: contents;\n\n  & .container {\n    padding: inherit;\n    padding-top: inherit;\n    padding-right: inherit;\n    padding-bottom: inherit;\n    padding-left: inherit;\n    width: inherit;\n    min-width: inherit;\n    height: inherit;\n    min-height: inherit;\n  }\n}\n\n.container {\n  display: flex;\n  position: relative;\n  flex: 1;\n  z-index: 1;\n  box-sizing: border-box;\n  background-color: var(--background-color);\n  overflow: auto;\n  color: var(--foreground-color);\n  line-height: var(--line-height);\n\n  .segments {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: layout;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .segment {\n      position: absolute;\n      top: calc(var(--line-number) * var(--char-height));\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & pre {\n    margin: 0px;\n\n    & span {\n      margin: 0px;\n      background: transparent !important;\n    }\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: calc(var(--line-size) * 1ch);\n    height: 100%;\n    min-height: calc(var(--line-count) * 1em);\n    overflow: hidden;\n    resize: none;\n    color: transparent;\n    caret-color: var(--foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n    white-space: nowrap;\n  }\n\n  & .textarea::selection {\n    background: var(--selection-color);\n  }\n}\n";
 
 const cache = /* @__PURE__ */ new Map();
 function sheet(text) {
@@ -5549,7 +5445,7 @@ function _checkInRHS(e) {
   if (Object(e) !== e) throw TypeError("right-hand side of 'in' should be an object, got " + (null !== e ? typeof e : "null"));
   return e;
 }
-const TmTextarea$1 = createTmTextarea(Object.fromEntries(classnames.map((name) => [name, name])));
+const TmTextarea = createTmTextarea(Object.fromEntries(classnames.map((name) => [name, name])));
 const TmTextareaStyleSheet = sheet(css);
 _classDecs = [element("tm-textarea")];
 let _TmTextareaElement;
@@ -5574,7 +5470,7 @@ class TmTextareaElement extends LumeElement {
     if (this.stylesheet) {
       adoptedStyleSheets.push(sheet(this.stylesheet));
     }
-    return createComponent(TmTextarea$1, {
+    return createComponent(TmTextarea, {
       get lineHeight() {
         return _self$.lineHeight;
       },
@@ -5603,19 +5499,6 @@ class TmTextareaElement extends LumeElement {
     _initClass();
   }
 }
-
-const container = "_container_ol06p_4";
-const segments = "_segments_ol06p_27";
-const segment = "_segment_ol06p_27";
-const textarea = "_textarea_ol06p_54";
-const styles = {
-	container: container,
-	segments: segments,
-	segment: segment,
-	textarea: textarea
-};
-
-const TmTextarea = createTmTextarea(styles);
 
 const grammars = [
   "abap",
@@ -5903,16 +5786,17 @@ const themes = [
   "vitesse-light"
 ];
 
-var _tmpl$ = /* @__PURE__ */ template(`<div class=app><div class=side-panel><h1>Solid Textmate Textarea</h1><footer><div><label for=theme>themes</label><select id=theme></select></div><div><label for=lang>languages</label><select id=lang></select></div><br><div><label for=LOC>LOC</label><input id=LOC type=number></div><div><label for=padding>padding</label><input id=padding type=number></div><div><label for=font-size>font-size</label><input id=font-size type=number></div><div><label for=editable>editable</label><button id=editable></button></div></footer></div><main><div>`), _tmpl$2 = /* @__PURE__ */ template(`<option>`);
+const test = "/**\n * @template const T\n * @param {T} value\n * @returns SignalObject<T>\n */\nfunction signal(value) {\n  return [value]\n}\n\nconst [big] = signal('mistqke')\n";
+
+var _tmpl$ = /* @__PURE__ */ template(`<div class=app><div class=side-panel><h1>Solid Textmate Textarea</h1><footer><div><label for=theme>themes</label><select id=theme></select></div><div><label for=lang>languages</label><select id=lang></select></div><br><div><label for=LOC>LOC</label><input id=LOC type=number></div><div><label for=padding>padding</label><input id=padding type=number></div><div><label for=font-size>font-size</label><input id=font-size type=number></div><div><label for=line-numbers>Line Numbers</label><button id=line-numbers></button></div><div><label for=editable>editable</label><button id=editable></button></div></footer></div><main><div>`), _tmpl$2 = /* @__PURE__ */ template(`<option>`);
 const App = () => {
-  createSignal("solid");
   const [theme, setCurrentThemeName] = createSignal("light-plus");
-  const [grammar, setCurrentLanguageName] = createSignal("source.tsx");
+  const [grammar, setCurrentLanguageName] = createSignal("tsx");
   const [fontSize, setFontSize] = createSignal(10);
-  const [padding, setPadding] = createSignal(5);
+  const [padding, setPadding] = createSignal(20);
   const [editable, setEditable] = createSignal(true);
-  const [_value, setValue] = createSignal(self$1);
-  const value = () => loopLines(_value(), LOC());
+  const [lineNumbers, setLineNumbers] = createSignal(false);
+  const value = () => loopLines(test, LOC());
   const [LOC, setLOC] = createSignal(1e4);
   function loopLines(input, lineCount) {
     const lines = input.split("\n");
@@ -5924,51 +5808,60 @@ const App = () => {
     return result.trim();
   }
   return (() => {
-    var _el$ = _tmpl$(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild, _el$4 = _el$3.nextSibling, _el$5 = _el$4.firstChild, _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling, _el$8 = _el$5.nextSibling, _el$9 = _el$8.firstChild, _el$10 = _el$9.nextSibling, _el$11 = _el$8.nextSibling, _el$12 = _el$11.nextSibling, _el$13 = _el$12.firstChild, _el$14 = _el$13.nextSibling, _el$15 = _el$12.nextSibling, _el$16 = _el$15.firstChild, _el$17 = _el$16.nextSibling, _el$18 = _el$15.nextSibling, _el$19 = _el$18.firstChild, _el$20 = _el$19.nextSibling, _el$21 = _el$18.nextSibling, _el$22 = _el$21.firstChild, _el$23 = _el$22.nextSibling, _el$24 = _el$2.nextSibling, _el$25 = _el$24.firstChild;
+    var _el$ = _tmpl$(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild, _el$4 = _el$3.nextSibling, _el$5 = _el$4.firstChild, _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling, _el$8 = _el$5.nextSibling, _el$9 = _el$8.firstChild, _el$10 = _el$9.nextSibling, _el$11 = _el$8.nextSibling, _el$12 = _el$11.nextSibling, _el$13 = _el$12.firstChild, _el$14 = _el$13.nextSibling, _el$15 = _el$12.nextSibling, _el$16 = _el$15.firstChild, _el$17 = _el$16.nextSibling, _el$18 = _el$15.nextSibling, _el$19 = _el$18.firstChild, _el$20 = _el$19.nextSibling, _el$21 = _el$18.nextSibling, _el$22 = _el$21.firstChild, _el$23 = _el$22.nextSibling, _el$24 = _el$21.nextSibling, _el$25 = _el$24.firstChild, _el$26 = _el$25.nextSibling, _el$27 = _el$2.nextSibling, _el$28 = _el$27.firstChild;
     _el$7.$$input = (e) => setCurrentThemeName(e.currentTarget.value);
     insert(_el$7, createComponent(For, {
-      get each() {
-        return Object.keys(themes);
-      },
+      each: themes,
       children: (theme2) => (() => {
-        var _el$26 = _tmpl$2();
-        insert(_el$26, theme2);
-        return _el$26;
+        var _el$29 = _tmpl$2();
+        insert(_el$29, theme2);
+        return _el$29;
       })()
     }));
     _el$10.$$input = (e) => setCurrentLanguageName(e.currentTarget.value);
     insert(_el$10, createComponent(For, {
-      get each() {
-        return Object.keys(grammars);
-      },
-      children: (language) => (() => {
-        var _el$27 = _tmpl$2();
-        insert(_el$27, language);
-        return _el$27;
+      each: grammars,
+      children: (grammar2) => (() => {
+        var _el$30 = _tmpl$2();
+        insert(_el$30, grammar2);
+        return _el$30;
       })()
     }));
     _el$14.$$input = (e) => setLOC(+e.currentTarget.value);
     _el$17.$$input = (e) => setPadding(+e.currentTarget.value);
     _el$20.$$input = (e) => setFontSize(+e.currentTarget.value);
     _el$23.$$click = (e) => {
-      setEditable((editable2) => !editable2);
+      setLineNumbers((bool) => !bool);
     };
-    insert(_el$23, () => editable() ? "enabled" : "disabled");
-    _el$25.style.setProperty("resize", "both");
-    _el$25.style.setProperty("height", "100px");
-    _el$25.style.setProperty("width", "100px");
-    _el$25.style.setProperty("overflow", "hidden");
-    insert(_el$25, createComponent(TmTextarea, {
+    insert(_el$23, () => lineNumbers() ? "enabled" : "disabled");
+    _el$26.$$click = (e) => {
+      setEditable((bool) => !bool);
+    };
+    insert(_el$26, () => editable() ? "enabled" : "disabled");
+    _el$28.style.setProperty("resize", "both");
+    _el$28.style.setProperty("height", "300px");
+    _el$28.style.setProperty("width", "500px");
+    _el$28.style.setProperty("overflow", "hidden");
+    insert(_el$28, createComponent(TmTextarea$1, {
       lineHeight: 16,
       get value() {
         return value();
       },
-      grammar: "tsx",
-      theme: "dark-plus",
-      style: {
-        height: "100%",
-        width: "100%",
-        padding: "20px"
+      get grammar() {
+        return grammar();
+      },
+      get theme() {
+        return theme();
+      },
+      get style() {
+        return {
+          height: "100%",
+          width: "100%",
+          padding: `${padding()}px`
+        };
+      },
+      get ["class"]() {
+        return lineNumbers() ? "line-numbers" : void 0;
       }
     }));
     createRenderEffect(() => _el$7.value = theme());

@@ -1,7 +1,7 @@
 :host {
   display: contents;
 
-  & ._container_ol06p_4 {
+  & ._container_19uok_4 {
     padding: inherit;
     padding-top: inherit;
     padding-right: inherit;
@@ -14,7 +14,7 @@
   }
 }
 
-._container_ol06p_4 {
+._container_19uok_4 {
   display: flex;
   position: relative;
   flex: 1;
@@ -23,8 +23,9 @@
   background-color: var(--background-color);
   overflow: auto;
   color: var(--foreground-color);
+  line-height: var(--line-height);
 
-  ._segments_ol06p_27 {
+  ._segments_19uok_28 {
     display: block;
     position: absolute;
     z-index: 1;
@@ -37,9 +38,19 @@
     font-family: monospace;
     white-space: pre;
 
-    & ._segment_ol06p_27 {
-      position: fixed;
+    & ._segment_19uok_28 {
+      position: absolute;
+      top: calc(var(--line-number) * var(--char-height));
     }
+  }
+
+  & ._character_19uok_47 {
+    position: absolute;
+    align-self: start;
+    visibility: hidden;
+    pointer-events: none;
+    font-size: inherit;
+    line-height: inherit;
   }
 
   & pre {
@@ -51,17 +62,15 @@
     }
   }
 
-  & ._textarea_ol06p_54 {
-    top: 0px;
-    right: 0px;
-    bottom: 0px;
-    left: 0px;
+  & ._textarea_19uok_65 {
     transition: color 0.5s;
     outline: none;
     border: none;
     background: transparent;
     padding: 0px;
+    width: 100%;
     min-width: calc(var(--line-size) * 1ch);
+    height: 100%;
     min-height: calc(var(--line-count) * 1em);
     overflow: hidden;
     resize: none;
@@ -75,7 +84,7 @@
     white-space: nowrap;
   }
 
-  & ._textarea_ol06p_54::selection {
+  & ._textarea_19uok_65::selection {
     background: var(--selection-color);
   }
 }
@@ -179,4 +188,13 @@ main {
   z-index: 1;
   overflow: auto;
   resize: both;
+}
+
+.line-numbers pre::before {
+  display: inline-block;
+  opacity: 0.5;
+  counter-reset: variable var(--line-number);
+  min-width: 7ch;
+  content: counter(variable);
+  color: var(--foreground-color);
 }

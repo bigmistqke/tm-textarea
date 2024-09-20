@@ -186,14 +186,20 @@ main {
 
 .resize-container {
   z-index: 1;
-  overflow: auto;
+  border-radius: 5px;
+  border-bottom-right-radius: 2px;
+  background: lightgrey;
+  padding: 7px;
+  width: 500px;
+  height: 300px;
+  overflow: hidden;
   resize: both;
 }
 
 .line-numbers pre::before {
   display: inline-block;
   opacity: 0.5;
-  counter-reset: variable var(--line-number);
+  counter-reset: variable calc(var(--line-number) + 1);
   min-width: 7ch;
   content: counter(variable);
   color: var(--foreground-color);

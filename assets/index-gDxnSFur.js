@@ -5788,7 +5788,7 @@ const themes = [
 
 const test = "/**\n * @template const T\n * @param {T} value\n * @returns SignalObject<T>\n */\nfunction signal(value) {\n  return [value]\n}\n\nconst [big] = signal('mistqke')\n";
 
-var _tmpl$ = /* @__PURE__ */ template(`<div class=app><div class=side-panel><h1>Solid Textmate Textarea</h1><footer><div><label for=theme>themes</label><select id=theme></select></div><div><label for=lang>languages</label><select id=lang></select></div><br><div><label for=LOC>LOC</label><input id=LOC type=number></div><div><label for=padding>padding</label><input id=padding type=number></div><div><label for=font-size>font-size</label><input id=font-size type=number></div><div><label for=line-numbers>Line Numbers</label><button id=line-numbers></button></div><div><label for=editable>editable</label><button id=editable></button></div></footer></div><main><div>`), _tmpl$2 = /* @__PURE__ */ template(`<option>`);
+var _tmpl$ = /* @__PURE__ */ template(`<div class=app><div class=side-panel><h1>Solid Textmate Textarea</h1><footer><div><label for=theme>themes</label><select id=theme></select></div><div><label for=lang>languages</label><select id=lang></select></div><br><div><label for=LOC>LOC</label><input id=LOC type=number></div><div><label for=padding>padding</label><input id=padding type=number></div><div><label for=font-size>font-size</label><input id=font-size type=number></div><div><label for=line-numbers>Line Numbers</label><button id=line-numbers></button></div><div><label for=editable>editable</label><button id=editable></button></div></footer></div><main><div class=resize-container>`), _tmpl$2 = /* @__PURE__ */ template(`<option>`);
 const App = () => {
   const [theme, setCurrentThemeName] = createSignal("light-plus");
   const [grammar, setCurrentLanguageName] = createSignal("tsx");
@@ -5838,10 +5838,6 @@ const App = () => {
       setEditable((bool) => !bool);
     };
     insert(_el$26, () => editable() ? "enabled" : "disabled");
-    _el$28.style.setProperty("resize", "both");
-    _el$28.style.setProperty("height", "300px");
-    _el$28.style.setProperty("width", "500px");
-    _el$28.style.setProperty("overflow", "hidden");
     insert(_el$28, createComponent(TmTextarea, {
       lineHeight: 16,
       get value() {

@@ -42,7 +42,7 @@ const App: Component = () => {
               value={theme()}
               onInput={e => setCurrentThemeName(e.currentTarget.value as Theme)}
             >
-              <For each={Object.keys(themes)}>{theme => <option>{theme}</option>}</For>
+              <For each={themes}>{theme => <option>{theme}</option>}</For>
             </select>
           </div>
           <div>
@@ -52,7 +52,7 @@ const App: Component = () => {
               value={grammar()}
               onInput={e => setCurrentLanguageName(e.currentTarget.value as Grammar)}
             >
-              <For each={Object.keys(grammars)}>{grammar => <option>{grammar}</option>}</For>
+              <For each={grammars}>{grammar => <option>{grammar}</option>}</For>
             </select>
           </div>
           <br />
@@ -103,7 +103,7 @@ const App: Component = () => {
             value={value()}
             grammar={grammar()}
             theme={theme()}
-            style={{ height: '100%', width: '100%', padding: '20px' }}
+            style={{ height: '100%', width: '100%', padding: `${padding()}px` }}
           />
         </div>
       </main>

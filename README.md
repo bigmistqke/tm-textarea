@@ -7,7 +7,7 @@
 [![pnpm](https://img.shields.io/badge/maintained%20with-pnpm-cc00ff.svg?style=for-the-badge&logo=pnpm)](https://pnpm.io/)
 
 Textarea with syntax highlighting powered by [solid-js](https://github.com/solidjs/solid) and
-[textmate-highlighter](https://github.com/fabiospampinato/textmate-highlighter).
+[vscode-oniguruma](https://github.com/microsoft/vscode-oniguruma).
 
 https://github.com/bigmistqke/solid-tm-textarea/assets/10504064/7bb4a2e1-a2c4-460d-b782-fe9bf7cac43a
 

@@ -27,9 +27,21 @@ import { hexToRgb, luminance } from './utils/colors'
 import { every, when } from './utils/conditionals'
 import { getLongestLineSize } from './utils/get-longest-linesize'
 
+/**********************************************************************************/
+/*                                                                                */
+/*                                    Constants                                   */
+/*                                                                                */
+/**********************************************************************************/
+
 const DEBUG = false
 const SEGMENT_SIZE = 100
 const WINDOW = 100
+
+/**********************************************************************************/
+/*                                                                                */
+/*                                     Types                                      */
+/*                                                                                */
+/**********************************************************************************/
 
 interface ThemeData {
   name?: string
@@ -55,7 +67,7 @@ interface ThemeData {
 /*                                                                                */
 /**********************************************************************************/
 
-// Theme class for resolving styles and colors
+/** Theme class for resolving styles and colors */
 class ThemeManager {
   private themeData: ThemeData
 
@@ -169,7 +181,7 @@ class Segment {
 /*                                                                                */
 /**********************************************************************************/
 
-// SegmentManager class to manage multiple segments
+/** SegmentManager class to manage source into multiple segments. */
 class SegmentManager {
   #segments: Segment[]
   #setSegments: SetStoreFunction<Segment[]>
@@ -182,13 +194,13 @@ class SegmentManager {
     public source: Accessor<string>,
   ) {
     ;[this.#segments, this.#setSegments] = createStore<Segment[]>([])
-    const owner = getOwner()
 
     this.lines = createMemo(() => {
       const lines = source().split('\n')
       return lines
     })
 
+    const owner = getOwner()
     createRenderEffect(() =>
       runWithOwner(owner, () => {
         const newLineCount = this.lines().length
@@ -346,7 +358,7 @@ async function fetchFromCDN(type: 'theme' | 'grammar', key: string) {
 
 /**********************************************************************************/
 /*                                                                                */
-/*                             Create Segment Manager                             */
+/*                                 Create Manager                                 */
 /*                                                                                */
 /**********************************************************************************/
 
@@ -368,7 +380,7 @@ const [WASM_LOADED] = createRoot(() =>
   ),
 )
 
-function createManager(props: TextmateTextareaProps) {
+function createManager(props: TmTextareaProps) {
   const [source, setSource] = createSignal(props.value)
 
   const [tokenizer] = createResource(
@@ -400,11 +412,11 @@ function createManager(props: TextmateTextareaProps) {
 
 /**********************************************************************************/
 /*                                                                                */
-/*                               Textmate Textarea                                */
+/*                                  Tm Textarea                                   */
 /*                                                                                */
 /**********************************************************************************/
 
-export interface TextmateTextareaProps extends Omit<ComponentProps<'div'>, 'style' | 'onInput'> {
+export interface TmTextareaProps extends Omit<ComponentProps<'div'>, 'style' | 'onInput'> {
   /** If textarea is editable or not. */
   editable?: boolean
   /**
@@ -427,7 +439,7 @@ export interface TextmateTextareaProps extends Omit<ComponentProps<'div'>, 'styl
 }
 
 export function createTmTextarea(styles: Record<string, string>) {
-  return function TmTextarea(props: TextmateTextareaProps) {
+  return function TmTextarea(props: TmTextareaProps) {
     const [config, rest] = splitProps(props, [
       'class',
       'grammar',
@@ -441,10 +453,10 @@ export function createTmTextarea(styles: Record<string, string>) {
 
     let container: HTMLDivElement
 
+    const [charHeight, setCharHeight] = createSignal<string>()
     const [dimensions, setDimensions] = createSignal<{ width: number; height: number }>()
     const [scrollTop, setScrollTop] = createSignal(0)
     const [manager, setSource] = createManager(props)
-    const [charHeight, setCharHeight] = createSignal<string>()
 
     const lineSize = createMemo(() => getLongestLineSize(manager()?.lines() || []))
 
@@ -476,10 +488,9 @@ export function createTmTextarea(styles: Record<string, string>) {
       },
     )
 
-    onMount(() => {
-      const observer = new ResizeObserver(([entry]) => setDimensions(entry?.contentRect))
-      observer.observe(container)
-    })
+    onMount(() =>
+      new ResizeObserver(([entry]) => setDimensions(entry?.contentRect)).observe(container),
+    )
 
     const selectionColor = when(manager, manager => {
       const bg = manager.theme.getBackgroundColor()
@@ -509,18 +520,6 @@ export function createTmTextarea(styles: Record<string, string>) {
         }}
         {...rest}
       >
-        <code
-          ref={element => {
-            new ResizeObserver(() => {
-              const { height } = getComputedStyle(element)
-              setCharHeight(height)
-            }).observe(element)
-          }}
-          aria-hidden
-          class={styles.character}
-        >
-          &nbsp;
-        </code>
         <Show when={manager()}>
           {manager => (
             <code class={styles.segments}>
@@ -537,7 +536,6 @@ export function createTmTextarea(styles: Record<string, string>) {
                             innerHTML={manager().getLine(segmentIndex * SEGMENT_SIZE + index)}
                             style={{
                               '--line-number': segmentIndex * SEGMENT_SIZE + index,
-                              // top: `${(segmentIndex * SEGMENT_SIZE + index) * props.lineHeight}px`,
                             }}
                           />
                         </Show>
@@ -597,6 +595,18 @@ export function createTmTextarea(styles: Record<string, string>) {
             config.onInput?.(e)
           }}
         />
+        <code
+          ref={element => {
+            new ResizeObserver(() => {
+              const { height } = getComputedStyle(element)
+              setCharHeight(height)
+            }).observe(element)
+          }}
+          aria-hidden
+          class={styles.character}
+        >
+          &nbsp;
+        </code>
       </div>
     )
   }

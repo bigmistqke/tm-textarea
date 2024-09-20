@@ -110,16 +110,20 @@ const App: Component = () => {
         </footer>
       </div>
       <main>
-        <div class="resize-container" on:mousedown={e => e.currentTarget && e.stopPropagation()}>
-          <TmTextarea
-            lineHeight={16}
-            value={value()}
-            grammar={grammar()}
-            theme={theme()}
-            style={{ height: '100%', width: '100%', padding: `${padding()}px` }}
-            class={lineNumbers() ? 'line-numbers' : undefined}
-          />
-        </div>
+        <TmTextarea
+          lineHeight={16}
+          value={value()}
+          grammar={grammar()}
+          theme={theme()}
+          style={{
+            height: '300px',
+            width: '500px',
+            padding: `${padding()}px`,
+            resize: 'both',
+            position: 'absolute',
+          }}
+          class={lineNumbers() ? 'line-numbers' : undefined}
+        />
       </main>
     </div>
   )

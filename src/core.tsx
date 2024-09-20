@@ -23,6 +23,7 @@ import { createStore, type SetStoreFunction } from 'solid-js/store'
 import * as oniguruma from 'vscode-oniguruma'
 import * as textmate from 'vscode-textmate'
 import { Grammar, Theme } from './tm'
+import { applyStyle } from './utils/apply-style'
 import { hexToRgb, luminance } from './utils/colors'
 import { every, when } from './utils/conditionals'
 import { getLongestLineSize } from './utils/get-longest-linesize'
@@ -499,10 +500,20 @@ export function createTmTextarea(styles: Record<string, string>) {
       return `rgba(98, 114, 164, ${opacity})`
     })
 
+    const style = () => {
+      if (!config.style) return undefined
+      const [_, style] = splitProps(config.style, ['width', 'height'])
+      return style
+    }
+
     return (
       <div
         part="root"
-        ref={container!}
+        ref={element => {
+          container = element
+          applyStyle(element, props, 'width')
+          applyStyle(element, props, 'height')
+        }}
         class={clsx(styles.container, config.class)}
         onScroll={e => {
           setScrollTop(e.currentTarget.scrollTop)
@@ -516,7 +527,7 @@ export function createTmTextarea(styles: Record<string, string>) {
           '--line-height': `${props.lineHeight}px`,
           '--line-size': lineSize(),
           '--selection-color': selectionColor(),
-          ...config.style,
+          ...style(),
         }}
         {...rest}
       >

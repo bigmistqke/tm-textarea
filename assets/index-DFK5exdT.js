@@ -4908,6 +4908,14 @@ var main = {exports: {}};
 
 var mainExports = main.exports;
 
+function applyStyle(element, props, key) {
+  let previous;
+  createRenderEffect(() => {
+    const value = props.style?.[key];
+    value !== previous && ((previous = value) != null ? element.style.setProperty(key, value) : element.style.removeProperty(key));
+  });
+}
+
 function hexToRgb(hex) {
   let bigint = parseInt(hex.slice(1), 16);
   let r = bigint >> 16 & 255;
@@ -5171,14 +5179,22 @@ function createTmTextarea(styles) {
       const opacity = commentLuminance > 0.9 ? 0.1 : commentLuminance < 0.1 ? 0.25 : 0.175;
       return `rgba(98, 114, 164, ${opacity})`;
     });
+    const style = () => {
+      if (!config.style) return void 0;
+      const [_, style2] = splitProps(config.style, ["width", "height"]);
+      return style2;
+    };
     return (() => {
       var _el$ = _tmpl$$1(), _el$2 = _el$.firstChild, _el$3 = _el$2.nextSibling;
       _el$.addEventListener("scroll", (e) => {
         setScrollTop(e.currentTarget.scrollTop);
         props.onScroll?.(e);
       });
-      var _ref$ = container;
-      typeof _ref$ === "function" ? use(_ref$, _el$) : container = _el$;
+      use((element) => {
+        container = element;
+        applyStyle(element, props, "width");
+        applyStyle(element, props, "height");
+      }, _el$);
       spread(_el$, mergeProps({
         get ["class"]() {
           return clsx(styles.container, config.class);
@@ -5192,7 +5208,7 @@ function createTmTextarea(styles) {
             "--line-height": `${props.lineHeight}px`,
             "--line-size": lineSize(),
             "--selection-color": selectionColor(),
-            ...config.style
+            ...style()
           };
         }
       }, rest), false);
@@ -5262,8 +5278,8 @@ function createTmTextarea(styles) {
         e.preventDefault();
         e.stopPropagation();
       });
-      var _ref$2 = props.textareaRef;
-      typeof _ref$2 === "function" ? use(_ref$2, _el$2) : props.textareaRef = _el$2;
+      var _ref$ = props.textareaRef;
+      typeof _ref$ === "function" ? use(_ref$, _el$2) : props.textareaRef = _el$2;
       setAttribute(_el$2, "spellcheck", false);
       _el$2.addEventListener("input", (e) => {
         const target = e.currentTarget;
@@ -5788,7 +5804,7 @@ const themes = [
 
 const test = "/**\n * @template const T\n * @param {T} value\n * @returns SignalObject<T>\n */\nfunction signal(value) {\n  return [value]\n}\n\nconst [big] = signal('mistqke')\n";
 
-var _tmpl$ = /* @__PURE__ */ template(`<div class=app><div class=side-panel><h1>Solid Textmate Textarea</h1><footer><div><label for=theme>themes</label><select id=theme></select></div><div><label for=lang>languages</label><select id=lang></select></div><br><div><label for=LOC>LOC</label><input id=LOC type=number></div><div><label for=padding>padding</label><input id=padding type=number></div><div><label for=font-size>font-size</label><input id=font-size type=number></div><div><label for=line-numbers>Line Numbers</label><button id=line-numbers></button></div><div><label for=editable>editable</label><button id=editable></button></div></footer></div><main><div class=resize-container>`), _tmpl$2 = /* @__PURE__ */ template(`<option>`);
+var _tmpl$ = /* @__PURE__ */ template(`<div class=app><div class=side-panel><h1>Solid Textmate Textarea</h1><footer><div><label for=theme>themes</label><select id=theme></select></div><div><label for=lang>languages</label><select id=lang></select></div><br><div><label for=LOC>LOC</label><input id=LOC type=number></div><div><label for=padding>padding</label><input id=padding type=number></div><div><label for=font-size>font-size</label><input id=font-size type=number></div><div><label for=line-numbers>Line Numbers</label><button id=line-numbers></button></div><div><label for=editable>editable</label><button id=editable></button></div></footer></div><main>`), _tmpl$2 = /* @__PURE__ */ template(`<option>`);
 const App = () => {
   const [theme, setCurrentThemeName] = createSignal("light-plus");
   const [grammar, setCurrentLanguageName] = createSignal("tsx");
@@ -5808,23 +5824,23 @@ const App = () => {
     return result.trim();
   }
   return (() => {
-    var _el$ = _tmpl$(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild, _el$4 = _el$3.nextSibling, _el$5 = _el$4.firstChild, _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling, _el$8 = _el$5.nextSibling, _el$9 = _el$8.firstChild, _el$10 = _el$9.nextSibling, _el$11 = _el$8.nextSibling, _el$12 = _el$11.nextSibling, _el$13 = _el$12.firstChild, _el$14 = _el$13.nextSibling, _el$15 = _el$12.nextSibling, _el$16 = _el$15.firstChild, _el$17 = _el$16.nextSibling, _el$18 = _el$15.nextSibling, _el$19 = _el$18.firstChild, _el$20 = _el$19.nextSibling, _el$21 = _el$18.nextSibling, _el$22 = _el$21.firstChild, _el$23 = _el$22.nextSibling, _el$24 = _el$21.nextSibling, _el$25 = _el$24.firstChild, _el$26 = _el$25.nextSibling, _el$27 = _el$2.nextSibling, _el$28 = _el$27.firstChild;
+    var _el$ = _tmpl$(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild, _el$4 = _el$3.nextSibling, _el$5 = _el$4.firstChild, _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling, _el$8 = _el$5.nextSibling, _el$9 = _el$8.firstChild, _el$10 = _el$9.nextSibling, _el$11 = _el$8.nextSibling, _el$12 = _el$11.nextSibling, _el$13 = _el$12.firstChild, _el$14 = _el$13.nextSibling, _el$15 = _el$12.nextSibling, _el$16 = _el$15.firstChild, _el$17 = _el$16.nextSibling, _el$18 = _el$15.nextSibling, _el$19 = _el$18.firstChild, _el$20 = _el$19.nextSibling, _el$21 = _el$18.nextSibling, _el$22 = _el$21.firstChild, _el$23 = _el$22.nextSibling, _el$24 = _el$21.nextSibling, _el$25 = _el$24.firstChild, _el$26 = _el$25.nextSibling, _el$27 = _el$2.nextSibling;
     _el$7.$$input = (e) => setCurrentThemeName(e.currentTarget.value);
     insert(_el$7, createComponent(For, {
       each: themes,
       children: (theme2) => (() => {
-        var _el$29 = _tmpl$2();
-        insert(_el$29, theme2);
-        return _el$29;
+        var _el$28 = _tmpl$2();
+        insert(_el$28, theme2);
+        return _el$28;
       })()
     }));
     _el$10.$$input = (e) => setCurrentLanguageName(e.currentTarget.value);
     insert(_el$10, createComponent(For, {
       each: grammars,
       children: (grammar2) => (() => {
-        var _el$30 = _tmpl$2();
-        insert(_el$30, grammar2);
-        return _el$30;
+        var _el$29 = _tmpl$2();
+        insert(_el$29, grammar2);
+        return _el$29;
       })()
     }));
     _el$14.$$input = (e) => setLOC(+e.currentTarget.value);
@@ -5838,8 +5854,7 @@ const App = () => {
       setEditable((bool) => !bool);
     };
     insert(_el$26, () => editable() ? "enabled" : "disabled");
-    _el$28.addEventListener("mousedown", (e) => e.currentTarget && e.stopPropagation());
-    insert(_el$28, createComponent(TmTextarea, {
+    insert(_el$27, createComponent(TmTextarea, {
       lineHeight: 16,
       get value() {
         return value();
@@ -5852,9 +5867,11 @@ const App = () => {
       },
       get style() {
         return {
-          height: "100%",
-          width: "100%",
-          padding: `${padding()}px`
+          height: "300px",
+          width: "500px",
+          padding: `${padding()}px`,
+          resize: "both",
+          position: "absolute"
         };
       },
       get ["class"]() {

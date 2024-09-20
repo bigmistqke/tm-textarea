@@ -191,6 +191,9 @@ main {
   overflow: hidden;
   resize: both;
 }
+.resize-container::-webkit-resizer {
+  background-color: lightgrey;
+}
 
 .line-numbers pre::before {
   display: inline-block;

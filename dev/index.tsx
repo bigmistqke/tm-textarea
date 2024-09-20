@@ -110,7 +110,7 @@ const App: Component = () => {
         </footer>
       </div>
       <main>
-        <div style={{ resize: 'both', height: '300px', width: '500px', overflow: 'hidden' }}>
+        <div class="resize-container">
           <TmTextarea
             lineHeight={16}
             value={value()}

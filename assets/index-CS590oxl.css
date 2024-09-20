@@ -186,10 +186,6 @@ main {
 
 .resize-container {
   z-index: 1;
-  border-radius: 5px;
-  border-bottom-right-radius: 2px;
-  background: lightgrey;
-  padding: 7px;
   width: 500px;
   height: 300px;
   overflow: hidden;

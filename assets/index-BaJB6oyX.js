@@ -5838,6 +5838,7 @@ const App = () => {
       setEditable((bool) => !bool);
     };
     insert(_el$26, () => editable() ? "enabled" : "disabled");
+    _el$28.$$mousedown = (e) => e.target === e.currentTarget && e.stopPropagation();
     insert(_el$28, createComponent(TmTextarea, {
       lineHeight: 16,
       get value() {
@@ -5869,4 +5870,4 @@ const App = () => {
   })();
 };
 render(() => createComponent(App, {}), document.getElementById("root"));
-delegateEvents(["input", "click"]);
+delegateEvents(["input", "click", "mousedown"]);

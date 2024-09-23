@@ -13,7 +13,7 @@
 
 .container {
   --min-height: calc(var(--line-count) * var(--char-height));
-  --min-width: calc(var(--line-size) * 1em);
+  --min-width: calc(var(--line-size) * 1ch);
   display: flex;
   position: relative;
   box-sizing: border-box;

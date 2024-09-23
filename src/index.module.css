@@ -2,23 +2,19 @@
   display: contents;
 
   & .container {
-    padding: inherit;
-    padding-top: inherit;
-    padding-right: inherit;
-    padding-bottom: inherit;
-    padding-left: inherit;
-    width: inherit;
-    min-width: inherit;
-    height: inherit;
-    min-height: inherit;
+    all: inherit;
+    display: flex;
+    box-sizing: border-box;
+    background-color: var(--background-color);
+    overflow: auto;
+    color: var(--foreground-color);
+    line-height: var(--line-height);
   }
 }
 
 .container {
   display: flex;
   position: relative;
-  flex: 1;
-  z-index: 1;
   box-sizing: border-box;
   background-color: var(--background-color);
   overflow: auto;
@@ -31,7 +27,9 @@
     z-index: 1;
     /* fixes color change when textarea is focused */
     backface-visibility: hidden;
-    contain: layout;
+    contain: strict;
+    min-width: calc(var(--line-size) * 1ch);
+    min-height: calc(var(--line-count) * 1em);
     pointer-events: none;
     font-size: inherit;
     line-height: inherit;
@@ -41,6 +39,12 @@
     & .segment {
       position: absolute;
       top: calc(var(--line-number) * var(--char-height));
+      margin: 0px;
+
+      & span {
+        margin: 0px;
+        background: transparent !important;
+      }
     }
   }
 
@@ -51,15 +55,6 @@
     pointer-events: none;
     font-size: inherit;
     line-height: inherit;
-  }
-
-  & pre {
-    margin: 0px;
-
-    & span {
-      margin: 0px;
-      background: transparent !important;
-    }
   }
 
   & .textarea {

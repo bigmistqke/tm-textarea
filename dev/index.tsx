@@ -1,4 +1,4 @@
-import { createSignal, For, type Component } from 'solid-js'
+import { createRenderEffect, createSignal, For, Show, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
 import 'tm-textarea'
 import { TmTextarea } from 'tm-textarea/solid'
@@ -7,6 +7,7 @@ import './index.css'
 import test from './test?raw'
 
 const App: Component = () => {
+  const [mode, setMode] = createSignal<'custom-element' | 'solid'>('custom-element')
   const [theme, setCurrentThemeName] = createSignal<Theme>('light-plus')
   const [grammar, setCurrentLanguageName] = createSignal<Grammar>('tsx')
 
@@ -15,9 +16,12 @@ const App: Component = () => {
   const [editable, setEditable] = createSignal(true)
   const [lineNumbers, setLineNumbers] = createSignal(false)
 
-  const value = () => loopLines(test, LOC())
-
   const [LOC, setLOC] = createSignal(10_000)
+  const [value, setValue] = createSignal()
+
+  createRenderEffect(() => {
+    setValue(loopLines(test, LOC()))
+  })
 
   function loopLines(input: string, lineCount: number): string {
     const lines = input.split('\n')
@@ -36,6 +40,18 @@ const App: Component = () => {
       <div class="side-panel">
         <h1>Solid Textmate Textarea</h1>
         <footer>
+          <div>
+            <label for="mode">mode</label>
+            <button
+              id="mode"
+              onClick={e => {
+                setMode(mode => (mode === 'custom-element' ? 'solid' : 'custom-element'))
+              }}
+            >
+              {mode()}
+            </button>
+          </div>
+          <br />
           <div>
             <label for="theme">themes</label>
             <select
@@ -110,20 +126,46 @@ const App: Component = () => {
         </footer>
       </div>
       <main>
-        <TmTextarea
-          lineHeight={16}
-          value={value()}
-          grammar={grammar()}
-          theme={theme()}
-          style={{
-            height: '300px',
-            width: '500px',
-            padding: `${padding()}px`,
-            resize: 'both',
-            position: 'absolute',
-          }}
-          class={lineNumbers() ? 'line-numbers' : undefined}
-        />
+        <Show
+          when={mode() === 'custom-element'}
+          fallback={
+            <TmTextarea
+              lineHeight={16}
+              value={value()}
+              grammar={grammar()}
+              theme={theme()}
+              style={{
+                height: '300px',
+                width: '500px',
+                'max-width': '100%',
+                'max-height': '100%',
+                padding: `${padding()}px`,
+                resize: 'both',
+                position: 'absolute',
+              }}
+              class={lineNumbers() ? 'line-numbers' : undefined}
+              onInput={e => setValue(e.currentTarget.value)}
+            />
+          }
+        >
+          <tm-textarea
+            line-height={16}
+            value={value()}
+            grammar={grammar()}
+            theme={theme()}
+            style={{
+              height: '300px',
+              width: '500px',
+              'max-width': '100%',
+              'max-height': '100%',
+              padding: `${padding()}px`,
+              resize: 'both',
+              position: 'absolute',
+            }}
+            class={lineNumbers() ? 'line-numbers' : undefined}
+            onInput={e => setValue(e.currentTarget.value)}
+          />
+        </Show>
       </main>
     </div>
   )

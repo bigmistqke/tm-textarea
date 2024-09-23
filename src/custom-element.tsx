@@ -60,7 +60,7 @@ const TmTextareaStyleSheet = sheet(css)
 
 @element('tm-textarea')
 class TmTextareaElement extends Element {
-  @attribute() grammar: Grammar = 'source.tsx'
+  @attribute() grammar: Grammar = 'tsx'
   @attribute() theme: Theme = 'dark-plus'
   @stringAttribute stylesheet = ''
   @numberAttribute lineHeight = 1

@@ -506,6 +506,7 @@ export function createTmTextarea(styles: Record<string, string>) {
           inputmode="none"
           spellcheck={false}
           value={config.value}
+          rows={lineCount()}
           onScroll={e => {
             e.preventDefault()
             e.stopPropagation()

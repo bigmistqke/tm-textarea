@@ -1013,9 +1013,9 @@ function template(html, isCE, isSVG) {
   const create = () => {
     const t = document.createElement("template");
     t.innerHTML = html;
-    return t.content.firstChild;
+    return isSVG ? t.content.firstChild.firstChild : t.content.firstChild;
   };
-  const fn = () => (node || (node = create())).cloneNode(true);
+  const fn = isCE ? () => untrack(() => document.importNode(node || (node = create()), true)) : () => (node || (node = create())).cloneNode(true);
   fn.cloneNode = fn;
   return fn;
 }
@@ -4961,7 +4961,7 @@ function getLongestLineSize(lines) {
   return maxLength;
 }
 
-var _tmpl$$1 = /* @__PURE__ */ template(`<div part=root><textarea part=textarea autocomplete=off inputmode=none></textarea><code aria-hidden>&nbsp;`), _tmpl$2$1 = /* @__PURE__ */ template(`<code>`), _tmpl$3 = /* @__PURE__ */ template(`<pre>`);
+var _tmpl$$1 = /* @__PURE__ */ template(`<div part=root><textarea part=textarea autocomplete=off inputmode=none></textarea><code aria-hidden>&nbsp;`), _tmpl$2$1 = /* @__PURE__ */ template(`<code>`), _tmpl$3$1 = /* @__PURE__ */ template(`<pre>`);
 const SEGMENT_SIZE = 100;
 const WINDOW = 100;
 class ThemeManager {
@@ -5240,7 +5240,7 @@ function createTmTextarea(styles) {
                       return isVisible(segmentIndex * SEGMENT_SIZE + index);
                     },
                     get children() {
-                      var _el$5 = _tmpl$3();
+                      var _el$5 = _tmpl$3$1();
                       segmentIndex * SEGMENT_SIZE + index != null ? _el$5.style.setProperty("--line-number", segmentIndex * SEGMENT_SIZE + index) : _el$5.style.removeProperty("--line-number");
                       createRenderEffect((_p$) => {
                         var _v$3 = styles.segment, _v$4 = manager2().getLine(segmentIndex * SEGMENT_SIZE + index);
@@ -5313,7 +5313,7 @@ delegateEvents(["keydown"]);
 
 const classnames = ["container","segments","segment","character","textarea"];
 
-const css = ":host {\n  display: contents;\n\n  & .container {\n    padding: inherit;\n    padding-top: inherit;\n    padding-right: inherit;\n    padding-bottom: inherit;\n    padding-left: inherit;\n    width: inherit;\n    min-width: inherit;\n    height: inherit;\n    min-height: inherit;\n  }\n}\n\n.container {\n  display: flex;\n  position: relative;\n  flex: 1;\n  z-index: 1;\n  box-sizing: border-box;\n  background-color: var(--background-color);\n  overflow: auto;\n  color: var(--foreground-color);\n  line-height: var(--line-height);\n\n  .segments {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: layout;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .segment {\n      position: absolute;\n      top: calc(var(--line-number) * var(--char-height));\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & pre {\n    margin: 0px;\n\n    & span {\n      margin: 0px;\n      background: transparent !important;\n    }\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: calc(var(--line-size) * 1ch);\n    height: 100%;\n    min-height: calc(var(--line-count) * 1em);\n    overflow: hidden;\n    resize: none;\n    color: transparent;\n    caret-color: var(--foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n    white-space: nowrap;\n  }\n\n  & .textarea::selection {\n    background: var(--selection-color);\n  }\n}\n";
+const css = ":host {\n  display: contents;\n\n  & .container {\n    all: inherit;\n    display: flex;\n    box-sizing: border-box;\n    background-color: var(--background-color);\n    overflow: auto;\n    color: var(--foreground-color);\n    line-height: var(--line-height);\n  }\n}\n\n.container {\n  display: flex;\n  position: relative;\n  box-sizing: border-box;\n  background-color: var(--background-color);\n  overflow: auto;\n  color: var(--foreground-color);\n  line-height: var(--line-height);\n\n  .segments {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: strict;\n    min-width: calc(var(--line-size) * 1ch);\n    min-height: calc(var(--line-count) * 1em);\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .segment {\n      position: absolute;\n      top: calc(var(--line-number) * var(--char-height));\n      margin: 0px;\n\n      & span {\n        margin: 0px;\n        background: transparent !important;\n      }\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: calc(var(--line-size) * 1ch);\n    height: 100%;\n    min-height: calc(var(--line-count) * 1em);\n    overflow: hidden;\n    resize: none;\n    color: transparent;\n    caret-color: var(--foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n    white-space: nowrap;\n  }\n\n  & .textarea::selection {\n    background: var(--selection-color);\n  }\n}\n";
 
 const cache = /* @__PURE__ */ new Map();
 function sheet(text) {
@@ -5457,7 +5457,7 @@ class TmTextareaElement extends LumeElement {
       c: [_TmTextareaElement, _initClass]
     } = _applyDecs(this, [[_grammarDecs, 0, "grammar"], [_themeDecs, 0, "theme"], [stringAttribute, 0, "stylesheet"], [numberAttribute, 0, "lineHeight"], [booleanAttribute, 0, "editable"], [signal, 0, "_value"]], _classDecs, 0, void 0, LumeElement));
   }
-  [(_grammarDecs = attribute(), _themeDecs = attribute(), "grammar")] = _init_grammar(this, "source.tsx");
+  [(_grammarDecs = attribute(), _themeDecs = attribute(), "grammar")] = _init_grammar(this, "tsx");
   theme = _init_theme(this, "dark-plus");
   stylesheet = _init_stylesheet(this, "");
   lineHeight = _init_lineHeight(this, 1);
@@ -5501,11 +5501,11 @@ class TmTextareaElement extends LumeElement {
   }
 }
 
-const container = "_container_19uok_4";
-const segments = "_segments_19uok_28";
-const segment = "_segment_19uok_28";
-const character = "_character_19uok_47";
-const textarea = "_textarea_19uok_65";
+const container = "_container_1lvfl_4";
+const segments = "_segments_1lvfl_24";
+const segment = "_segment_1lvfl_24";
+const character = "_character_1lvfl_51";
+const textarea = "_textarea_1lvfl_60";
 const styles = {
 	container: container,
 	segments: segments,
@@ -5804,16 +5804,20 @@ const themes = [
 
 const test = "/**\n * @template const T\n * @param {T} value\n * @returns SignalObject<T>\n */\nfunction signal(value) {\n  return [value]\n}\n\nconst [big] = signal('mistqke')\n";
 
-var _tmpl$ = /* @__PURE__ */ template(`<div class=app><div class=side-panel><h1>Solid Textmate Textarea</h1><footer><div><label for=theme>themes</label><select id=theme></select></div><div><label for=lang>languages</label><select id=lang></select></div><br><div><label for=LOC>LOC</label><input id=LOC type=number></div><div><label for=padding>padding</label><input id=padding type=number></div><div><label for=font-size>font-size</label><input id=font-size type=number></div><div><label for=line-numbers>Line Numbers</label><button id=line-numbers></button></div><div><label for=editable>editable</label><button id=editable></button></div></footer></div><main>`), _tmpl$2 = /* @__PURE__ */ template(`<option>`);
+var _tmpl$ = /* @__PURE__ */ template(`<tm-textarea line-height=16>`, true, false), _tmpl$2 = /* @__PURE__ */ template(`<div class=app><div class=side-panel><h1>Solid Textmate Textarea</h1><footer><div><label for=mode>mode</label><button id=mode></button></div><br><div><label for=theme>themes</label><select id=theme></select></div><div><label for=lang>languages</label><select id=lang></select></div><br><div><label for=LOC>LOC</label><input id=LOC type=number></div><div><label for=padding>padding</label><input id=padding type=number></div><div><label for=font-size>font-size</label><input id=font-size type=number></div><div><label for=line-numbers>Line Numbers</label><button id=line-numbers></button></div><div><label for=editable>editable</label><button id=editable></button></div></footer></div><main>`), _tmpl$3 = /* @__PURE__ */ template(`<option>`);
 const App = () => {
+  const [mode, setMode] = createSignal("custom-element");
   const [theme, setCurrentThemeName] = createSignal("light-plus");
   const [grammar, setCurrentLanguageName] = createSignal("tsx");
   const [fontSize, setFontSize] = createSignal(10);
   const [padding, setPadding] = createSignal(20);
   const [editable, setEditable] = createSignal(true);
   const [lineNumbers, setLineNumbers] = createSignal(false);
-  const value = () => loopLines(test, LOC());
   const [LOC, setLOC] = createSignal(1e4);
+  const [value, setValue] = createSignal();
+  createRenderEffect(() => {
+    setValue(loopLines(test, LOC()));
+  });
   function loopLines(input, lineCount) {
     const lines = input.split("\n");
     const totalLines = lines.length;
@@ -5824,67 +5828,107 @@ const App = () => {
     return result.trim();
   }
   return (() => {
-    var _el$ = _tmpl$(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild, _el$4 = _el$3.nextSibling, _el$5 = _el$4.firstChild, _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling, _el$8 = _el$5.nextSibling, _el$9 = _el$8.firstChild, _el$10 = _el$9.nextSibling, _el$11 = _el$8.nextSibling, _el$12 = _el$11.nextSibling, _el$13 = _el$12.firstChild, _el$14 = _el$13.nextSibling, _el$15 = _el$12.nextSibling, _el$16 = _el$15.firstChild, _el$17 = _el$16.nextSibling, _el$18 = _el$15.nextSibling, _el$19 = _el$18.firstChild, _el$20 = _el$19.nextSibling, _el$21 = _el$18.nextSibling, _el$22 = _el$21.firstChild, _el$23 = _el$22.nextSibling, _el$24 = _el$21.nextSibling, _el$25 = _el$24.firstChild, _el$26 = _el$25.nextSibling, _el$27 = _el$2.nextSibling;
-    _el$7.$$input = (e) => setCurrentThemeName(e.currentTarget.value);
-    insert(_el$7, createComponent(For, {
+    var _el$ = _tmpl$2(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild, _el$4 = _el$3.nextSibling, _el$5 = _el$4.firstChild, _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling, _el$8 = _el$5.nextSibling, _el$9 = _el$8.nextSibling, _el$10 = _el$9.firstChild, _el$11 = _el$10.nextSibling, _el$12 = _el$9.nextSibling, _el$13 = _el$12.firstChild, _el$14 = _el$13.nextSibling, _el$15 = _el$12.nextSibling, _el$16 = _el$15.nextSibling, _el$17 = _el$16.firstChild, _el$18 = _el$17.nextSibling, _el$19 = _el$16.nextSibling, _el$20 = _el$19.firstChild, _el$21 = _el$20.nextSibling, _el$22 = _el$19.nextSibling, _el$23 = _el$22.firstChild, _el$24 = _el$23.nextSibling, _el$25 = _el$22.nextSibling, _el$26 = _el$25.firstChild, _el$27 = _el$26.nextSibling, _el$28 = _el$25.nextSibling, _el$29 = _el$28.firstChild, _el$30 = _el$29.nextSibling, _el$31 = _el$2.nextSibling;
+    _el$7.$$click = (e) => {
+      setMode((mode2) => mode2 === "custom-element" ? "solid" : "custom-element");
+    };
+    insert(_el$7, mode);
+    _el$11.$$input = (e) => setCurrentThemeName(e.currentTarget.value);
+    insert(_el$11, createComponent(For, {
       each: themes,
       children: (theme2) => (() => {
-        var _el$28 = _tmpl$2();
-        insert(_el$28, theme2);
-        return _el$28;
+        var _el$33 = _tmpl$3();
+        insert(_el$33, theme2);
+        return _el$33;
       })()
     }));
-    _el$10.$$input = (e) => setCurrentLanguageName(e.currentTarget.value);
-    insert(_el$10, createComponent(For, {
+    _el$14.$$input = (e) => setCurrentLanguageName(e.currentTarget.value);
+    insert(_el$14, createComponent(For, {
       each: grammars,
       children: (grammar2) => (() => {
-        var _el$29 = _tmpl$2();
-        insert(_el$29, grammar2);
-        return _el$29;
+        var _el$34 = _tmpl$3();
+        insert(_el$34, grammar2);
+        return _el$34;
       })()
     }));
-    _el$14.$$input = (e) => setLOC(+e.currentTarget.value);
-    _el$17.$$input = (e) => setPadding(+e.currentTarget.value);
-    _el$20.$$input = (e) => setFontSize(+e.currentTarget.value);
-    _el$23.$$click = (e) => {
+    _el$18.$$input = (e) => setLOC(+e.currentTarget.value);
+    _el$21.$$input = (e) => setPadding(+e.currentTarget.value);
+    _el$24.$$input = (e) => setFontSize(+e.currentTarget.value);
+    _el$27.$$click = (e) => {
       setLineNumbers((bool) => !bool);
     };
-    insert(_el$23, () => lineNumbers() ? "enabled" : "disabled");
-    _el$26.$$click = (e) => {
+    insert(_el$27, () => lineNumbers() ? "enabled" : "disabled");
+    _el$30.$$click = (e) => {
       setEditable((bool) => !bool);
     };
-    insert(_el$26, () => editable() ? "enabled" : "disabled");
-    insert(_el$27, createComponent(TmTextarea, {
-      lineHeight: 16,
-      get value() {
-        return value();
+    insert(_el$30, () => editable() ? "enabled" : "disabled");
+    insert(_el$31, createComponent(Show, {
+      get when() {
+        return mode() === "custom-element";
       },
-      get grammar() {
-        return grammar();
+      get fallback() {
+        return createComponent(TmTextarea, {
+          lineHeight: 16,
+          get value() {
+            return value();
+          },
+          get grammar() {
+            return grammar();
+          },
+          get theme() {
+            return theme();
+          },
+          get style() {
+            return {
+              height: "300px",
+              width: "500px",
+              "max-width": "100%",
+              "max-height": "100%",
+              padding: `${padding()}px`,
+              resize: "both",
+              position: "absolute"
+            };
+          },
+          get ["class"]() {
+            return lineNumbers() ? "line-numbers" : void 0;
+          },
+          onInput: (e) => setValue(e.currentTarget.value)
+        });
       },
-      get theme() {
-        return theme();
-      },
-      get style() {
-        return {
-          height: "300px",
-          width: "500px",
-          padding: `${padding()}px`,
-          resize: "both",
-          position: "absolute"
-        };
-      },
-      get ["class"]() {
-        return lineNumbers() ? "line-numbers" : void 0;
+      get children() {
+        var _el$32 = _tmpl$();
+        _el$32.$$input = (e) => setValue(e.currentTarget.value);
+        _el$32.style.setProperty("height", "300px");
+        _el$32.style.setProperty("width", "500px");
+        _el$32.style.setProperty("max-width", "100%");
+        _el$32.style.setProperty("max-height", "100%");
+        _el$32.style.setProperty("resize", "both");
+        _el$32.style.setProperty("position", "absolute");
+        _el$32._$owner = getOwner();
+        createRenderEffect((_p$) => {
+          var _v$ = grammar(), _v$2 = theme(), _v$3 = `${padding()}px`, _v$4 = lineNumbers() ? "line-numbers" : void 0;
+          _v$ !== _p$.e && (_el$32.grammar = _p$.e = _v$);
+          _v$2 !== _p$.t && (_el$32.theme = _p$.t = _v$2);
+          _v$3 !== _p$.a && ((_p$.a = _v$3) != null ? _el$32.style.setProperty("padding", _v$3) : _el$32.style.removeProperty("padding"));
+          _v$4 !== _p$.o && className(_el$32, _p$.o = _v$4);
+          return _p$;
+        }, {
+          e: void 0,
+          t: void 0,
+          a: void 0,
+          o: void 0
+        });
+        createRenderEffect(() => _el$32.value = value());
+        return _el$32;
       }
     }));
-    createRenderEffect(() => _el$7.value = theme());
-    createRenderEffect(() => _el$10.value = grammar());
-    createRenderEffect(() => _el$14.value = LOC());
-    createRenderEffect(() => _el$17.value = padding());
-    createRenderEffect(() => _el$20.value = fontSize());
+    createRenderEffect(() => _el$11.value = theme());
+    createRenderEffect(() => _el$14.value = grammar());
+    createRenderEffect(() => _el$18.value = LOC());
+    createRenderEffect(() => _el$21.value = padding());
+    createRenderEffect(() => _el$24.value = fontSize());
     return _el$;
   })();
 };
 render(() => createComponent(App, {}), document.getElementById("root"));
-delegateEvents(["input", "click"]);
+delegateEvents(["click", "input"]);

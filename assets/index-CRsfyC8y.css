@@ -1,50 +1,54 @@
 :host {
   display: contents;
 
-  & ._container_19uok_4 {
-    padding: inherit;
-    padding-top: inherit;
-    padding-right: inherit;
-    padding-bottom: inherit;
-    padding-left: inherit;
-    width: inherit;
-    min-width: inherit;
-    height: inherit;
-    min-height: inherit;
+  & ._container_1lvfl_4 {
+    all: inherit;
+    display: flex;
+    box-sizing: border-box;
+    background-color: var(--background-color);
+    overflow: auto;
+    color: var(--foreground-color);
+    line-height: var(--line-height);
   }
 }
 
-._container_19uok_4 {
+._container_1lvfl_4 {
   display: flex;
   position: relative;
-  flex: 1;
-  z-index: 1;
   box-sizing: border-box;
   background-color: var(--background-color);
   overflow: auto;
   color: var(--foreground-color);
   line-height: var(--line-height);
 
-  ._segments_19uok_28 {
+  ._segments_1lvfl_24 {
     display: block;
     position: absolute;
     z-index: 1;
     /* fixes color change when textarea is focused */
     backface-visibility: hidden;
-    contain: layout;
+    contain: strict;
+    min-width: calc(var(--line-size) * 1ch);
+    min-height: calc(var(--line-count) * 1em);
     pointer-events: none;
     font-size: inherit;
     line-height: inherit;
     font-family: monospace;
     white-space: pre;
 
-    & ._segment_19uok_28 {
+    & ._segment_1lvfl_24 {
       position: absolute;
       top: calc(var(--line-number) * var(--char-height));
+      margin: 0px;
+
+      & span {
+        margin: 0px;
+        background: transparent !important;
+      }
     }
   }
 
-  & ._character_19uok_47 {
+  & ._character_1lvfl_51 {
     position: absolute;
     align-self: start;
     visibility: hidden;
@@ -53,16 +57,7 @@
     line-height: inherit;
   }
 
-  & pre {
-    margin: 0px;
-
-    & span {
-      margin: 0px;
-      background: transparent !important;
-    }
-  }
-
-  & ._textarea_19uok_65 {
+  & ._textarea_1lvfl_60 {
     transition: color 0.5s;
     outline: none;
     border: none;
@@ -84,7 +79,7 @@
     white-space: nowrap;
   }
 
-  & ._textarea_19uok_65::selection {
+  & ._textarea_1lvfl_60::selection {
     background: var(--selection-color);
   }
 }

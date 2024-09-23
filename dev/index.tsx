@@ -1,3 +1,4 @@
+import test from '.?raw'
 import { createRenderEffect, createSignal, For, Show, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
 import 'tm-textarea'
@@ -5,7 +6,6 @@ import { setCDN } from 'tm-textarea/cdn'
 import { TmTextarea } from 'tm-textarea/solid'
 import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
 import './index.css'
-import test from './test.js?raw'
 import tsx from './tsx.json?url'
 
 setCDN((type, id) => {
@@ -29,7 +29,7 @@ const App: Component = () => {
   const [editable, setEditable] = createSignal(true)
   const [lineNumbers, setLineNumbers] = createSignal(true)
 
-  const [LOC, setLOC] = createSignal(10 /* 10_000 */)
+  const [LOC, setLOC] = createSignal(10_000)
   const [value, setValue] = createSignal<string>(null!)
 
   createRenderEffect(() => {
@@ -148,35 +148,22 @@ const App: Component = () => {
               theme={theme()}
               editable={editable()}
               style={{
-                height: '300px',
-                width: '500px',
-                'max-width': '100%',
-                'max-height': '100%',
                 padding: `${padding()}px`,
-                resize: 'both',
-                position: 'absolute',
               }}
-              class={lineNumbers() ? 'line-numbers' : undefined}
+              class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
               onInput={e => setValue(e.currentTarget.value)}
             />
           }
         >
           <tm-textarea
-            line-height={16}
             value={value()}
             grammar={grammar()}
             theme={theme()}
             editable={editable()}
             style={{
-              height: '300px',
-              width: '500px',
-              'max-width': '100%',
-              'max-height': '100%',
               padding: `${padding()}px`,
-              resize: 'both',
-              position: 'absolute',
             }}
-            class={lineNumbers() ? 'line-numbers' : undefined}
+            class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
             onInput={e => setValue(e.currentTarget.value)}
           />
         </Show>

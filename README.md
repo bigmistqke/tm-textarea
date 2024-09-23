@@ -6,10 +6,21 @@
 
 [![pnpm](https://img.shields.io/badge/maintained%20with-pnpm-cc00ff.svg?style=for-the-badge&logo=pnpm)](https://pnpm.io/)
 
-Textarea with syntax highlighting powered by [solid-js](https://github.com/solidjs/solid) and
+Textarea with syntax highlighting powered by [solid-js](https://github.com/solidjs/solid), [@lume/element](https://github.com/lume/element) and
 [vscode-oniguruma](https://github.com/microsoft/vscode-oniguruma).
 
 https://github.com/bigmistqke/tm-textarea/assets/10504064/7bb4a2e1-a2c4-460d-b782-fe9bf7cac43a
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Custom Element (`tm-textarea`)](#custom-element-tm-textarea)
+  - [Usage](#usage)
+  - [Styling The Custom Element](#styling-the-custom-element)
+- [Solid Component (`tm-textarea/solid`)](#solid-component-tm-textareasolid)
+  - [Usage](#usage-1)
+- [CDN (`tm-textarea/cdn`)](#cdn-tm-textareacdn)
+- [Themes & Grammars (`tm-textarea/tm`)](#themes--grammars-tm-textareatm)
 
 ## Installation
 
@@ -21,20 +32,20 @@ yarn add tm tm-textarea
 pnpm add tm tm-textarea
 ```
 
-## Custom Element
+## Custom Element (`tm-textarea`)
 
-We also export a custom-element wrapper `<tm-textarea/>` powered by
+The main export is a custom-element `<tm-textarea/>` powered by
 [@lume/element](https://github.com/lume/element)
 
 <details>
-<summary>Attribute Types</summary>
+<summary>Attribute/Property Types</summary>
 
 ```ts
-import { LanguageProps, ThemeProps } from 'tm-textarea'
+import type { Language, Theme } from 'tm-textarea/tm'
 
 interface tmTextareaAttributes extends ComponentProps<'div'> {
-  language?: LanguageProps
-  theme?: ThemeProps
+  language?: Language
+  theme?: Theme
   code?: string
   editable?: boolean
   stylesheet?: string | CSSStyleSheet
@@ -72,27 +83,31 @@ export default () => (
 
 Some DOM [`::part()`](https://developer.mozilla.org/en-US/docs/Web/CSS/::part) are exported.
 
-- `root` can be used to override the `background`, set a `padding` or change `font-size` and
-  `line-height`.
 - `textarea` can be used to change the selection color.
 - `code` can be used to change the `code` tag.
 
 ```css
-tm-textarea::part(root) {
-  padding: 20px;
-  background: transparent;
-  font-size: 18px;
-  line-height: 1.25;
+tm-textarea {
+  min-height: 100%;
+  min-width: 100%;
+  padding: 10px;
+  line-height: 16pt;
 }
 
 tm-textarea::part(textarea)::selection {
   background: deepskyblue;
 }
 
-/* to size it to the container, will remove dead-zones */
-tm-textarea {
-  min-height: 100%;
-  min-width: 100%;
+/* add line-numbers */
+tm-textarea::part(line)::before {
+  display: inline-block;
+  counter-reset: variable calc(var(--line-number) + 1);
+  min-width: 7ch;
+  content: counter(variable);
+}
+
+tm-textarea::part(textarea) {
+  margin-left: 7ch;
 }
 ```
 
@@ -105,17 +120,11 @@ different `tm-textarea` instances.
   language="tsx"
   theme="andromeeda"
   code="const sum = (a: string, b: string) => a + b"
-  editable={true}
-  style={{
-    '--padding': '10px',
-    'font-size': '16pt',
-  }}
-  stylesheet="code, code * { font-style:normal; }"
-  onInput={e => console.log(e.target.value)}
+  stylesheet="code, code * { font-style: normal; }"
 />
 ```
 
-## Solid Component
+## Solid Component (`tm-textarea/solid`)
 
 A solid component of `tm-textarea` is available at `tm-textarea/solid`
 
@@ -123,16 +132,11 @@ A solid component of `tm-textarea` is available at `tm-textarea/solid`
 <summary>Prop Types</summary>
 
 ```ts
-import type { LanguageRegistration, ThemeRegistration } from 'tm'
-import type { Language, Theme } from 'tm-textarea/tm'
-
-type LanguageProps = Language | LanguageRegistration[] | Promise<LanguageRegistration[]>
-
-type ThemeProps = Theme | ThemeRegistration | Promise<ThemeRegistration>
+import { Language, Theme } from "tm-textarea/tm"
 
 interface tmTextareaProps extends Omit<ComponentProps<'div'>, 'style'> {
-  language: LanguageProps
-  theme: ThemeProps
+  language: Language
+  theme: Theme
   code: string
   editable?: boolean
   style?: JSX.CSSProperties
@@ -144,17 +148,15 @@ interface tmTextareaProps extends Omit<ComponentProps<'div'>, 'style'> {
 
 ### Usage
 
-**Static import of `theme/language`**
+<!-- **Static import of `theme/language`** -->
 
 ```tsx
 import { TmTextarea } from 'tm-textarea/solid'
-import minLight from 'tm/themes/min-light.mjs'
-import tsx from 'tm/langs/tsx.mjs'
 
 export default () => (
   <TmTextarea
-    language={tsx}
-    theme={minLight}
+    language="tsx"
+    theme="min-light"
     code="const sum = (a: string, b: string) => a + b"
     editable={true}
     style={{
@@ -166,7 +168,7 @@ export default () => (
 )
 ```
 
-**Dynamic import of `theme/language`**
+<!-- **Dynamic import of `theme/language`**
 
 ```tsx
 import { TmTextarea } from 'tm-textarea/solid'
@@ -184,31 +186,42 @@ export default () => (
     onInput={e => console.log(e.currentTarget.value)}
   />
 )
-```
+``` -->
 
 
-## CDN
+## CDN (`tm-textarea/cdn`)
+
+To ease development we provide a way to set themes/grammars by setting the `theme` or `grammar` property with a string. Without configuration these are resolved to [`tm-themes`](https://github.com/shikijs/textmate-grammars-themes/tree/main/packages/tm-themes) and [`tm-grammars`](https://github.com/shikijs/textmate-grammars-themes/tree/main/packages/tm-grammars) hosted on [`esm.sh`](esm.sh).
+
+To provide a way to customize how these keys are resolved we provide a global function `setCDN`, exported from `tm-textarea`. This function accepts as arguments either a base-url or a callback-function.
+
+When given a base-url, this will be used to fetch
+- `${cdn}/tm-themes/themes/${theme}.json` for the `themes`
+- `${cdn}/tm-grammars/grammars/${grammar}.json` for the `grammars`
+
+When given a callback, the returned string will be used to fetch instead.
+
+### Usage
 
 ```tsx
 // from solid component
 import { setCDN } from 'tm-textarea'
 
-// Set base-url of CDN directly (defaults to https://esm.sh)
+// Set absolute base-url
 setCDN('https://unpkg.com')
 
-// relative to the root
+// Set relative base-url (for local hosting)
 setCDN('/assets/tm')
 
-// Or use the callback-form
-setCDN((type, id) => `./tm/${type}/${id}.json`)
+// Use the callback-form
+setCDN((type, id) => type === 'oniguruma' ? `./oniguruma.wasm` : `./${type}/${id}.json`)
 ```
 
-## Themes & Languages
+## Themes & Grammars (`tm-textarea/tm`)
 
-Both, the languages and themes list are exported as `string[]`.
+We export a list of textmate grammars and themes that are hosted on [`tm-grammars`](https://github.com/shikijs/textmate-grammars-themes/tree/main/packages/tm-grammars) and [`tm-themes`](https://github.com/shikijs/textmate-grammars-themes/tree/main/packages/tm-themes). These are used internally and maintained by [`shiki`](https://github.com/shikijs/shiki).
 
 ```tsx
-import type { Theme, Language } from 'tm-textarea/tm'
-
-import { themes, languages } from 'tm-textarea/tm'
+import type { Theme, Grammar } from 'tm-textarea/tm'
+import { themes, grammars } from 'tm-textarea/tm'
 ```

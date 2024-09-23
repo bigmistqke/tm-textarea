@@ -73,9 +73,9 @@
     caret-color: var(--foreground-color);
     font-size: inherit;
     line-height: inherit;
-    line-height: inherit;
     font-family: monospace;
     text-align: inherit;
+    white-space: pre;
   }
 
   & .textarea::selection {

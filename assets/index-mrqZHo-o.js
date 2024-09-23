@@ -1320,7 +1320,7 @@ const App: Component = () => {
   const [editable, setEditable] = createSignal(true)
   const [lineNumbers, setLineNumbers] = createSignal(true)
 
-  const [LOC, setLOC] = createSignal(20)
+  const [LOC, setLOC] = createSignal(10_000)
   const [value, setValue] = createSignal<string>(null!)
 
   createRenderEffect(() => {
@@ -1438,6 +1438,7 @@ const App: Component = () => {
               value={value()}
               grammar={grammar()}
               theme={theme()}
+              editable={editable()}
               style={{
                 height: '300px',
                 width: '500px',
@@ -1457,6 +1458,7 @@ const App: Component = () => {
             value={value()}
             grammar={grammar()}
             theme={theme()}
+            editable={editable()}
             style={{
               height: '300px',
               width: '500px',
@@ -5047,28 +5049,18 @@ class SegmentManager {
     this.tokenizer = tokenizer;
     this.theme = theme;
     this.source = source;
-    [this.#segments, this.#setSegments] = createSignal([]);
     this.lines = createMemo(() => source().split("\n"));
-    const owner = getOwner();
-    createRenderEffect(() => {
+    this.#segments = createMemo(indexArray(() => {
       const newLineCount = this.lines().length;
-      const newSegmentCount = Math.ceil(newLineCount / this.segmentSize);
-      const currentSegmentCount = this.#segments.length;
-      if (newSegmentCount > currentSegmentCount) {
-        let previousSegment = this.#segments()[this.#segments.length - 1] || null;
-        for (let i = currentSegmentCount; i < newSegmentCount; i += 1) {
-          const segment = runWithOwner(owner, () => new Segment(this, previousSegment, i));
-          this.#setSegments((prev) => [...prev, segment]);
-          previousSegment = segment;
-        }
-      }
-      if (newSegmentCount < currentSegmentCount) {
-        this.#setSegments((prev) => prev.slice(0, newSegmentCount));
-      }
-    });
+      return Array.from({
+        length: Math.ceil(newLineCount / this.segmentSize)
+      });
+    }, (_, index) => {
+      let previousSegment = typeof this.#segments === "function" ? this.#segments()[this.#segments.length - 1] || null : null;
+      return new Segment(this, previousSegment, index);
+    }));
   }
   #segments;
-  #setSegments;
   segmentSize = SEGMENT_SIZE;
   lines;
   getSegment(index) {
@@ -5135,7 +5127,9 @@ function createManager(props) {
 }
 function createTmTextarea(styles) {
   return function TmTextarea(props) {
-    const [config, rest] = splitProps(props, ["class", "grammar", "onInput", "value", "style", "theme", "editable", "onScroll", "textareaRef"]);
+    const [config, rest] = splitProps(mergeProps({
+      editable: true
+    }, props), ["class", "grammar", "onInput", "value", "style", "theme", "editable", "onScroll", "textareaRef"]);
     let container;
     const [charHeight, setCharHeight] = createSignal();
     const [dimensions, setDimensions] = createSignal();
@@ -5448,7 +5442,7 @@ class TmTextareaElement extends LumeElement {
   [(_grammarDecs = attribute(), _themeDecs = attribute(), "grammar")] = _init_grammar(this, "tsx");
   theme = _init_theme(this, "dark-plus");
   stylesheet = _init_stylesheet(this, "");
-  lineHeight = _init_lineHeight(this, 1);
+  lineHeight = _init_lineHeight(this, 16);
   editable = _init_editable(this, true);
   _value = _init__value(this, "");
   textarea = null;
@@ -5811,7 +5805,7 @@ const App = () => {
   const [padding, setPadding] = createSignal(20);
   const [editable, setEditable] = createSignal(true);
   const [lineNumbers, setLineNumbers] = createSignal(true);
-  const [LOC, setLOC] = createSignal(20);
+  const [LOC, setLOC] = createSignal(1e4);
   const [value, setValue] = createSignal(null);
   createRenderEffect(() => {
     setValue(loopLines(test, LOC()));
@@ -5876,6 +5870,9 @@ const App = () => {
           get theme() {
             return theme();
           },
+          get editable() {
+            return editable();
+          },
           get style() {
             return {
               height: "300px",
@@ -5904,17 +5901,19 @@ const App = () => {
         _el$32.style.setProperty("position", "absolute");
         _el$32._$owner = getOwner();
         createRenderEffect((_p$) => {
-          var _v$ = grammar(), _v$2 = theme(), _v$3 = `${padding()}px`, _v$4 = lineNumbers() ? "line-numbers" : void 0;
+          var _v$ = grammar(), _v$2 = theme(), _v$3 = editable(), _v$4 = `${padding()}px`, _v$5 = lineNumbers() ? "line-numbers" : void 0;
           _v$ !== _p$.e && (_el$32.grammar = _p$.e = _v$);
           _v$2 !== _p$.t && (_el$32.theme = _p$.t = _v$2);
-          _v$3 !== _p$.a && ((_p$.a = _v$3) != null ? _el$32.style.setProperty("padding", _v$3) : _el$32.style.removeProperty("padding"));
-          _v$4 !== _p$.o && className(_el$32, _p$.o = _v$4);
+          _v$3 !== _p$.a && (_el$32.editable = _p$.a = _v$3);
+          _v$4 !== _p$.o && ((_p$.o = _v$4) != null ? _el$32.style.setProperty("padding", _v$4) : _el$32.style.removeProperty("padding"));
+          _v$5 !== _p$.i && className(_el$32, _p$.i = _v$5);
           return _p$;
         }, {
           e: void 0,
           t: void 0,
           a: void 0,
-          o: void 0
+          o: void 0,
+          i: void 0
         });
         createRenderEffect(() => _el$32.value = value());
         return _el$32;

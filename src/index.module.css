@@ -21,6 +21,7 @@
   background-color: var(--background-color);
   overflow: auto;
   color: var(--foreground-color);
+  font-size: 13px;
 
   & .code {
     display: block;

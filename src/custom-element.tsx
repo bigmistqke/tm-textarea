@@ -60,7 +60,7 @@ class TmTextareaElement extends Element {
   @attribute() grammar: Grammar = 'tsx'
   @attribute() theme: Theme = 'dark-plus'
   @stringAttribute stylesheet = ''
-  @numberAttribute lineHeight = 1
+  @numberAttribute lineHeight = 16
   @booleanAttribute editable = true
   @signal private _value = ''
 

@@ -145,7 +145,7 @@ class Segment {
       equals: equalStack,
     })
 
-    const lines = createLazyMemo(() => this.manager.lines().slice(start, end + 1))
+    const lines = createLazyMemo(() => this.manager.lines().slice(start, end))
 
     this.#generated = createLazyMemo(() => {
       let currentStack = this.previous?.stack() || textmate.INITIAL
@@ -197,10 +197,7 @@ class SegmentManager {
   ) {
     ;[this.#segments, this.#setSegments] = createStore<Segment[]>([])
 
-    this.lines = createMemo(() => {
-      const lines = source().split('\n')
-      return lines
-    })
+    this.lines = createMemo(() => source().split('\n'))
 
     const owner = getOwner()
     createRenderEffect(() =>

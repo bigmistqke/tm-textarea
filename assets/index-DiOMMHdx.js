@@ -4910,7 +4910,7 @@ function getLongestLineSize(lines) {
   return maxLength;
 }
 
-var _tmpl$$1 = /* @__PURE__ */ template(`<div><textarea part=textarea autocomplete=off inputmode=none></textarea><code aria-hidden>&nbsp;`), _tmpl$2$1 = /* @__PURE__ */ template(`<code part=code>`), _tmpl$3$1 = /* @__PURE__ */ template(`<pre part=line>`);
+var _tmpl$$1 = /* @__PURE__ */ template(`<div part=root><textarea part=textarea autocomplete=off inputmode=none></textarea><code aria-hidden>&nbsp;`), _tmpl$2$1 = /* @__PURE__ */ template(`<code part=code>`), _tmpl$3$1 = /* @__PURE__ */ template(`<pre part=line>`);
 const SEGMENT_SIZE = 250;
 const WINDOW = 100;
 class ThemeManager {
@@ -5108,7 +5108,6 @@ function createTmTextarea(styles) {
       const [_, style2] = splitProps(config.style, ["width", "height"]);
       return style2;
     };
-    createRenderEffect(() => console.log(charHeight()));
     return (() => {
       var _el$ = _tmpl$$1(), _el$2 = _el$.firstChild, _el$3 = _el$2.nextSibling;
       _el$.addEventListener("scroll", (e) => {

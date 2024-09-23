@@ -1,13 +1,26 @@
+import test from '.?raw'
 import { createRenderEffect, createSignal, For, Show, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
 import 'tm-textarea'
 import { setCDN } from 'tm-textarea/cdn'
 import { TmTextarea } from 'tm-textarea/solid'
 import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
+import { IRawGrammar } from 'vscode-textmate'
 import './index.css'
-import test from './test?raw'
+import tsx from './tsx.json'
 
-setCDN('https://esm.sh')
+setCDN((type, id) => {
+  switch (type) {
+    case 'theme':
+      return `https://esm.sh/tm-themes/themes/${id}.json`
+    case 'grammar':
+      return id === 'tsx'
+        ? (tsx as unknown as IRawGrammar)
+        : `https://esm.sh/tm-grammars/grammars/${id}.json`
+    case 'oniguruma':
+      return `https://esm.sh/vscode-oniguruma/release/onig.wasm`
+  }
+})
 
 const App: Component = () => {
   const [mode, setMode] = createSignal<'custom-element' | 'solid'>('custom-element')
@@ -17,7 +30,7 @@ const App: Component = () => {
   const [fontSize, setFontSize] = createSignal(10)
   const [padding, setPadding] = createSignal(20)
   const [editable, setEditable] = createSignal(true)
-  const [lineNumbers, setLineNumbers] = createSignal(false)
+  const [lineNumbers, setLineNumbers] = createSignal(true)
 
   const [LOC, setLOC] = createSignal(10_000)
   const [value, setValue] = createSignal()

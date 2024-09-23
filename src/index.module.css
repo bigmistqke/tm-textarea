@@ -13,6 +13,8 @@
 }
 
 .container {
+  --min-height: calc(var(--line-count) * var(--char-height));
+  --min-width: calc(var(--line-size) * 1em);
   display: flex;
   position: relative;
   box-sizing: border-box;
@@ -21,22 +23,22 @@
   color: var(--foreground-color);
   line-height: var(--line-height);
 
-  .segments {
+  & .code {
     display: block;
     position: absolute;
     z-index: 1;
     /* fixes color change when textarea is focused */
     backface-visibility: hidden;
     contain: strict;
-    min-width: calc(var(--line-size) * 1ch);
-    min-height: calc(var(--line-count) * 1em);
+    min-width: var(--min-width);
+    min-height: var(--min-height);
     pointer-events: none;
     font-size: inherit;
     line-height: inherit;
     font-family: monospace;
     white-space: pre;
 
-    & .segment {
+    & .line {
       position: absolute;
       top: calc(var(--line-number) * var(--char-height));
       margin: 0px;
@@ -64,9 +66,9 @@
     background: transparent;
     padding: 0px;
     width: 100%;
-    min-width: calc(var(--line-size) * 1ch);
+    min-width: var(--min-width);
     height: 100%;
-    min-height: calc(var(--line-count) * 1em);
+    min-height: var(--min-height);
     overflow: hidden;
     resize: none;
     color: transparent;

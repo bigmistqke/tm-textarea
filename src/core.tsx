@@ -397,6 +397,7 @@ export function createTmTextarea(styles: Record<string, string>) {
       'theme',
       'editable',
       'onScroll',
+      'textareaRef',
     ])
 
     let container: HTMLDivElement
@@ -479,7 +480,7 @@ export function createTmTextarea(styles: Record<string, string>) {
       >
         <Show when={manager()}>
           {manager => (
-            <code part="code" class={styles.segments}>
+            <code part="code" class={styles.code}>
               <Index
                 each={Array.from({ length: Math.ceil(manager().lines().length / SEGMENT_SIZE) })}
               >
@@ -489,7 +490,7 @@ export function createTmTextarea(styles: Record<string, string>) {
                       {(_, index) => (
                         <Show when={isVisible(segmentIndex * SEGMENT_SIZE + index)}>
                           <pre
-                            class={styles.segment}
+                            class={styles.line}
                             part="line"
                             innerHTML={manager().getLine(segmentIndex * SEGMENT_SIZE + index)}
                             style={{
@@ -506,7 +507,7 @@ export function createTmTextarea(styles: Record<string, string>) {
           )}
         </Show>
         <textarea
-          ref={props.textareaRef}
+          ref={config.textareaRef}
           part="textarea"
           autocomplete="off"
           class={styles.textarea}

@@ -98,6 +98,11 @@ tm-textarea {
   line-height: 16pt;
 }
 
+tm-textarea::part(root) {
+  /* overwrite the internal background-color */
+  background: transparent;
+}
+
 tm-textarea::part(textarea)::selection {
   background: deepskyblue;
 }

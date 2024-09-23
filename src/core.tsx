@@ -26,6 +26,7 @@ import { Grammar, Theme } from './tm'
 import { applyStyle } from './utils/apply-style'
 import { hexToRgb, luminance } from './utils/colors'
 import { every, when } from './utils/conditionals'
+import { countDigits } from './utils/count-digits'
 import { getLongestLineSize } from './utils/get-longest-linesize'
 
 /**********************************************************************************/
@@ -35,8 +36,8 @@ import { getLongestLineSize } from './utils/get-longest-linesize'
 /**********************************************************************************/
 
 const DEBUG = false
-const SEGMENT_SIZE = 250
-const WINDOW = 100
+const SEGMENT_SIZE = 100
+const WINDOW = 50
 
 /**********************************************************************************/
 /*                                                                                */
@@ -464,6 +465,7 @@ export function createTmTextarea(styles: Record<string, string>) {
           '--line-count': lineCount(),
           '--line-size': lineSize(),
           '--selection-color': selectionColor(),
+          '--line-digits': countDigits(lineCount()),
           ...style(),
         }}
         {...rest}

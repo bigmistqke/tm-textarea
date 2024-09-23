@@ -9,12 +9,12 @@ import {
   createRoot,
   createSelector,
   createSignal,
-  getOwner,
   Index,
+  indexArray,
   type JSX,
+  mergeProps,
   onMount,
   Ref,
-  runWithOwner,
   type Setter,
   Show,
   splitProps,
@@ -185,7 +185,6 @@ class Segment {
 /** SegmentManager class to manage source into multiple segments. */
 class SegmentManager {
   #segments: Accessor<Segment[]>
-  #setSegments: Setter<Segment[]>
   segmentSize = SEGMENT_SIZE
   lines: Accessor<string[]>
 
@@ -194,33 +193,23 @@ class SegmentManager {
     public theme: ThemeManager,
     public source: Accessor<string>,
   ) {
-    ;[this.#segments, this.#setSegments] = createSignal<Segment[]>([])
-
     this.lines = createMemo(() => source().split('\n'))
 
-    const owner = getOwner()
-
-    createRenderEffect(() => {
-      const newLineCount = this.lines().length
-      const newSegmentCount = Math.ceil(newLineCount / this.segmentSize)
-      const currentSegmentCount = this.#segments.length
-
-      // Add new segments if needed
-      if (newSegmentCount > currentSegmentCount) {
-        let previousSegment = this.#segments()[this.#segments.length - 1] || null
-
-        for (let i = currentSegmentCount; i < newSegmentCount; i += 1) {
-          const segment = runWithOwner(owner, () => new Segment(this, previousSegment, i))!
-          this.#setSegments(prev => [...prev, segment])
-          previousSegment = segment
-        }
-      }
-
-      // Remove segments if needed
-      if (newSegmentCount < currentSegmentCount) {
-        this.#setSegments(prev => prev.slice(0, newSegmentCount))
-      }
-    })
+    this.#segments = createMemo(
+      indexArray(
+        () => {
+          const newLineCount = this.lines().length
+          return Array.from({ length: Math.ceil(newLineCount / this.segmentSize) })
+        },
+        (_, index) => {
+          let previousSegment =
+            typeof this.#segments === 'function'
+              ? this.#segments()[this.#segments.length - 1] || null
+              : null
+          return new Segment(this, previousSegment, index)
+        },
+      ),
+    )
   }
 
   getSegment(index: number): Segment | undefined {
@@ -386,7 +375,7 @@ export interface TmTextareaProps
 
 export function createTmTextarea(styles: Record<string, string>) {
   return function TmTextarea(props: TmTextareaProps) {
-    const [config, rest] = splitProps(props, [
+    const [config, rest] = splitProps(mergeProps({ editable: true }, props), [
       'class',
       'grammar',
       'onInput',

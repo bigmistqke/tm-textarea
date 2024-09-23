@@ -29,7 +29,7 @@ const App: Component = () => {
   const [editable, setEditable] = createSignal(true)
   const [lineNumbers, setLineNumbers] = createSignal(true)
 
-  const [LOC, setLOC] = createSignal(20)
+  const [LOC, setLOC] = createSignal(10_000)
   const [value, setValue] = createSignal<string>(null!)
 
   createRenderEffect(() => {
@@ -147,6 +147,7 @@ const App: Component = () => {
               value={value()}
               grammar={grammar()}
               theme={theme()}
+              editable={editable()}
               style={{
                 height: '300px',
                 width: '500px',
@@ -166,6 +167,7 @@ const App: Component = () => {
             value={value()}
             grammar={grammar()}
             theme={theme()}
+            editable={editable()}
             style={{
               height: '300px',
               width: '500px',

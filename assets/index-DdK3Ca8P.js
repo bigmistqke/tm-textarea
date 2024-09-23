@@ -56,6 +56,7 @@ true&&(function polyfill() {
 
 const equalFn = (a, b) => a === b;
 const $PROXY = Symbol("solid-proxy");
+const SUPPORTS_PROXY = typeof Proxy === "function";
 const $TRACK = Symbol("solid-track");
 const signalOptions = {
   equals: equalFn
@@ -82,12 +83,14 @@ function createRoot(fn, detachedOwner) {
     owner = Owner,
     unowned = fn.length === 0,
     current = detachedOwner === undefined ? owner : detachedOwner,
-    root = unowned ? UNOWNED : {
-      owned: null,
-      cleanups: null,
-      context: current ? current.context : null,
-      owner: current
-    },
+    root = unowned
+      ? UNOWNED
+      : {
+          owned: null,
+          cleanups: null,
+          context: current ? current.context : null,
+          owner: current
+        },
     updateFn = unowned ? fn : () => fn(() => untrack(() => cleanNode(root)));
   Owner = root;
   Listener = null;
@@ -144,7 +147,7 @@ function createResource(pSource, pFetcher, pOptions) {
   let source;
   let fetcher;
   let options;
-  if (arguments.length === 2 && typeof pFetcher === "object" || arguments.length === 1) {
+  if ((arguments.length === 2 && typeof pFetcher === "object") || arguments.length === 1) {
     source = true;
     fetcher = pSource;
     options = pFetcher || {};
@@ -156,7 +159,7 @@ function createResource(pSource, pFetcher, pOptions) {
   let pr = null,
     initP = NO_INIT,
     scheduled = false,
-    resolved = ("initialValue" in options),
+    resolved = "initialValue" in options,
     dynamic = typeof source === "function" && createMemo(source);
   const contexts = new Set(),
     [value, setValue] = (options.storage || createSignal)(options.initialValue),
@@ -169,9 +172,12 @@ function createResource(pSource, pFetcher, pOptions) {
     if (pr === p) {
       pr = null;
       key !== undefined && (resolved = true);
-      if ((p === initP || v === initP) && options.onHydrated) queueMicrotask(() => options.onHydrated(key, {
-        value: v
-      }));
+      if ((p === initP || v === initP) && options.onHydrated)
+        queueMicrotask(() =>
+          options.onHydrated(key, {
+            value: v
+          })
+        );
       initP = NO_INIT;
       completeLoad(v, error);
     }
@@ -195,7 +201,8 @@ function createResource(pSource, pFetcher, pOptions) {
       createComputed(() => {
         track();
         if (pr) {
-          if (c.resolved) ;else if (!contexts.has(c)) {
+          if (c.resolved) ;
+          else if (!contexts.has(c)) {
             c.increment();
             contexts.add(c);
           }
@@ -212,26 +219,35 @@ function createResource(pSource, pFetcher, pOptions) {
       loadEnd(pr, untrack(value));
       return;
     }
-    const p = initP !== NO_INIT ? initP : untrack(() => fetcher(lookup, {
-      value: value(),
-      refetching
-    }));
+    const p =
+      initP !== NO_INIT
+        ? initP
+        : untrack(() =>
+            fetcher(lookup, {
+              value: value(),
+              refetching
+            })
+          );
     if (!isPromise(p)) {
       loadEnd(pr, p, undefined, lookup);
       return p;
     }
     pr = p;
     if ("value" in p) {
-      if (p.status === "success") loadEnd(pr, p.value, undefined, lookup);else loadEnd(pr, undefined, castError(p.value), lookup);
+      if (p.status === "success") loadEnd(pr, p.value, undefined, lookup);
+      else loadEnd(pr, undefined, castError(p.value), lookup);
       return p;
     }
     scheduled = true;
-    queueMicrotask(() => scheduled = false);
+    queueMicrotask(() => (scheduled = false));
     runUpdates(() => {
       setState(resolved ? "refreshing" : "pending");
       trigger();
     }, false);
-    return p.then(v => loadEnd(p, v, undefined, lookup), e => loadEnd(p, undefined, castError(e), lookup));
+    return p.then(
+      v => loadEnd(p, v, undefined, lookup),
+      e => loadEnd(p, undefined, castError(e), lookup)
+    );
   }
   Object.defineProperties(read, {
     state: {
@@ -255,36 +271,51 @@ function createResource(pSource, pFetcher, pOptions) {
       }
     }
   });
-  if (dynamic) createComputed(() => load(false));else load(false);
-  return [read, {
-    refetch: load,
-    mutate: setValue
-  }];
+  if (dynamic) createComputed(() => load(false));
+  else load(false);
+  return [
+    read,
+    {
+      refetch: load,
+      mutate: setValue
+    }
+  ];
 }
 function createSelector(source, fn = equalFn, options) {
   const subs = new Map();
-  const node = createComputation(p => {
-    const v = source();
-    for (const [key, val] of subs.entries()) if (fn(key, v) !== fn(key, p)) {
-      for (const c of val.values()) {
-        c.state = STALE;
-        if (c.pure) Updates.push(c);else Effects.push(c);
-      }
-    }
-    return v;
-  }, undefined, true, STALE);
+  const node = createComputation(
+    p => {
+      const v = source();
+      for (const [key, val] of subs.entries())
+        if (fn(key, v) !== fn(key, p)) {
+          for (const c of val.values()) {
+            c.state = STALE;
+            if (c.pure) Updates.push(c);
+            else Effects.push(c);
+          }
+        }
+      return v;
+    },
+    undefined,
+    true,
+    STALE
+  );
   updateComputation(node);
   return key => {
     const listener = Listener;
     if (listener) {
       let l;
-      if (l = subs.get(key)) l.add(listener);else subs.set(key, l = new Set([listener]));
+      if ((l = subs.get(key))) l.add(listener);
+      else subs.set(key, (l = new Set([listener])));
       onCleanup(() => {
         l.delete(listener);
         !l.size && subs.delete(key);
       });
     }
-    return fn(key, node.value);
+    return fn(
+      key,
+      node.value
+    );
   };
 }
 function untrack(fn) {
@@ -302,7 +333,9 @@ function onMount(fn) {
   createEffect(() => untrack(fn));
 }
 function onCleanup(fn) {
-  if (Owner === null) ;else if (Owner.cleanups === null) Owner.cleanups = [fn];else Owner.cleanups.push(fn);
+  if (Owner === null);
+  else if (Owner.cleanups === null) Owner.cleanups = [fn];
+  else Owner.cleanups.push(fn);
   return fn;
 }
 function getListener() {
@@ -328,7 +361,8 @@ function runWithOwner(o, fn) {
 let SuspenseContext;
 function readSignal() {
   if (this.sources && (this.state)) {
-    if ((this.state) === STALE) updateComputation(this);else {
+    if ((this.state) === STALE) updateComputation(this);
+    else {
       const updates = Updates;
       Updates = null;
       runUpdates(() => lookUpstream(this), false);
@@ -355,7 +389,8 @@ function readSignal() {
   return this.value;
 }
 function writeSignal(node, value, isComp) {
-  let current = node.value;
+  let current =
+    node.value;
   if (!node.comparator || !node.comparator(current, value)) {
     node.value = value;
     if (node.observers && node.observers.length) {
@@ -365,14 +400,15 @@ function writeSignal(node, value, isComp) {
           const TransitionRunning = Transition && Transition.running;
           if (TransitionRunning && Transition.disposed.has(o)) ;
           if (TransitionRunning ? !o.tState : !o.state) {
-            if (o.pure) Updates.push(o);else Effects.push(o);
+            if (o.pure) Updates.push(o);
+            else Effects.push(o);
             if (o.observers) markDownstream(o);
           }
           if (!TransitionRunning) o.state = STALE;
         }
         if (Updates.length > 10e5) {
           Updates = [];
-          if (false) ;
+          if (false);
           throw new Error();
         }
       }, false);
@@ -384,7 +420,11 @@ function updateComputation(node) {
   if (!node.fn) return;
   cleanNode(node);
   const time = ExecCount;
-  runComputation(node, node.value, time);
+  runComputation(
+    node,
+    node.value,
+    time
+  );
 }
 function runComputation(node, value, time) {
   let nextValue;
@@ -428,9 +468,11 @@ function createComputation(fn, init, pure, state = STALE, options) {
     context: Owner ? Owner.context : null,
     pure
   };
-  if (Owner === null) ;else if (Owner !== UNOWNED) {
+  if (Owner === null);
+  else if (Owner !== UNOWNED) {
     {
-      if (!Owner.owned) Owner.owned = [c];else Owner.owned.push(c);
+      if (!Owner.owned) Owner.owned = [c];
+      else Owner.owned.push(c);
     }
   }
   return c;
@@ -459,7 +501,8 @@ function runUpdates(fn, init) {
   if (Updates) return fn();
   let wait = false;
   if (!init) Updates = [];
-  if (Effects) wait = true;else Effects = [];
+  if (Effects) wait = true;
+  else Effects = [];
   ExecCount++;
   try {
     const res = fn();
@@ -489,7 +532,8 @@ function runUserEffects(queue) {
     userLength = 0;
   for (i = 0; i < queue.length; i++) {
     const e = queue[i];
-    if (!e.user) runTop(e);else queue[userLength++] = e;
+    if (!e.user) runTop(e);
+    else queue[userLength++] = e;
   }
   for (i = 0; i < userLength; i++) runTop(queue[i]);
 }
@@ -500,7 +544,8 @@ function lookUpstream(node, ignore) {
     if (source.sources) {
       const state = source.state;
       if (state === STALE) {
-        if (source !== ignore && (!source.updatedAt || source.updatedAt < ExecCount)) runTop(source);
+        if (source !== ignore && (!source.updatedAt || source.updatedAt < ExecCount))
+          runTop(source);
       } else if (state === PENDING) lookUpstream(source, ignore);
     }
   }
@@ -510,7 +555,8 @@ function markDownstream(node) {
     const o = node.observers[i];
     if (!o.state) {
       o.state = PENDING;
-      if (o.pure) Updates.push(o);else Effects.push(o);
+      if (o.pure) Updates.push(o);
+      else Effects.push(o);
       o.observers && markDownstream(o);
     }
   }
@@ -532,6 +578,10 @@ function cleanNode(node) {
         }
       }
     }
+  }
+  if (node.tOwned) {
+    for (i = node.tOwned.length - 1; i >= 0; i--) cleanNode(node.tOwned[i]);
+    delete node.tOwned;
   }
   if (node.owned) {
     for (i = node.owned.length - 1; i >= 0; i--) cleanNode(node.owned[i]);
@@ -590,8 +640,7 @@ function mapArray(list, mapFn, options = {}) {
           });
           len = 1;
         }
-      }
-      else if (len === 0) {
+      } else if (len === 0) {
         mapped = new Array(newLen);
         for (j = 0; j < newLen; j++) {
           items[j] = newItems[j];
@@ -602,8 +651,16 @@ function mapArray(list, mapFn, options = {}) {
         temp = new Array(newLen);
         tempdisposers = new Array(newLen);
         indexes && (tempIndexes = new Array(newLen));
-        for (start = 0, end = Math.min(len, newLen); start < end && items[start] === newItems[start]; start++);
-        for (end = len - 1, newEnd = newLen - 1; end >= start && newEnd >= start && items[end] === newItems[newEnd]; end--, newEnd--) {
+        for (
+          start = 0, end = Math.min(len, newLen);
+          start < end && items[start] === newItems[start];
+          start++
+        );
+        for (
+          end = len - 1, newEnd = newLen - 1;
+          end >= start && newEnd >= start && items[end] === newItems[newEnd];
+          end--, newEnd--
+        ) {
           temp[newEnd] = mapped[end];
           tempdisposers[newEnd] = disposers[end];
           indexes && (tempIndexes[newEnd] = indexes[end]);
@@ -637,7 +694,7 @@ function mapArray(list, mapFn, options = {}) {
             }
           } else mapped[j] = createRoot(mapper);
         }
-        mapped = mapped.slice(0, len = newLen);
+        mapped = mapped.slice(0, (len = newLen));
         items = newItems.slice(0);
       }
       return mapped;
@@ -704,7 +761,7 @@ function indexArray(list, mapFn, options = {}) {
       }
       len = signals.length = disposers.length = newLen;
       items = newItems.slice(0);
-      return mapped = mapped.slice(0, len);
+      return (mapped = mapped.slice(0, len));
     });
     function mapper(disposer) {
       disposers[i] = disposer;
@@ -759,29 +816,33 @@ function mergeProps(...sources) {
   let proxy = false;
   for (let i = 0; i < sources.length; i++) {
     const s = sources[i];
-    proxy = proxy || !!s && $PROXY in s;
-    sources[i] = typeof s === "function" ? (proxy = true, createMemo(s)) : s;
+    proxy = proxy || (!!s && $PROXY in s);
+    sources[i] = typeof s === "function" ? ((proxy = true), createMemo(s)) : s;
   }
-  if (proxy) {
-    return new Proxy({
-      get(property) {
-        for (let i = sources.length - 1; i >= 0; i--) {
-          const v = resolveSource(sources[i])[property];
-          if (v !== undefined) return v;
+  if (SUPPORTS_PROXY && proxy) {
+    return new Proxy(
+      {
+        get(property) {
+          for (let i = sources.length - 1; i >= 0; i--) {
+            const v = resolveSource(sources[i])[property];
+            if (v !== undefined) return v;
+          }
+        },
+        has(property) {
+          for (let i = sources.length - 1; i >= 0; i--) {
+            if (property in resolveSource(sources[i])) return true;
+          }
+          return false;
+        },
+        keys() {
+          const keys = [];
+          for (let i = 0; i < sources.length; i++)
+            keys.push(...Object.keys(resolveSource(sources[i])));
+          return [...new Set(keys)];
         }
       },
-      has(property) {
-        for (let i = sources.length - 1; i >= 0; i--) {
-          if (property in resolveSource(sources[i])) return true;
-        }
-        return false;
-      },
-      keys() {
-        const keys = [];
-        for (let i = 0; i < sources.length; i++) keys.push(...Object.keys(resolveSource(sources[i])));
-        return [...new Set(keys)];
-      }
-    }, propTraps);
+      propTraps
+    );
   }
   const sourcesMap = {};
   const defined = Object.create(null);
@@ -794,15 +855,20 @@ function mergeProps(...sources) {
       if (key === "__proto__" || key === "constructor") continue;
       const desc = Object.getOwnPropertyDescriptor(source, key);
       if (!defined[key]) {
-        defined[key] = desc.get ? {
-          enumerable: true,
-          configurable: true,
-          get: resolveSources.bind(sourcesMap[key] = [desc.get.bind(source)])
-        } : desc.value !== undefined ? desc : undefined;
+        defined[key] = desc.get
+          ? {
+              enumerable: true,
+              configurable: true,
+              get: resolveSources.bind((sourcesMap[key] = [desc.get.bind(source)]))
+            }
+          : desc.value !== undefined
+          ? desc
+          : undefined;
       } else {
         const sources = sourcesMap[key];
         if (sources) {
-          if (desc.get) sources.push(desc.get.bind(source));else if (desc.value !== undefined) sources.push(() => desc.value);
+          if (desc.get) sources.push(desc.get.bind(source));
+          else if (desc.value !== undefined) sources.push(() => desc.value);
         }
       }
     }
@@ -812,55 +878,69 @@ function mergeProps(...sources) {
   for (let i = definedKeys.length - 1; i >= 0; i--) {
     const key = definedKeys[i],
       desc = defined[key];
-    if (desc && desc.get) Object.defineProperty(target, key, desc);else target[key] = desc ? desc.value : undefined;
+    if (desc && desc.get) Object.defineProperty(target, key, desc);
+    else target[key] = desc ? desc.value : undefined;
   }
   return target;
 }
 function splitProps(props, ...keys) {
-  if ($PROXY in props) {
+  if (SUPPORTS_PROXY && $PROXY in props) {
     const blocked = new Set(keys.length > 1 ? keys.flat() : keys[0]);
     const res = keys.map(k => {
-      return new Proxy({
-        get(property) {
-          return k.includes(property) ? props[property] : undefined;
+      return new Proxy(
+        {
+          get(property) {
+            return k.includes(property) ? props[property] : undefined;
+          },
+          has(property) {
+            return k.includes(property) && property in props;
+          },
+          keys() {
+            return k.filter(property => property in props);
+          }
         },
-        has(property) {
-          return k.includes(property) && property in props;
-        },
-        keys() {
-          return k.filter(property => property in props);
-        }
-      }, propTraps);
+        propTraps
+      );
     });
-    res.push(new Proxy({
-      get(property) {
-        return blocked.has(property) ? undefined : props[property];
-      },
-      has(property) {
-        return blocked.has(property) ? false : property in props;
-      },
-      keys() {
-        return Object.keys(props).filter(k => !blocked.has(k));
-      }
-    }, propTraps));
+    res.push(
+      new Proxy(
+        {
+          get(property) {
+            return blocked.has(property) ? undefined : props[property];
+          },
+          has(property) {
+            return blocked.has(property) ? false : property in props;
+          },
+          keys() {
+            return Object.keys(props).filter(k => !blocked.has(k));
+          }
+        },
+        propTraps
+      )
+    );
     return res;
   }
   const otherObject = {};
   const objects = keys.map(() => ({}));
   for (const propName of Object.getOwnPropertyNames(props)) {
     const desc = Object.getOwnPropertyDescriptor(props, propName);
-    const isDefaultDesc = !desc.get && !desc.set && desc.enumerable && desc.writable && desc.configurable;
+    const isDefaultDesc =
+      !desc.get && !desc.set && desc.enumerable && desc.writable && desc.configurable;
     let blocked = false;
     let objectIndex = 0;
     for (const k of keys) {
       if (k.includes(propName)) {
         blocked = true;
-        isDefaultDesc ? objects[objectIndex][propName] = desc.value : Object.defineProperty(objects[objectIndex], propName, desc);
+        isDefaultDesc
+          ? (objects[objectIndex][propName] = desc.value)
+          : Object.defineProperty(objects[objectIndex], propName, desc);
       }
       ++objectIndex;
     }
     if (!blocked) {
-      isDefaultDesc ? otherObject[propName] = desc.value : Object.defineProperty(otherObject, propName, desc);
+      isDefaultDesc
+        ? (otherObject[propName] = desc.value)
+        : Object.defineProperty(otherObject, propName, desc);
     }
   }
   return [...objects, otherObject];
@@ -882,30 +962,82 @@ function Index(props) {
 function Show(props) {
   const keyed = props.keyed;
   const condition = createMemo(() => props.when, undefined, {
-    equals: (a, b) => keyed ? a === b : !a === !b
+    equals: (a, b) => (keyed ? a === b : !a === !b)
   });
-  return createMemo(() => {
-    const c = condition();
-    if (c) {
-      const child = props.children;
-      const fn = typeof child === "function" && child.length > 0;
-      return fn ? untrack(() => child(keyed ? c : () => {
-        if (!untrack(condition)) throw narrowedError("Show");
-        return props.when;
-      })) : child;
-    }
-    return props.fallback;
-  }, undefined, undefined);
+  return createMemo(
+    () => {
+      const c = condition();
+      if (c) {
+        const child = props.children;
+        const fn = typeof child === "function" && child.length > 0;
+        return fn
+          ? untrack(() =>
+              child(
+                keyed
+                  ? c
+                  : () => {
+                      if (!untrack(condition)) throw narrowedError("Show");
+                      return props.when;
+                    }
+              )
+            )
+          : child;
+      }
+      return props.fallback;
+    },
+    undefined,
+    undefined
+  );
 }
 
-const booleans = ["allowfullscreen", "async", "autofocus", "autoplay", "checked", "controls", "default", "disabled", "formnovalidate", "hidden", "indeterminate", "inert", "ismap", "loop", "multiple", "muted", "nomodule", "novalidate", "open", "playsinline", "readonly", "required", "reversed", "seamless", "selected"];
-const Properties = /*#__PURE__*/new Set(["className", "value", "readOnly", "formNoValidate", "isMap", "noModule", "playsInline", ...booleans]);
-const ChildProperties = /*#__PURE__*/new Set(["innerHTML", "textContent", "innerText", "children"]);
-const Aliases = /*#__PURE__*/Object.assign(Object.create(null), {
+const booleans = [
+  "allowfullscreen",
+  "async",
+  "autofocus",
+  "autoplay",
+  "checked",
+  "controls",
+  "default",
+  "disabled",
+  "formnovalidate",
+  "hidden",
+  "indeterminate",
+  "inert",
+  "ismap",
+  "loop",
+  "multiple",
+  "muted",
+  "nomodule",
+  "novalidate",
+  "open",
+  "playsinline",
+  "readonly",
+  "required",
+  "reversed",
+  "seamless",
+  "selected"
+];
+const Properties = /*#__PURE__*/ new Set([
+  "className",
+  "value",
+  "readOnly",
+  "formNoValidate",
+  "isMap",
+  "noModule",
+  "playsInline",
+  ...booleans
+]);
+const ChildProperties = /*#__PURE__*/ new Set([
+  "innerHTML",
+  "textContent",
+  "innerText",
+  "children"
+]);
+const Aliases = /*#__PURE__*/ Object.assign(Object.create(null), {
   className: "class",
   htmlFor: "for"
 });
-const PropAliases = /*#__PURE__*/Object.assign(Object.create(null), {
+const PropAliases = /*#__PURE__*/ Object.assign(Object.create(null), {
   class: "className",
   formnovalidate: {
     $: "formNoValidate",
@@ -932,9 +1064,32 @@ const PropAliases = /*#__PURE__*/Object.assign(Object.create(null), {
 });
 function getPropAlias(prop, tagName) {
   const a = PropAliases[prop];
-  return typeof a === "object" ? a[tagName] ? a["$"] : undefined : a;
+  return typeof a === "object" ? (a[tagName] ? a["$"] : undefined) : a;
 }
-const DelegatedEvents = /*#__PURE__*/new Set(["beforeinput", "click", "dblclick", "contextmenu", "focusin", "focusout", "input", "keydown", "keyup", "mousedown", "mousemove", "mouseout", "mouseover", "mouseup", "pointerdown", "pointermove", "pointerout", "pointerover", "pointerup", "touchend", "touchmove", "touchstart"]);
+const DelegatedEvents = /*#__PURE__*/ new Set([
+  "beforeinput",
+  "click",
+  "dblclick",
+  "contextmenu",
+  "focusin",
+  "focusout",
+  "input",
+  "keydown",
+  "keyup",
+  "mousedown",
+  "mousemove",
+  "mouseout",
+  "mouseover",
+  "mouseup",
+  "pointerdown",
+  "pointermove",
+  "pointerout",
+  "pointerover",
+  "pointerup",
+  "touchend",
+  "touchmove",
+  "touchstart"
+]);
 
 function reconcileArrays(parentNode, a, b) {
   let bLength = b.length,
@@ -955,7 +1110,7 @@ function reconcileArrays(parentNode, a, b) {
       bEnd--;
     }
     if (aEnd === aStart) {
-      const node = bEnd < bLength ? bStart ? b[bStart - 1].nextSibling : b[bEnd - bStart] : after;
+      const node = bEnd < bLength ? (bStart ? b[bStart - 1].nextSibling : b[bEnd - bStart]) : after;
       while (bStart < bEnd) parentNode.insertBefore(b[bStart++], node);
     } else if (bEnd === bStart) {
       while (aStart < aEnd) {
@@ -998,7 +1153,9 @@ function render(code, element, init, options = {}) {
   let disposer;
   createRoot(dispose => {
     disposer = dispose;
-    element === document ? code() : insert(element, code(), element.firstChild ? null : undefined, init);
+    element === document
+      ? code()
+      : insert(element, code(), element.firstChild ? null : undefined, init);
   }, options.owner);
   return () => {
     disposer();
@@ -1012,7 +1169,9 @@ function template(html, isCE, isSVG) {
     t.innerHTML = html;
     return isSVG ? t.content.firstChild.firstChild : t.content.firstChild;
   };
-  const fn = isCE ? () => untrack(() => document.importNode(node || (node = create()), true)) : () => (node || (node = create())).cloneNode(true);
+  const fn = isCE
+    ? () => untrack(() => document.importNode(node || (node = create()), true))
+    : () => (node || (node = create())).cloneNode(true);
   fn.cloneNode = fn;
   return fn;
 }
@@ -1027,10 +1186,12 @@ function delegateEvents(eventNames, document = window.document) {
   }
 }
 function setAttribute(node, name, value) {
-  if (value == null) node.removeAttribute(name);else node.setAttribute(name, value);
+  if (value == null) node.removeAttribute(name);
+  else node.setAttribute(name, value);
 }
 function className(node, value) {
-  if (value == null) node.removeAttribute("class");else node.className = value;
+  if (value == null) node.removeAttribute("class");
+  else node.className = value;
 }
 function addEventListener(node, name, handler, delegate) {
   if (delegate) {
@@ -1040,7 +1201,7 @@ function addEventListener(node, name, handler, delegate) {
     } else node[`$$${name}`] = handler;
   } else if (Array.isArray(handler)) {
     const handlerFn = handler[0];
-    node.addEventListener(name, handler[0] = e => handlerFn.call(node, handler[1], e));
+    node.addEventListener(name, (handler[0] = e => handlerFn.call(node, handler[1], e)));
   } else node.addEventListener(name, handler);
 }
 function classList(node, value, prev = {}) {
@@ -1065,7 +1226,7 @@ function classList(node, value, prev = {}) {
 function style(node, value, prev) {
   if (!value) return prev ? setAttribute(node, "style") : value;
   const nodeStyle = node.style;
-  if (typeof value === "string") return nodeStyle.cssText = value;
+  if (typeof value === "string") return (nodeStyle.cssText = value);
   typeof prev === "string" && (nodeStyle.cssText = prev = undefined);
   prev || (prev = {});
   value || (value = {});
@@ -1118,7 +1279,8 @@ function toPropertyName(name) {
 }
 function toggleClassKey(node, key, value) {
   const classNames = key.trim().split(/\s+/);
-  for (let i = 0, nameLen = classNames.length; i < nameLen; i++) node.classList.toggle(classNames[i], value);
+  for (let i = 0, nameLen = classNames.length; i < nameLen; i++)
+    node.classList.toggle(classNames[i], value);
 }
 function assignProp(node, prop, value, prev, isSVG, skipRef) {
   let isCE, isProp, isChildProp, propAlias, forceProp;
@@ -1148,12 +1310,19 @@ function assignProp(node, prop, value, prev, isSVG, skipRef) {
     }
   } else if (prop.slice(0, 5) === "attr:") {
     setAttribute(node, prop.slice(5), value);
-  } else if ((forceProp = prop.slice(0, 5) === "prop:") || (isChildProp = ChildProperties.has(prop)) || ((propAlias = getPropAlias(prop, node.tagName)) || (isProp = Properties.has(prop))) || (isCE = node.nodeName.includes("-"))) {
+  } else if (
+    (forceProp = prop.slice(0, 5) === "prop:") ||
+    (isChildProp = ChildProperties.has(prop)) ||
+    (((propAlias = getPropAlias(prop, node.tagName)) || (isProp = Properties.has(prop)))) ||
+    (isCE = node.nodeName.includes("-"))
+  ) {
     if (forceProp) {
       prop = prop.slice(5);
       isProp = true;
     }
-    if (prop === "class" || prop === "className") className(node, value);else if (isCE && !isProp && !isChildProp) node[toPropertyName(prop)] = value;else node[propAlias || prop] = value;
+    if (prop === "class" || prop === "className") className(node, value);
+    else if (isCE && !isProp && !isChildProp) node[toPropertyName(prop)] = value;
+    else node[propAlias || prop] = value;
   } else {
     setAttribute(node, Aliases[prop] || prop, value);
   }
@@ -1161,7 +1330,7 @@ function assignProp(node, prop, value, prev, isSVG, skipRef) {
 }
 function eventHandler(e) {
   const key = `$$${e.type}`;
-  let node = e.composedPath && e.composedPath()[0] || e.target;
+  let node = (e.composedPath && e.composedPath()[0]) || e.target;
   if (e.target !== node) {
     Object.defineProperty(e, "target", {
       configurable: true,
@@ -1189,7 +1358,7 @@ function insertExpression(parent, value, current, marker, unwrapArray) {
   if (value === current) return current;
   const t = typeof value,
     multi = marker !== undefined;
-  parent = multi && current[0] && current[0].parentNode || parent;
+  parent = (multi && current[0] && current[0].parentNode) || parent;
   if (t === "string" || t === "number") {
     if (t === "number") {
       value = value.toString();
@@ -1219,7 +1388,7 @@ function insertExpression(parent, value, current, marker, unwrapArray) {
     const array = [];
     const currentArray = current && Array.isArray(current);
     if (normalizeIncomingArray(array, value, current, unwrapArray)) {
-      createRenderEffect(() => current = insertExpression(parent, array, current, marker, true));
+      createRenderEffect(() => (current = insertExpression(parent, array, current, marker, true)));
       return () => current;
     }
     if (array.length === 0) {
@@ -1236,13 +1405,13 @@ function insertExpression(parent, value, current, marker, unwrapArray) {
     current = array;
   } else if (value.nodeType) {
     if (Array.isArray(current)) {
-      if (multi) return current = cleanChildren(parent, current, marker, value);
+      if (multi) return (current = cleanChildren(parent, current, marker, value));
       cleanChildren(parent, current, null, value);
     } else if (current == null || current === "" || !parent.firstChild) {
       parent.appendChild(value);
     } else parent.replaceChild(value, parent.firstChild);
     current = value;
-  } else ;
+  } else;
   return current;
 }
 function normalizeIncomingArray(normalized, array, current, unwrap) {
@@ -1251,21 +1420,28 @@ function normalizeIncomingArray(normalized, array, current, unwrap) {
     let item = array[i],
       prev = current && current[normalized.length],
       t;
-    if (item == null || item === true || item === false) ; else if ((t = typeof item) === "object" && item.nodeType) {
+    if (item == null || item === true || item === false);
+    else if ((t = typeof item) === "object" && item.nodeType) {
       normalized.push(item);
     } else if (Array.isArray(item)) {
       dynamic = normalizeIncomingArray(normalized, item, prev) || dynamic;
     } else if (t === "function") {
       if (unwrap) {
         while (typeof item === "function") item = item();
-        dynamic = normalizeIncomingArray(normalized, Array.isArray(item) ? item : [item], Array.isArray(prev) ? prev : [prev]) || dynamic;
+        dynamic =
+          normalizeIncomingArray(
+            normalized,
+            Array.isArray(item) ? item : [item],
+            Array.isArray(prev) ? prev : [prev]
+          ) || dynamic;
       } else {
         normalized.push(item);
         dynamic = true;
       }
     } else {
       const value = String(item);
-      if (prev && prev.nodeType === 3 && prev.data === value) normalized.push(prev);else normalized.push(document.createTextNode(value));
+      if (prev && prev.nodeType === 3 && prev.data === value) normalized.push(prev);
+      else normalized.push(document.createTextNode(value));
     }
   }
   return dynamic;
@@ -1274,7 +1450,7 @@ function appendNodes(parent, array, marker = null) {
   for (let i = 0, len = array.length; i < len; i++) parent.insertBefore(array[i], marker);
 }
 function cleanChildren(parent, current, marker, replacement) {
-  if (marker === undefined) return parent.textContent = "";
+  if (marker === undefined) return (parent.textContent = "");
   const node = replacement || document.createTextNode("");
   if (current.length) {
     let inserted = false;
@@ -1282,7 +1458,9 @@ function cleanChildren(parent, current, marker, replacement) {
       const el = current[i];
       if (node !== el) {
         const isParent = el.parentNode === parent;
-        if (!inserted && !i) isParent ? parent.replaceChild(node, el) : parent.insertBefore(node, marker);else isParent && el.remove();
+        if (!inserted && !i)
+          isParent ? parent.replaceChild(node, el) : parent.insertBefore(node, marker);
+        else isParent && el.remove();
       } else inserted = true;
     }
   } else parent.insertBefore(node, marker);
@@ -4989,9 +5167,9 @@ function createTmTextarea(styles) {
                       var _el$5 = _tmpl$3$1();
                       segmentIndex * SEGMENT_SIZE + index != null ? _el$5.style.setProperty("--line-number", segmentIndex * SEGMENT_SIZE + index) : _el$5.style.removeProperty("--line-number");
                       createRenderEffect((_p$) => {
-                        var _v$4 = styles.line, _v$5 = manager2().getLine(segmentIndex * SEGMENT_SIZE + index);
-                        _v$4 !== _p$.e && className(_el$5, _p$.e = _v$4);
-                        _v$5 !== _p$.t && (_el$5.innerHTML = _p$.t = _v$5);
+                        var _v$5 = styles.line, _v$6 = manager2().getLine(segmentIndex * SEGMENT_SIZE + index);
+                        _v$5 !== _p$.e && className(_el$5, _p$.e = _v$5);
+                        _v$6 !== _p$.t && (_el$5.innerHTML = _p$.t = _v$6);
                         return _p$;
                       }, {
                         e: void 0,
@@ -5042,15 +5220,17 @@ function createTmTextarea(styles) {
         }).observe(element);
       }, _el$3);
       createRenderEffect((_p$) => {
-        var _v$ = styles.textarea, _v$2 = !config.editable, _v$3 = styles.character;
+        var _v$ = styles.textarea, _v$2 = !config.editable, _v$3 = lineCount(), _v$4 = styles.character;
         _v$ !== _p$.e && className(_el$2, _p$.e = _v$);
         _v$2 !== _p$.t && (_el$2.disabled = _p$.t = _v$2);
-        _v$3 !== _p$.a && className(_el$3, _p$.a = _v$3);
+        _v$3 !== _p$.a && setAttribute(_el$2, "rows", _p$.a = _v$3);
+        _v$4 !== _p$.o && className(_el$3, _p$.o = _v$4);
         return _p$;
       }, {
         e: void 0,
         t: void 0,
-        a: void 0
+        a: void 0,
+        o: void 0
       });
       createRenderEffect(() => _el$2.value = config.value);
       return _el$;
@@ -5061,7 +5241,7 @@ delegateEvents(["keydown"]);
 
 const classnames = ["container","code","line","character","textarea"];
 
-const css = ":host {\n  display: contents;\n\n  & .container {\n    all: inherit;\n    display: flex;\n    position: relative;\n    box-sizing: border-box;\n    background-color: var(--background-color);\n    overflow: auto;\n    color: var(--foreground-color);\n  }\n}\n\n.container {\n  --min-height: calc(var(--line-count) * var(--char-height));\n  --min-width: calc(var(--line-size) * 1ch);\n  display: flex;\n  position: relative;\n  box-sizing: border-box;\n  background-color: var(--background-color);\n  overflow: auto;\n  color: var(--foreground-color);\n\n  & .code {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: strict;\n    min-width: var(--min-width);\n    min-height: var(--min-height);\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .line {\n      position: absolute;\n      top: calc(var(--line-number) * var(--char-height));\n      margin: 0px;\n\n      & span {\n        margin: 0px;\n        background: transparent !important;\n      }\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: var(--min-width);\n    height: 100%;\n    min-height: var(--min-height);\n    overflow: hidden;\n    resize: none;\n    color: transparent;\n    caret-color: var(--foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n  }\n\n  & .textarea::selection {\n    background: var(--selection-color);\n  }\n}\n";
+const css = ":host {\n  display: contents;\n\n  & .container {\n    all: inherit;\n    display: flex;\n    position: relative;\n    box-sizing: border-box;\n    background-color: var(--background-color);\n    overflow: auto;\n    color: var(--foreground-color);\n  }\n}\n\n.container {\n  --min-height: calc(var(--line-count) * var(--char-height));\n  --min-width: calc(var(--line-size) * 1ch);\n  display: flex;\n  position: relative;\n  box-sizing: border-box;\n  background-color: var(--background-color);\n  overflow: auto;\n  color: var(--foreground-color);\n\n  & .code {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: layout;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .line {\n      position: absolute;\n      top: calc(var(--line-number) * var(--char-height));\n      margin: 0px;\n\n      & span {\n        margin: 0px;\n        background: transparent !important;\n      }\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: var(--min-width);\n    height: 100%;\n    min-height: var(--min-height);\n    overflow: hidden;\n    resize: none;\n    color: transparent;\n    caret-color: var(--foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n  }\n\n  & .textarea::selection {\n    background: var(--selection-color);\n  }\n}\n";
 
 const cache = /* @__PURE__ */ new Map();
 function sheet(text) {
@@ -5245,11 +5425,11 @@ class TmTextareaElement extends LumeElement {
   }
 }
 
-const container = "_container_dcw2v_4";
-const code = "_code_dcw2v_25";
-const line = "_line_dcw2v_40";
-const character = "_character_dcw2v_52";
-const textarea = "_textarea_dcw2v_61";
+const container = "_container_5z3ez_4";
+const code = "_code_5z3ez_25";
+const line = "_line_5z3ez_38";
+const character = "_character_5z3ez_50";
+const textarea = "_textarea_5z3ez_59";
 const styles = {
 	container: container,
 	code: code,

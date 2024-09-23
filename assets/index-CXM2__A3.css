@@ -1,7 +1,7 @@
 :host {
   display: contents;
 
-  & ._container_5z3ez_4 {
+  & ._container_1s4r7_4 {
     all: inherit;
     display: flex;
     position: relative;
@@ -12,7 +12,7 @@
   }
 }
 
-._container_5z3ez_4 {
+._container_1s4r7_4 {
   --min-height: calc(var(--line-count) * var(--char-height));
   --min-width: calc(var(--line-size) * 1ch);
   display: flex;
@@ -21,8 +21,9 @@
   background-color: var(--background-color);
   overflow: auto;
   color: var(--foreground-color);
+  font-size: 13px;
 
-  & ._code_5z3ez_25 {
+  & ._code_1s4r7_26 {
     display: block;
     position: absolute;
     z-index: 1;
@@ -35,7 +36,7 @@
     font-family: monospace;
     white-space: pre;
 
-    & ._line_5z3ez_38 {
+    & ._line_1s4r7_39 {
       position: absolute;
       top: calc(var(--line-number) * var(--char-height));
       margin: 0px;
@@ -47,7 +48,7 @@
     }
   }
 
-  & ._character_5z3ez_50 {
+  & ._character_1s4r7_51 {
     position: absolute;
     align-self: start;
     visibility: hidden;
@@ -56,7 +57,7 @@
     line-height: inherit;
   }
 
-  & ._textarea_5z3ez_59 {
+  & ._textarea_1s4r7_60 {
     transition: color 0.5s;
     outline: none;
     border: none;
@@ -72,12 +73,12 @@
     caret-color: var(--foreground-color);
     font-size: inherit;
     line-height: inherit;
-    line-height: inherit;
     font-family: monospace;
     text-align: inherit;
+    white-space: pre;
   }
 
-  & ._textarea_5z3ez_59::selection {
+  & ._textarea_1s4r7_60::selection {
     background: var(--selection-color);
   }
 }
@@ -163,13 +164,8 @@ input {
 }
 
 main {
-  display: flex;
   position: relative;
   flex: 1;
-  flex-direction: column;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
   gap: 15px 30px;
   z-index: 1;
   box-sizing: border-box;
@@ -177,15 +173,44 @@ main {
   overflow: auto;
 }
 
+.tm-textarea {
+  max-height: 100%;
+}
+
+/* .line-numbers,
+.line-numbers::part(root) {
+  --line-number-width: calc((var(--line-digits) + 1) * 1ch);
+}
+
+.line-numbers pre::before,
 .line-numbers::part(line)::before {
   display: inline-block;
   opacity: 0.5;
   counter-reset: variable calc(var(--line-number) + 1);
-  min-width: calc((min(var(--line-digits), 3) + 1) * 1ch);
+  min-width: var(--line-number-width);
+  content: counter(variable);
+  color: var(--foreground-color);
+}
+
+.line-numbers textarea,
+.line-numbers::part(textarea) {
+  margin-left: var(--line-number-width);
+  min-width: var(--line-number-width);
+} */
+
+.line-numbers::part(root) {
+  --line-number-width: calc((var(--line-digits) + 1) * 1ch);
+}
+
+.line-numbers::part(line)::before {
+  display: inline-block;
+  opacity: 0.5;
+  counter-reset: variable calc(var(--line-number) + 1);
+  min-width: var(--line-number-width);
   content: counter(variable);
   color: var(--foreground-color);
 }
 
 .line-numbers::part(textarea) {
-  margin-left: calc((min(var(--line-digits), 3) + 1) * 1ch);
+  margin-left: var(--line-number-width);
 }

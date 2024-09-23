@@ -1,7 +1,7 @@
 :host {
   display: contents;
 
-  & ._container_1p3uw_4 {
+  & ._container_o5gi8_4 {
     all: inherit;
     display: flex;
     box-sizing: border-box;
@@ -11,7 +11,7 @@
   }
 }
 
-._container_1p3uw_4 {
+._container_o5gi8_4 {
   --min-height: calc(var(--line-count) * var(--char-height));
   --min-width: calc(var(--line-size) * 1ch);
   display: flex;
@@ -21,7 +21,7 @@
   overflow: auto;
   color: var(--foreground-color);
 
-  & ._code_1p3uw_24 {
+  & ._code_o5gi8_24 {
     display: block;
     position: absolute;
     z-index: 1;
@@ -36,7 +36,7 @@
     font-family: monospace;
     white-space: pre;
 
-    & ._line_1p3uw_39 {
+    & ._line_o5gi8_39 {
       position: absolute;
       top: calc(var(--line-number) * var(--char-height));
       margin: 0px;
@@ -48,7 +48,7 @@
     }
   }
 
-  & ._character_1p3uw_51 {
+  & ._character_o5gi8_51 {
     position: absolute;
     align-self: start;
     visibility: hidden;
@@ -57,7 +57,7 @@
     line-height: inherit;
   }
 
-  & ._textarea_1p3uw_60 {
+  & ._textarea_o5gi8_60 {
     transition: color 0.5s;
     outline: none;
     border: none;
@@ -76,10 +76,9 @@
     line-height: inherit;
     font-family: monospace;
     text-align: inherit;
-    white-space: nowrap;
   }
 
-  & ._textarea_1p3uw_60::selection {
+  & ._textarea_o5gi8_60::selection {
     background: var(--selection-color);
   }
 }

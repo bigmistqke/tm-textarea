@@ -1289,199 +1289,6 @@ function cleanChildren(parent, current, marker, replacement) {
   return [node];
 }
 
-const test = `import test from '.?raw'
-import { createRenderEffect, createSignal, For, Show, type Component } from 'solid-js'
-import { render } from 'solid-js/web'
-import 'tm-textarea'
-import { setCDN } from 'tm-textarea/cdn'
-import { TmTextarea } from 'tm-textarea/solid'
-import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
-import './index.css'
-import tsx from './tsx.json?url'
-
-setCDN((type, id) => {
-  switch (type) {
-    case 'theme':
-      return \`https://esm.sh/tm-themes/themes/\${id}.json\`
-    case 'grammar':
-      return id === 'tsx' ? tsx : \`https://esm.sh/tm-grammars/grammars/\${id}.json\`
-    case 'oniguruma':
-      return \`https://esm.sh/vscode-oniguruma/release/onig.wasm\`
-  }
-})
-
-const App: Component = () => {
-  const [mode, setMode] = createSignal<'custom-element' | 'solid'>('custom-element')
-  const [theme, setCurrentThemeName] = createSignal<Theme>('light-plus')
-  const [grammar, setCurrentLanguageName] = createSignal<Grammar>('tsx')
-
-  const [fontSize, setFontSize] = createSignal(10)
-  const [padding, setPadding] = createSignal(20)
-  const [editable, setEditable] = createSignal(true)
-  const [lineNumbers, setLineNumbers] = createSignal(true)
-
-  const [LOC, setLOC] = createSignal(10_000)
-  const [value, setValue] = createSignal<string>(null!)
-
-  createRenderEffect(() => {
-    setValue(loopLines(test, LOC()))
-  })
-
-  function loopLines(input: string, lineCount: number): string {
-    const lines = input.split('\\n')
-    const totalLines = lines.length
-    let result = ''
-
-    for (let i = 0; i < lineCount; i++) {
-      result += lines[i % totalLines] + '\\n'
-    }
-
-    return result.trim() // Trim to remove the trailing newline
-  }
-
-  return (
-    <div class="app">
-      <div class="side-panel">
-        <h1>Tm Textarea</h1>
-        <footer>
-          <div>
-            <label for="mode">mode</label>
-            <button
-              id="mode"
-              onClick={e => {
-                setMode(mode => (mode === 'custom-element' ? 'solid' : 'custom-element'))
-              }}
-            >
-              {mode()}
-            </button>
-          </div>
-          <br />
-          <div>
-            <label for="theme">themes</label>
-            <select
-              id="theme"
-              value={theme()}
-              onInput={e => setCurrentThemeName(e.currentTarget.value as Theme)}
-            >
-              <For each={themes}>{theme => <option>{theme}</option>}</For>
-            </select>
-          </div>
-          <div>
-            <label for="lang">languages</label>
-            <select
-              id="lang"
-              value={grammar()}
-              onInput={e => setCurrentLanguageName(e.currentTarget.value as Grammar)}
-            >
-              <For each={grammars}>{grammar => <option>{grammar}</option>}</For>
-            </select>
-          </div>
-          <br />
-          <div>
-            <label for="LOC">LOC</label>
-            <input
-              id="LOC"
-              type="number"
-              value={LOC()}
-              onInput={e => setLOC(+e.currentTarget.value)}
-            />
-          </div>
-
-          <div>
-            <label for="padding">padding</label>
-            <input
-              id="padding"
-              type="number"
-              onInput={e => setPadding(+e.currentTarget.value)}
-              value={padding()}
-            />
-          </div>
-          <div>
-            <label for="font-size">font-size</label>
-            <input
-              id="font-size"
-              type="number"
-              onInput={e => setFontSize(+e.currentTarget.value)}
-              value={fontSize()}
-            />
-          </div>
-          <div>
-            <label for="line-numbers">Line Numbers</label>
-            <button
-              id="line-numbers"
-              onClick={e => {
-                setLineNumbers(bool => !bool)
-              }}
-            >
-              {lineNumbers() ? 'enabled' : 'disabled'}
-            </button>
-          </div>
-          <div>
-            <label for="editable">editable</label>
-            <button
-              id="editable"
-              onClick={e => {
-                setEditable(bool => !bool)
-              }}
-            >
-              {editable() ? 'enabled' : 'disabled'}
-            </button>
-          </div>
-        </footer>
-      </div>
-      <main>
-        <Show
-          when={mode() === 'custom-element'}
-          fallback={
-            <TmTextarea
-              lineHeight={16}
-              value={value()}
-              grammar={grammar()}
-              theme={theme()}
-              editable={editable()}
-              style={{
-                height: '300px',
-                width: '500px',
-                'max-width': '100%',
-                'max-height': '100%',
-                padding: \`\${padding()}px\`,
-                resize: 'both',
-                position: 'absolute',
-              }}
-              class={lineNumbers() ? 'line-numbers' : undefined}
-              onInput={e => setValue(e.currentTarget.value)}
-            />
-          }
-        >
-          <tm-textarea
-            line-height={16}
-            value={value()}
-            grammar={grammar()}
-            theme={theme()}
-            editable={editable()}
-            style={{
-              height: '300px',
-              width: '500px',
-              'max-width': '100%',
-              'max-height': '100%',
-              padding: \`\${padding()}px\`,
-              resize: 'both',
-              position: 'absolute',
-            }}
-            class={lineNumbers() ? 'line-numbers' : undefined}
-            onInput={e => setValue(e.currentTarget.value)}
-          />
-        </Show>
-      </main>
-    </div>
-  )
-}
-
-export default App
-
-render(() => <App />, document.getElementById('root')!)
-`;
-
 /**
  * NOTE: Experimental
  *
@@ -2638,47 +2445,6 @@ const toNumber = (str) => +str;
  * ```
  */
 attribute.number = (() => ({ from: toNumber }));
-/**
- * A decorator for mapping a number attribute to a JS property. The string value
- * of the attribute will be parsed into a number.
- *
- * Example decorator usage:
- *
- * ```js
- * ⁣@element('my-el')
- * class MyEl extends LumeElement {
- *   ⁣@numberAttribute money = 123
- * }
- * ```
- *
- * Example HTML attribute usage:
- *
- * ```html
- * <!-- el.money === 0, because an empty string gets coerced into 0. -->
- * <my-el money></my-el>
- *
- * <!-- el.money === 123, based on the default value defined on the class field. -->
- * <my-el></my-el>
- *
- * <!-- el.money === 10 -->
- * <my-el money="10"></my-el>
- *
- * <!-- el.money === 4.5 -->
- * <my-el money="4.5"></my-el>
- *
- * <!-- el.money === Infinity -->
- * <my-el money="Infinity"></my-el>
- *
- * <!-- el.money === NaN -->
- * <my-el money="NaN"></my-el>
- *
- * <!-- el.money === NaN -->
- * <my-el money="blahblah"></my-el>
- * ```
- */
-function numberAttribute(value, context) {
-    return attribute(attribute.number())(value, context);
-}
 const toBoolean = (str) => str !== 'false';
 /**
  * An attribute type for use in the `static observedAttributeHandlers` map
@@ -5131,14 +4897,14 @@ function createTmTextarea(styles) {
       editable: true
     }, props), ["class", "grammar", "onInput", "value", "style", "theme", "editable", "onScroll", "textareaRef"]);
     let container;
-    const [charHeight, setCharHeight] = createSignal();
+    const [charHeight, setCharHeight] = createSignal(0);
     const [dimensions, setDimensions] = createSignal();
     const [scrollTop, setScrollTop] = createSignal(0);
     const [manager, setSource] = createManager(props);
     const lineSize = createMemo(() => getLongestLineSize(manager()?.lines() || []));
     const lineCount = () => manager()?.lines().length || 0;
-    const minLine = createMemo(() => Math.floor(scrollTop() / props.lineHeight));
-    const maxLine = createMemo(() => Math.floor((scrollTop() + (dimensions()?.height || 0)) / props.lineHeight));
+    const minLine = createMemo(() => Math.floor(scrollTop() / charHeight()));
+    const maxLine = createMemo(() => Math.floor((scrollTop() + (dimensions()?.height || 0)) / charHeight()));
     const minSegment = createMemo(() => Math.floor(minLine() / SEGMENT_SIZE));
     const maxSegment = createMemo(() => Math.ceil(maxLine() / SEGMENT_SIZE));
     const isVisible = createSelector(() => [minLine(), maxLine()], (index, [viewportMin, viewportMax]) => {
@@ -5164,6 +4930,7 @@ function createTmTextarea(styles) {
       const [_, style2] = splitProps(config.style, ["width", "height"]);
       return style2;
     };
+    createRenderEffect(() => console.log(charHeight()));
     return (() => {
       var _el$ = _tmpl$$1(), _el$2 = _el$.firstChild, _el$3 = _el$2.nextSibling;
       _el$.addEventListener("scroll", (e) => {
@@ -5182,10 +4949,9 @@ function createTmTextarea(styles) {
         get style() {
           return {
             "--background-color": manager()?.theme.getBackgroundColor(),
-            "--char-height": charHeight(),
+            "--char-height": `${charHeight()}px`,
             "--foreground-color": manager()?.theme.getForegroundColor(),
             "--line-count": lineCount(),
-            "--line-height": `${props.lineHeight}px`,
             "--line-size": lineSize(),
             "--selection-color": selectionColor(),
             ...style()
@@ -5272,7 +5038,7 @@ function createTmTextarea(styles) {
           const {
             height
           } = getComputedStyle(element);
-          setCharHeight(height);
+          setCharHeight(Number(height.replace("px", "")));
         }).observe(element);
       }, _el$3);
       createRenderEffect((_p$) => {
@@ -5295,7 +5061,7 @@ delegateEvents(["keydown"]);
 
 const classnames = ["container","code","line","character","textarea"];
 
-const css = ":host {\n  display: contents;\n\n  & .container {\n    all: inherit;\n    display: flex;\n    box-sizing: border-box;\n    background-color: var(--background-color);\n    overflow: auto;\n    color: var(--foreground-color);\n    line-height: var(--line-height);\n  }\n}\n\n.container {\n  --min-height: calc(var(--line-count) * var(--char-height));\n  --min-width: calc(var(--line-size) * 1em);\n  display: flex;\n  position: relative;\n  box-sizing: border-box;\n  background-color: var(--background-color);\n  overflow: auto;\n  color: var(--foreground-color);\n  line-height: var(--line-height);\n\n  & .code {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: strict;\n    min-width: var(--min-width);\n    min-height: var(--min-height);\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .line {\n      position: absolute;\n      top: calc(var(--line-number) * var(--char-height));\n      margin: 0px;\n\n      & span {\n        margin: 0px;\n        background: transparent !important;\n      }\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: var(--min-width);\n    height: 100%;\n    min-height: var(--min-height);\n    overflow: hidden;\n    resize: none;\n    color: transparent;\n    caret-color: var(--foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n    white-space: nowrap;\n  }\n\n  & .textarea::selection {\n    background: var(--selection-color);\n  }\n}\n";
+const css = ":host {\n  display: contents;\n\n  & .container {\n    all: inherit;\n    display: flex;\n    box-sizing: border-box;\n    background-color: var(--background-color);\n    overflow: auto;\n    color: var(--foreground-color);\n  }\n}\n\n.container {\n  --min-height: calc(var(--line-count) * var(--char-height));\n  --min-width: calc(var(--line-size) * 1em);\n  display: flex;\n  position: relative;\n  box-sizing: border-box;\n  background-color: var(--background-color);\n  overflow: auto;\n  color: var(--foreground-color);\n\n  & .code {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: strict;\n    min-width: var(--min-width);\n    min-height: var(--min-height);\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .line {\n      position: absolute;\n      top: calc(var(--line-number) * var(--char-height));\n      margin: 0px;\n\n      & span {\n        margin: 0px;\n        background: transparent !important;\n      }\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: var(--min-width);\n    height: 100%;\n    min-height: var(--min-height);\n    overflow: hidden;\n    resize: none;\n    color: transparent;\n    caret-color: var(--foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n    white-space: nowrap;\n  }\n\n  & .textarea::selection {\n    background: var(--selection-color);\n  }\n}\n";
 
 const cache = /* @__PURE__ */ new Map();
 function sheet(text) {
@@ -5310,7 +5076,7 @@ function sheet(text) {
   return cache.get(text);
 }
 
-let _initClass, _classDecs, _grammarDecs, _init_grammar, _themeDecs, _init_theme, _init_stylesheet, _init_lineHeight, _init_editable, _init__value;
+let _initClass, _classDecs, _grammarDecs, _init_grammar, _themeDecs, _init_theme, _init_stylesheet, _init_editable, _init__value;
 function _applyDecs(e, t, r, n, o, a) {
   function i(e2, t2, r2) {
     return function(n2, o2) {
@@ -5435,14 +5201,13 @@ let _TmTextareaElement;
 class TmTextareaElement extends LumeElement {
   static {
     ({
-      e: [_init_grammar, _init_theme, _init_stylesheet, _init_lineHeight, _init_editable, _init__value],
+      e: [_init_grammar, _init_theme, _init_stylesheet, _init_editable, _init__value],
       c: [_TmTextareaElement, _initClass]
-    } = _applyDecs(this, [[_grammarDecs, 0, "grammar"], [_themeDecs, 0, "theme"], [stringAttribute, 0, "stylesheet"], [numberAttribute, 0, "lineHeight"], [booleanAttribute, 0, "editable"], [signal, 0, "_value"]], _classDecs, 0, void 0, LumeElement));
+    } = _applyDecs(this, [[_grammarDecs, 0, "grammar"], [_themeDecs, 0, "theme"], [stringAttribute, 0, "stylesheet"], [booleanAttribute, 0, "editable"], [signal, 0, "_value"]], _classDecs, 0, void 0, LumeElement));
   }
   [(_grammarDecs = attribute(), _themeDecs = attribute(), "grammar")] = _init_grammar(this, "tsx");
   theme = _init_theme(this, "dark-plus");
   stylesheet = _init_stylesheet(this, "");
-  lineHeight = _init_lineHeight(this, 16);
   editable = _init_editable(this, true);
   _value = _init__value(this, "");
   textarea = null;
@@ -5454,9 +5219,6 @@ class TmTextareaElement extends LumeElement {
       adoptedStyleSheets.push(sheet(this.stylesheet));
     }
     return createComponent(TmTextarea$1, {
-      get lineHeight() {
-        return _self$.lineHeight;
-      },
       get grammar() {
         return _self$.grammar;
       },
@@ -5483,11 +5245,11 @@ class TmTextareaElement extends LumeElement {
   }
 }
 
-const container = "_container_qj03y_4";
-const code = "_code_qj03y_26";
-const line = "_line_qj03y_41";
-const character = "_character_qj03y_53";
-const textarea = "_textarea_qj03y_62";
+const container = "_container_121u7_4";
+const code = "_code_121u7_24";
+const line = "_line_121u7_39";
+const character = "_character_121u7_51";
+const textarea = "_textarea_121u7_60";
 const styles = {
 	container: container,
 	code: code,
@@ -5784,6 +5546,8 @@ const themes = [
   "vitesse-light"
 ];
 
+const test = "/**\n * @template const T\n * @param {T} value\n * @returns SignalObject<T>\n */\nfunction signal(value) {\n  return [value]\n}\n\nconst [big] = signal('mistqke')\n";
+
 const tsx = ""+new URL('tsx-Da1Z4H1i.json', import.meta.url).href+"";
 
 var _tmpl$ = /* @__PURE__ */ template(`<tm-textarea line-height=16>`, true, false), _tmpl$2 = /* @__PURE__ */ template(`<div class=app><div class=side-panel><h1>Tm Textarea</h1><footer><div><label for=mode>mode</label><button id=mode></button></div><br><div><label for=theme>themes</label><select id=theme></select></div><div><label for=lang>languages</label><select id=lang></select></div><br><div><label for=LOC>LOC</label><input id=LOC type=number></div><div><label for=padding>padding</label><input id=padding type=number></div><div><label for=font-size>font-size</label><input id=font-size type=number></div><div><label for=line-numbers>Line Numbers</label><button id=line-numbers></button></div><div><label for=editable>editable</label><button id=editable></button></div></footer></div><main>`), _tmpl$3 = /* @__PURE__ */ template(`<option>`);
@@ -5805,7 +5569,10 @@ const App = () => {
   const [padding, setPadding] = createSignal(20);
   const [editable, setEditable] = createSignal(true);
   const [lineNumbers, setLineNumbers] = createSignal(true);
-  const [LOC, setLOC] = createSignal(1e4);
+  const [LOC, setLOC] = createSignal(
+    10
+    /* 10_000 */
+  );
   const [value, setValue] = createSignal(null);
   createRenderEffect(() => {
     setValue(loopLines(test, LOC()));
@@ -5860,7 +5627,6 @@ const App = () => {
       },
       get fallback() {
         return createComponent(TmTextarea, {
-          lineHeight: 16,
           get value() {
             return value();
           },

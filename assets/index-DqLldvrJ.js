@@ -5061,7 +5061,7 @@ delegateEvents(["keydown"]);
 
 const classnames = ["container","code","line","character","textarea"];
 
-const css = ":host {\n  display: contents;\n\n  & .container {\n    all: inherit;\n    display: flex;\n    box-sizing: border-box;\n    background-color: var(--background-color);\n    overflow: auto;\n    color: var(--foreground-color);\n  }\n}\n\n.container {\n  --min-height: calc(var(--line-count) * var(--char-height));\n  --min-width: calc(var(--line-size) * 1em);\n  display: flex;\n  position: relative;\n  box-sizing: border-box;\n  background-color: var(--background-color);\n  overflow: auto;\n  color: var(--foreground-color);\n\n  & .code {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: strict;\n    min-width: var(--min-width);\n    min-height: var(--min-height);\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .line {\n      position: absolute;\n      top: calc(var(--line-number) * var(--char-height));\n      margin: 0px;\n\n      & span {\n        margin: 0px;\n        background: transparent !important;\n      }\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: var(--min-width);\n    height: 100%;\n    min-height: var(--min-height);\n    overflow: hidden;\n    resize: none;\n    color: transparent;\n    caret-color: var(--foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n    white-space: nowrap;\n  }\n\n  & .textarea::selection {\n    background: var(--selection-color);\n  }\n}\n";
+const css = ":host {\n  display: contents;\n\n  & .container {\n    all: inherit;\n    display: flex;\n    box-sizing: border-box;\n    background-color: var(--background-color);\n    overflow: auto;\n    color: var(--foreground-color);\n  }\n}\n\n.container {\n  --min-height: calc(var(--line-count) * var(--char-height));\n  --min-width: calc(var(--line-size) * 1ch);\n  display: flex;\n  position: relative;\n  box-sizing: border-box;\n  background-color: var(--background-color);\n  overflow: auto;\n  color: var(--foreground-color);\n\n  & .code {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: strict;\n    min-width: var(--min-width);\n    min-height: var(--min-height);\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .line {\n      position: absolute;\n      top: calc(var(--line-number) * var(--char-height));\n      margin: 0px;\n\n      & span {\n        margin: 0px;\n        background: transparent !important;\n      }\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: var(--min-width);\n    height: 100%;\n    min-height: var(--min-height);\n    overflow: hidden;\n    resize: none;\n    color: transparent;\n    caret-color: var(--foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n    white-space: nowrap;\n  }\n\n  & .textarea::selection {\n    background: var(--selection-color);\n  }\n}\n";
 
 const cache = /* @__PURE__ */ new Map();
 function sheet(text) {
@@ -5245,11 +5245,11 @@ class TmTextareaElement extends LumeElement {
   }
 }
 
-const container = "_container_121u7_4";
-const code = "_code_121u7_24";
-const line = "_line_121u7_39";
-const character = "_character_121u7_51";
-const textarea = "_textarea_121u7_60";
+const container = "_container_1p3uw_4";
+const code = "_code_1p3uw_24";
+const line = "_line_1p3uw_39";
+const character = "_character_1p3uw_51";
+const textarea = "_textarea_1p3uw_60";
 const styles = {
 	container: container,
 	code: code,

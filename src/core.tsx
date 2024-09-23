@@ -444,10 +444,9 @@ export function createTmTextarea(styles: Record<string, string>) {
       return style
     }
 
-    createRenderEffect(() => console.log(charHeight()))
-
     return (
       <div
+        part="root"
         ref={element => {
           container = element
           applyStyle(element, props, 'width')

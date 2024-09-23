@@ -1,7 +1,7 @@
 :host {
   display: contents;
 
-  & ._container_1lvfl_4 {
+  & ._container_qj03y_4 {
     all: inherit;
     display: flex;
     box-sizing: border-box;
@@ -12,7 +12,9 @@
   }
 }
 
-._container_1lvfl_4 {
+._container_qj03y_4 {
+  --min-height: calc(var(--line-count) * var(--char-height));
+  --min-width: calc(var(--line-size) * 1em);
   display: flex;
   position: relative;
   box-sizing: border-box;
@@ -21,22 +23,22 @@
   color: var(--foreground-color);
   line-height: var(--line-height);
 
-  ._segments_1lvfl_24 {
+  & ._code_qj03y_26 {
     display: block;
     position: absolute;
     z-index: 1;
     /* fixes color change when textarea is focused */
     backface-visibility: hidden;
     contain: strict;
-    min-width: calc(var(--line-size) * 1ch);
-    min-height: calc(var(--line-count) * 1em);
+    min-width: var(--min-width);
+    min-height: var(--min-height);
     pointer-events: none;
     font-size: inherit;
     line-height: inherit;
     font-family: monospace;
     white-space: pre;
 
-    & ._segment_1lvfl_24 {
+    & ._line_qj03y_41 {
       position: absolute;
       top: calc(var(--line-number) * var(--char-height));
       margin: 0px;
@@ -48,7 +50,7 @@
     }
   }
 
-  & ._character_1lvfl_51 {
+  & ._character_qj03y_53 {
     position: absolute;
     align-self: start;
     visibility: hidden;
@@ -57,16 +59,16 @@
     line-height: inherit;
   }
 
-  & ._textarea_1lvfl_60 {
+  & ._textarea_qj03y_62 {
     transition: color 0.5s;
     outline: none;
     border: none;
     background: transparent;
     padding: 0px;
     width: 100%;
-    min-width: calc(var(--line-size) * 1ch);
+    min-width: var(--min-width);
     height: 100%;
-    min-height: calc(var(--line-count) * 1em);
+    min-height: var(--min-height);
     overflow: hidden;
     resize: none;
     color: transparent;
@@ -79,7 +81,7 @@
     white-space: nowrap;
   }
 
-  & ._textarea_1lvfl_60::selection {
+  & ._textarea_qj03y_62::selection {
     background: var(--selection-color);
   }
 }
@@ -190,11 +192,17 @@ main {
   background-color: lightgrey;
 }
 
-.line-numbers pre::before {
+.line-numbers pre::before,
+.line-numbers::part(line)::before {
   display: inline-block;
   opacity: 0.5;
   counter-reset: variable calc(var(--line-number) + 1);
   min-width: 7ch;
   content: counter(variable);
   color: var(--foreground-color);
+}
+
+.line-numbers textarea,
+.line-numbers::part(textarea) {
+  margin-left: 7ch;
 }

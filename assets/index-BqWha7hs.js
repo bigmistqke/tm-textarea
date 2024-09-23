@@ -4908,11 +4908,39 @@ var main = {exports: {}};
 
 var mainExports = main.exports;
 
+let CDN = "https://esm.sh";
+const CACHE = {
+  theme: {},
+  grammar: {}
+};
+function setCDN(cdn) {
+  CDN = cdn;
+}
+function urlFromCDN(type, key) {
+  if (typeof CDN === "function") {
+    return CDN(type, key);
+  }
+  switch (type) {
+    case "theme":
+      return `${CDN}/tm-themes/themes/${key}.json`;
+    case "grammar":
+      return `${CDN}/tm-grammars/grammars/${key}.json`;
+    case "oniguruma":
+      return `${CDN}/vscode-oniguruma/release/onig.wasm`;
+  }
+}
+async function fetchFromCDN(type, key) {
+  if (key in CACHE[type]) {
+    return CACHE[type][key];
+  }
+  return CACHE[type][key] = fetch(urlFromCDN(type, key)).then((response) => response.ok ? response.json() : null).catch(console.error);
+}
+
 function applyStyle(element, props, key) {
   let previous;
   createRenderEffect(() => {
     const value = props.style?.[key];
-    value !== previous && ((previous = value) != null ? element.style.setProperty(key, value) : element.style.removeProperty(key));
+    value !== previous && ((previous = value) != null ? element.style.setProperty(key, typeof value === "undefined" ? null : value.toString()) : element.style.removeProperty(key));
   });
 }
 
@@ -4961,8 +4989,8 @@ function getLongestLineSize(lines) {
   return maxLength;
 }
 
-var _tmpl$$1 = /* @__PURE__ */ template(`<div part=root><textarea part=textarea autocomplete=off inputmode=none></textarea><code aria-hidden>&nbsp;`), _tmpl$2$1 = /* @__PURE__ */ template(`<code>`), _tmpl$3$1 = /* @__PURE__ */ template(`<pre>`);
-const SEGMENT_SIZE = 100;
+var _tmpl$$1 = /* @__PURE__ */ template(`<div><textarea part=textarea autocomplete=off inputmode=none></textarea><code aria-hidden>&nbsp;`), _tmpl$2$1 = /* @__PURE__ */ template(`<code part=code>`), _tmpl$3$1 = /* @__PURE__ */ template(`<pre part=line>`);
+const SEGMENT_SIZE = 250;
 const WINDOW = 100;
 class ThemeManager {
   themeData;
@@ -5072,14 +5100,14 @@ class SegmentManager {
   segmentSize = SEGMENT_SIZE;
   lines;
   getSegment(index) {
-    return this.#segments[index] || null;
+    return this.#segments[index] || void 0;
   }
   getLine(globalOffset) {
     const segmentIndex = Math.floor(globalOffset / this.segmentSize);
     const segment = this.#segments[segmentIndex];
-    if (!segment) return null;
+    if (!segment) return void 0;
     const localOffset = globalOffset % this.segmentSize;
-    return segment.getLine(localOffset) || null;
+    return segment.getLine(localOffset) || void 0;
   }
 }
 function equalStack(stateA, stateB) {
@@ -5113,29 +5141,9 @@ function equalScopes(scopeA, scopeB) {
   }
   return true;
 }
-let CDN = "https://esm.sh";
-const CACHE = {
-  theme: {},
-  grammar: {}
-};
-function urlFromCDN(type, key) {
-  switch (type) {
-    case "theme":
-      return `${CDN}/tm-themes/themes/${key}.json`;
-    case "grammar":
-      return `${CDN}/tm-grammars/grammars/${key}.json`;
-    case "oniguruma":
-      return `${CDN}/vscode-oniguruma/release/onig.wasm`;
-  }
-}
-async function fetchFromCDN(type, key) {
-  if (key in CACHE[type]) {
-    return CACHE[type][key];
-  }
-  return CACHE[type][key] = fetch(urlFromCDN(type, key)).then((response) => response.ok ? response.json() : null).catch(console.error);
-}
 const TOKENIZER_CACHE = {};
 const REGISTRY = new mainExports.Registry({
+  // @ts-ignore
   onigLib: oniguruma,
   loadGrammar: (grammar) => fetchFromCDN("grammar", grammar).then((response) => {
     response.scopeName = grammar;
@@ -5153,7 +5161,7 @@ function createManager(props) {
 }
 function createTmTextarea(styles) {
   return function TmTextarea(props) {
-    const [config, rest] = splitProps(props, ["class", "grammar", "onInput", "value", "style", "theme", "editable", "onScroll"]);
+    const [config, rest] = splitProps(props, ["class", "grammar", "onInput", "value", "style", "theme", "editable", "onScroll", "textareaRef"]);
     let container;
     const [charHeight, setCharHeight] = createSignal();
     const [dimensions, setDimensions] = createSignal();
@@ -5243,9 +5251,9 @@ function createTmTextarea(styles) {
                       var _el$5 = _tmpl$3$1();
                       segmentIndex * SEGMENT_SIZE + index != null ? _el$5.style.setProperty("--line-number", segmentIndex * SEGMENT_SIZE + index) : _el$5.style.removeProperty("--line-number");
                       createRenderEffect((_p$) => {
-                        var _v$3 = styles.segment, _v$4 = manager2().getLine(segmentIndex * SEGMENT_SIZE + index);
-                        _v$3 !== _p$.e && className(_el$5, _p$.e = _v$3);
-                        _v$4 !== _p$.t && (_el$5.innerHTML = _p$.t = _v$4);
+                        var _v$4 = styles.line, _v$5 = manager2().getLine(segmentIndex * SEGMENT_SIZE + index);
+                        _v$4 !== _p$.e && className(_el$5, _p$.e = _v$4);
+                        _v$5 !== _p$.t && (_el$5.innerHTML = _p$.t = _v$5);
                         return _p$;
                       }, {
                         e: void 0,
@@ -5258,7 +5266,7 @@ function createTmTextarea(styles) {
               }
             })
           }));
-          createRenderEffect(() => className(_el$4, styles.segments));
+          createRenderEffect(() => className(_el$4, styles.code));
           return _el$4;
         })()
       }), _el$2);
@@ -5278,8 +5286,8 @@ function createTmTextarea(styles) {
         e.preventDefault();
         e.stopPropagation();
       });
-      var _ref$ = props.textareaRef;
-      typeof _ref$ === "function" ? use(_ref$, _el$2) : props.textareaRef = _el$2;
+      var _ref$ = config.textareaRef;
+      typeof _ref$ === "function" ? use(_ref$, _el$2) : config.textareaRef = _el$2;
       setAttribute(_el$2, "spellcheck", false);
       _el$2.addEventListener("input", (e) => {
         const target = e.currentTarget;
@@ -5296,13 +5304,15 @@ function createTmTextarea(styles) {
         }).observe(element);
       }, _el$3);
       createRenderEffect((_p$) => {
-        var _v$ = styles.textarea, _v$2 = styles.character;
+        var _v$ = styles.textarea, _v$2 = !config.editable, _v$3 = styles.character;
         _v$ !== _p$.e && className(_el$2, _p$.e = _v$);
-        _v$2 !== _p$.t && className(_el$3, _p$.t = _v$2);
+        _v$2 !== _p$.t && (_el$2.disabled = _p$.t = _v$2);
+        _v$3 !== _p$.a && className(_el$3, _p$.a = _v$3);
         return _p$;
       }, {
         e: void 0,
-        t: void 0
+        t: void 0,
+        a: void 0
       });
       createRenderEffect(() => _el$2.value = config.value);
       return _el$;
@@ -5311,9 +5321,9 @@ function createTmTextarea(styles) {
 }
 delegateEvents(["keydown"]);
 
-const classnames = ["container","segments","segment","character","textarea"];
+const classnames = ["container","code","line","character","textarea"];
 
-const css = ":host {\n  display: contents;\n\n  & .container {\n    all: inherit;\n    display: flex;\n    box-sizing: border-box;\n    background-color: var(--background-color);\n    overflow: auto;\n    color: var(--foreground-color);\n    line-height: var(--line-height);\n  }\n}\n\n.container {\n  display: flex;\n  position: relative;\n  box-sizing: border-box;\n  background-color: var(--background-color);\n  overflow: auto;\n  color: var(--foreground-color);\n  line-height: var(--line-height);\n\n  .segments {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: strict;\n    min-width: calc(var(--line-size) * 1ch);\n    min-height: calc(var(--line-count) * 1em);\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .segment {\n      position: absolute;\n      top: calc(var(--line-number) * var(--char-height));\n      margin: 0px;\n\n      & span {\n        margin: 0px;\n        background: transparent !important;\n      }\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: calc(var(--line-size) * 1ch);\n    height: 100%;\n    min-height: calc(var(--line-count) * 1em);\n    overflow: hidden;\n    resize: none;\n    color: transparent;\n    caret-color: var(--foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n    white-space: nowrap;\n  }\n\n  & .textarea::selection {\n    background: var(--selection-color);\n  }\n}\n";
+const css = ":host {\n  display: contents;\n\n  & .container {\n    all: inherit;\n    display: flex;\n    box-sizing: border-box;\n    background-color: var(--background-color);\n    overflow: auto;\n    color: var(--foreground-color);\n    line-height: var(--line-height);\n  }\n}\n\n.container {\n  --min-height: calc(var(--line-count) * var(--char-height));\n  --min-width: calc(var(--line-size) * 1em);\n  display: flex;\n  position: relative;\n  box-sizing: border-box;\n  background-color: var(--background-color);\n  overflow: auto;\n  color: var(--foreground-color);\n  line-height: var(--line-height);\n\n  & .code {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: strict;\n    min-width: var(--min-width);\n    min-height: var(--min-height);\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .line {\n      position: absolute;\n      top: calc(var(--line-number) * var(--char-height));\n      margin: 0px;\n\n      & span {\n        margin: 0px;\n        background: transparent !important;\n      }\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: var(--min-width);\n    height: 100%;\n    min-height: var(--min-height);\n    overflow: hidden;\n    resize: none;\n    color: transparent;\n    caret-color: var(--foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n    white-space: nowrap;\n  }\n\n  & .textarea::selection {\n    background: var(--selection-color);\n  }\n}\n";
 
 const cache = /* @__PURE__ */ new Map();
 function sheet(text) {
@@ -5501,15 +5511,15 @@ class TmTextareaElement extends LumeElement {
   }
 }
 
-const container = "_container_1lvfl_4";
-const segments = "_segments_1lvfl_24";
-const segment = "_segment_1lvfl_24";
-const character = "_character_1lvfl_51";
-const textarea = "_textarea_1lvfl_60";
+const container = "_container_qj03y_4";
+const code = "_code_qj03y_26";
+const line = "_line_qj03y_41";
+const character = "_character_qj03y_53";
+const textarea = "_textarea_qj03y_62";
 const styles = {
 	container: container,
-	segments: segments,
-	segment: segment,
+	code: code,
+	line: line,
 	character: character,
 	textarea: textarea
 };
@@ -5805,6 +5815,7 @@ const themes = [
 const test = "/**\n * @template const T\n * @param {T} value\n * @returns SignalObject<T>\n */\nfunction signal(value) {\n  return [value]\n}\n\nconst [big] = signal('mistqke')\n";
 
 var _tmpl$ = /* @__PURE__ */ template(`<tm-textarea line-height=16>`, true, false), _tmpl$2 = /* @__PURE__ */ template(`<div class=app><div class=side-panel><h1>Solid Textmate Textarea</h1><footer><div><label for=mode>mode</label><button id=mode></button></div><br><div><label for=theme>themes</label><select id=theme></select></div><div><label for=lang>languages</label><select id=lang></select></div><br><div><label for=LOC>LOC</label><input id=LOC type=number></div><div><label for=padding>padding</label><input id=padding type=number></div><div><label for=font-size>font-size</label><input id=font-size type=number></div><div><label for=line-numbers>Line Numbers</label><button id=line-numbers></button></div><div><label for=editable>editable</label><button id=editable></button></div></footer></div><main>`), _tmpl$3 = /* @__PURE__ */ template(`<option>`);
+setCDN("https://esm.sh");
 const App = () => {
   const [mode, setMode] = createSignal("custom-element");
   const [theme, setCurrentThemeName] = createSignal("light-plus");

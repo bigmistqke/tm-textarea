@@ -93,7 +93,7 @@ main {
   max-height: 100%;
 }
 
-/* .line-numbers,
+.line-numbers,
 .line-numbers::part(root) {
   --line-number-width: calc((var(--line-digits) + 1) * 1ch);
 }
@@ -109,24 +109,6 @@ main {
 }
 
 .line-numbers textarea,
-.line-numbers::part(textarea) {
-  margin-left: var(--line-number-width);
-  min-width: var(--line-number-width);
-} */
-
-.line-numbers::part(root) {
-  --line-number-width: calc((var(--line-digits) + 1) * 1ch);
-}
-
-.line-numbers::part(line)::before {
-  display: inline-block;
-  opacity: 0.5;
-  counter-reset: variable calc(var(--line-number) + 1);
-  min-width: var(--line-number-width);
-  content: counter(variable);
-  color: var(--foreground-color);
-}
-
 .line-numbers::part(textarea) {
   margin-left: var(--line-number-width);
 }

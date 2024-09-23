@@ -19,7 +19,6 @@ import {
   Show,
   splitProps,
 } from 'solid-js'
-import { createStore, type SetStoreFunction } from 'solid-js/store'
 import * as oniguruma from 'vscode-oniguruma'
 import * as textmate from 'vscode-textmate'
 import { fetchFromCDN, urlFromCDN } from './cdn'
@@ -185,8 +184,8 @@ class Segment {
 
 /** SegmentManager class to manage source into multiple segments. */
 class SegmentManager {
-  #segments: Segment[]
-  #setSegments: SetStoreFunction<Segment[]>
+  #segments: Accessor<Segment[]>
+  #setSegments: Setter<Segment[]>
   segmentSize = SEGMENT_SIZE
   lines: Accessor<string[]>
 
@@ -195,7 +194,7 @@ class SegmentManager {
     public theme: ThemeManager,
     public source: Accessor<string>,
   ) {
-    ;[this.#segments, this.#setSegments] = createStore<Segment[]>([])
+    ;[this.#segments, this.#setSegments] = createSignal<Segment[]>([])
 
     this.lines = createMemo(() => source().split('\n'))
 
@@ -208,7 +207,7 @@ class SegmentManager {
 
       // Add new segments if needed
       if (newSegmentCount > currentSegmentCount) {
-        let previousSegment = this.#segments[this.#segments.length - 1] || null
+        let previousSegment = this.#segments()[this.#segments.length - 1] || null
 
         for (let i = currentSegmentCount; i < newSegmentCount; i += 1) {
           const segment = runWithOwner(owner, () => new Segment(this, previousSegment, i))!
@@ -225,12 +224,12 @@ class SegmentManager {
   }
 
   getSegment(index: number): Segment | undefined {
-    return this.#segments[index] || undefined
+    return this.#segments()[index] || undefined
   }
 
   getLine(globalOffset: number): string | undefined {
     const segmentIndex = Math.floor(globalOffset / this.segmentSize)
-    const segment = this.#segments[segmentIndex]
+    const segment = this.#segments()[segmentIndex]
     if (!segment) {
       DEBUG && console.error('segment does not exist')
       return undefined

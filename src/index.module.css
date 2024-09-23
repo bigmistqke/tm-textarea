@@ -4,6 +4,7 @@
   & .container {
     all: inherit;
     display: flex;
+    position: relative;
     box-sizing: border-box;
     background-color: var(--background-color);
     overflow: auto;

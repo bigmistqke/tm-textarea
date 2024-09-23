@@ -4,7 +4,6 @@ import {
   element,
   Element,
   ElementAttributes,
-  numberAttribute,
   stringAttribute,
 } from '@lume/element'
 import { signal } from 'classy-solid'
@@ -22,7 +21,7 @@ import { sheet } from './utils/sheet.js'
 
 interface TmTextareaAttributes
   extends Omit<
-    ElementAttributes<TmTextareaElement, 'grammar' | 'theme' | 'editable' | 'lineHeight'>,
+    ElementAttributes<TmTextareaElement, 'grammar' | 'theme' | 'editable'>,
     'onInput' | 'oninput'
   > {
   oninput?: (event: InputEvent & { currentTarget: TmTextareaElement }) => any
@@ -60,7 +59,6 @@ class TmTextareaElement extends Element {
   @attribute() grammar: Grammar = 'tsx'
   @attribute() theme: Theme = 'dark-plus'
   @stringAttribute stylesheet = ''
-  @numberAttribute lineHeight = 16
   @booleanAttribute editable = true
   @signal private _value = ''
 
@@ -79,7 +77,6 @@ class TmTextareaElement extends Element {
 
     return (
       <TmTextarea
-        lineHeight={this.lineHeight}
         grammar={this.grammar}
         theme={this.theme}
         value={this._value}

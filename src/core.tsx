@@ -370,7 +370,6 @@ export interface TmTextareaProps
   /** Callback function to handle updates to the source code. */
   onInput?: (event: InputEvent & { currentTarget: HTMLTextAreaElement }) => void
   onScroll?: (event: Event & { currentTarget: HTMLDivElement }) => void
-  lineHeight: number
 }
 
 export function createTmTextarea(styles: Record<string, string>) {
@@ -389,7 +388,7 @@ export function createTmTextarea(styles: Record<string, string>) {
 
     let container: HTMLDivElement
 
-    const [charHeight, setCharHeight] = createSignal<string>()
+    const [charHeight, setCharHeight] = createSignal<number>(0)
     const [dimensions, setDimensions] = createSignal<{ width: number; height: number }>()
     const [scrollTop, setScrollTop] = createSignal(0)
     const [manager, setSource] = createManager(props)
@@ -397,9 +396,9 @@ export function createTmTextarea(styles: Record<string, string>) {
     const lineSize = createMemo(() => getLongestLineSize(manager()?.lines() || []))
     const lineCount = () => manager()?.lines().length || 0
 
-    const minLine = createMemo(() => Math.floor(scrollTop() / props.lineHeight))
+    const minLine = createMemo(() => Math.floor(scrollTop() / charHeight()))
     const maxLine = createMemo(() =>
-      Math.floor((scrollTop() + (dimensions()?.height || 0)) / props.lineHeight),
+      Math.floor((scrollTop() + (dimensions()?.height || 0)) / charHeight()),
     )
 
     const minSegment = createMemo(() => Math.floor(minLine() / SEGMENT_SIZE))
@@ -445,6 +444,8 @@ export function createTmTextarea(styles: Record<string, string>) {
       return style
     }
 
+    createRenderEffect(() => console.log(charHeight()))
+
     return (
       <div
         ref={element => {
@@ -459,10 +460,9 @@ export function createTmTextarea(styles: Record<string, string>) {
         }}
         style={{
           '--background-color': manager()?.theme.getBackgroundColor(),
-          '--char-height': charHeight(),
+          '--char-height': `${charHeight()}px`,
           '--foreground-color': manager()?.theme.getForegroundColor(),
           '--line-count': lineCount(),
-          '--line-height': `${props.lineHeight}px`,
           '--line-size': lineSize(),
           '--selection-color': selectionColor(),
           ...style(),
@@ -550,7 +550,7 @@ export function createTmTextarea(styles: Record<string, string>) {
           ref={element => {
             new ResizeObserver(() => {
               const { height } = getComputedStyle(element)
-              setCharHeight(height)
+              setCharHeight(Number(height.replace('px', '')))
             }).observe(element)
           }}
           aria-hidden

@@ -8,7 +8,6 @@
     background-color: var(--background-color);
     overflow: auto;
     color: var(--foreground-color);
-    line-height: var(--line-height);
   }
 }
 
@@ -21,7 +20,6 @@
   background-color: var(--background-color);
   overflow: auto;
   color: var(--foreground-color);
-  line-height: var(--line-height);
 
   & .code {
     display: block;

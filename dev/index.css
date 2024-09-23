@@ -123,5 +123,4 @@ main {
 .line-numbers code:not([aria-hidden]),
 .line-numbers::part(code) {
   min-width: calc(var(--min-width) + 7ch);
-  min-height: calc(var(--min-height) + 7ch);
 }

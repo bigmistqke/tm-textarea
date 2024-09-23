@@ -22,6 +22,7 @@ import {
 import { createStore, type SetStoreFunction } from 'solid-js/store'
 import * as oniguruma from 'vscode-oniguruma'
 import * as textmate from 'vscode-textmate'
+import { fetchFromCDN, urlFromCDN } from './cdn'
 import { Grammar, Theme } from './tm'
 import { applyStyle } from './utils/apply-style'
 import { hexToRgb, luminance } from './utils/colors'
@@ -35,7 +36,7 @@ import { getLongestLineSize } from './utils/get-longest-linesize'
 /**********************************************************************************/
 
 const DEBUG = false
-const SEGMENT_SIZE = 100
+const SEGMENT_SIZE = 250
 const WINDOW = 100
 
 /**********************************************************************************/
@@ -82,7 +83,7 @@ class ThemeManager {
   resolveScope(scope: string[]): { foreground?: string; fontStyle?: string } {
     const id = scope.join('-')
 
-    if (this.#scopes[id]) return this.#scopes[id]
+    if (this.#scopes[id]) return this.#scopes[id]!
 
     let finalStyle: { foreground?: string; fontStyle?: string } = {}
 
@@ -227,16 +228,16 @@ class SegmentManager {
     )
   }
 
-  getSegment(index: number): Segment | null {
-    return this.#segments[index] || null
+  getSegment(index: number): Segment | undefined {
+    return this.#segments[index] || undefined
   }
 
-  getLine(globalOffset: number): string | null {
+  getLine(globalOffset: number): string | undefined {
     const segmentIndex = Math.floor(globalOffset / this.segmentSize)
     const segment = this.#segments[segmentIndex]
-    if (!segment) return null
+    if (!segment) return undefined
     const localOffset = globalOffset % this.segmentSize
-    return segment.getLine(localOffset) || null
+    return segment.getLine(localOffset) || undefined
   }
 }
 
@@ -302,69 +303,13 @@ function equalScopes(scopeA: any, scopeB: any): boolean {
 
 /**********************************************************************************/
 /*                                                                                */
-/*                                     Set Cdn                                    */
-/*                                                                                */
-/**********************************************************************************/
-
-type CdnAssetType = 'theme' | 'grammar' | 'oniguruma'
-
-type Cdn = string | ((type: CdnAssetType, id: string) => string)
-
-let CDN: Cdn = 'https://esm.sh'
-const CACHE = {
-  theme: {} as Record<string, Promise<any>>,
-  grammar: {} as Record<string, Promise<any>>,
-}
-
-/**
- * Sets the CDN from which the theme/lang of <shiki-textarea/> is fetched.
- *
- * Accepts as arguments
- * - url: string
- * - callback: (type: 'lang' | 'theme' | 'oniguruma', id: string) => string
- *
- * When given an url, this will be used to fetch
- * - `${cdn}/tm-themes/themes/${theme}.json` for the `themes`
- * - `${cdn}/tm-grammars/grammars/${grammar}.json` for the `grammars`
- * - `${cdn}/vscode-oniguruma/release/onig.wasm` for the `oniguruma` wasm-file
- *
- * When given a callback, the returned string will be used to fetch.
- */
-export function setCDN(cdn: Cdn) {
-  CDN = cdn
-}
-
-function urlFromCDN(type: CdnAssetType, key: string) {
-  if (typeof CDN === 'function') {
-    return CDN(type, key)
-  }
-  switch (type) {
-    case 'theme':
-      return `${CDN}/tm-themes/themes/${key}.json`
-    case 'grammar':
-      return `${CDN}/tm-grammars/grammars/${key}.json`
-    case 'oniguruma':
-      return `${CDN}/vscode-oniguruma/release/onig.wasm`
-  }
-}
-
-async function fetchFromCDN(type: 'theme' | 'grammar', key: string) {
-  if (key in CACHE[type]) {
-    return CACHE[type][key]
-  }
-  return (CACHE[type][key] = fetch(urlFromCDN(type, key))
-    .then(response => (response.ok ? response.json() : null))
-    .catch(console.error))
-}
-
-/**********************************************************************************/
-/*                                                                                */
 /*                                 Create Manager                                 */
 /*                                                                                */
 /**********************************************************************************/
 
 const TOKENIZER_CACHE: Record<string, textmate.IGrammar | null> = {}
 const REGISTRY = new textmate.Registry({
+  // @ts-ignore
   onigLib: oniguruma,
   loadGrammar: (grammar: string) =>
     fetchFromCDN('grammar', grammar).then(response => {
@@ -417,7 +362,8 @@ function createManager(props: TmTextareaProps) {
 /*                                                                                */
 /**********************************************************************************/
 
-export interface TmTextareaProps extends Omit<ComponentProps<'div'>, 'style' | 'onInput'> {
+export interface TmTextareaProps
+  extends Omit<ComponentProps<'div'>, 'style' | 'onInput' | 'onScroll'> {
   /** If textarea is editable or not. */
   editable?: boolean
   /**
@@ -436,6 +382,7 @@ export interface TmTextareaProps extends Omit<ComponentProps<'div'>, 'style' | '
   value: string
   /** Callback function to handle updates to the source code. */
   onInput?: (event: InputEvent & { currentTarget: HTMLTextAreaElement }) => void
+  onScroll?: (event: Event & { currentTarget: HTMLDivElement }) => void
   lineHeight: number
 }
 
@@ -508,7 +455,6 @@ export function createTmTextarea(styles: Record<string, string>) {
 
     return (
       <div
-        part="root"
         ref={element => {
           container = element
           applyStyle(element, props, 'width')
@@ -533,7 +479,7 @@ export function createTmTextarea(styles: Record<string, string>) {
       >
         <Show when={manager()}>
           {manager => (
-            <code class={styles.segments}>
+            <code part="code" class={styles.segments}>
               <Index
                 each={Array.from({ length: Math.ceil(manager().lines().length / SEGMENT_SIZE) })}
               >
@@ -544,6 +490,7 @@ export function createTmTextarea(styles: Record<string, string>) {
                         <Show when={isVisible(segmentIndex * SEGMENT_SIZE + index)}>
                           <pre
                             class={styles.segment}
+                            part="line"
                             innerHTML={manager().getLine(segmentIndex * SEGMENT_SIZE + index)}
                             style={{
                               '--line-number': segmentIndex * SEGMENT_SIZE + index,
@@ -563,7 +510,7 @@ export function createTmTextarea(styles: Record<string, string>) {
           part="textarea"
           autocomplete="off"
           class={styles.textarea}
-          /* disabled={!config.editable} */
+          disabled={!config.editable}
           inputmode="none"
           spellcheck={false}
           value={config.value}
@@ -595,6 +542,7 @@ export function createTmTextarea(styles: Record<string, string>) {
               container.scrollTop = scrollTop
             }
           }}
+          /* @ts-ignore */
           on:input={e => {
             const target = e.currentTarget
             const value = target.value

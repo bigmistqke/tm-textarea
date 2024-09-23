@@ -10,7 +10,7 @@ export function applyStyle(
     const value = props.style?.[key]
     value !== previous &&
       ((previous = value) != null
-        ? element.style.setProperty(key, value)
+        ? element.style.setProperty(key, typeof value === 'undefined' ? null : value.toString())
         : element.style.removeProperty(key))
   })
 }

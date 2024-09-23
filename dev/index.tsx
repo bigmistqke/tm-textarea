@@ -1,10 +1,13 @@
 import { createRenderEffect, createSignal, For, Show, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
 import 'tm-textarea'
+import { setCDN } from 'tm-textarea/cdn'
 import { TmTextarea } from 'tm-textarea/solid'
 import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
 import './index.css'
 import test from './test?raw'
+
+setCDN('https://esm.sh')
 
 const App: Component = () => {
   const [mode, setMode] = createSignal<'custom-element' | 'solid'>('custom-element')

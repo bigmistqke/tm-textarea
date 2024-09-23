@@ -200,29 +200,28 @@ class SegmentManager {
     this.lines = createMemo(() => source().split('\n'))
 
     const owner = getOwner()
-    createRenderEffect(() =>
-      runWithOwner(owner, () => {
-        const newLineCount = this.lines().length
-        const currentSegmentCount = this.#segments.length
-        const newSegmentCount = Math.ceil(newLineCount / this.segmentSize)
 
-        // Add new segments if needed
-        if (newSegmentCount > currentSegmentCount) {
-          let previousSegment = this.#segments[this.#segments.length - 1] || null
+    createRenderEffect(() => {
+      const newLineCount = this.lines().length
+      const newSegmentCount = Math.ceil(newLineCount / this.segmentSize)
+      const currentSegmentCount = this.#segments.length
 
-          for (let i = currentSegmentCount; i < newSegmentCount; i += 1) {
-            const segment = new Segment(this, previousSegment, i)
-            this.#setSegments(prev => [...prev, segment])
-            previousSegment = segment
-          }
+      // Add new segments if needed
+      if (newSegmentCount > currentSegmentCount) {
+        let previousSegment = this.#segments[this.#segments.length - 1] || null
+
+        for (let i = currentSegmentCount; i < newSegmentCount; i += 1) {
+          const segment = runWithOwner(owner, () => new Segment(this, previousSegment, i))!
+          this.#setSegments(prev => [...prev, segment])
+          previousSegment = segment
         }
+      }
 
-        // Remove segments if needed
-        if (newSegmentCount < currentSegmentCount) {
-          this.#setSegments(prev => prev.slice(0, newSegmentCount))
-        }
-      }),
-    )
+      // Remove segments if needed
+      if (newSegmentCount < currentSegmentCount) {
+        this.#setSegments(prev => prev.slice(0, newSegmentCount))
+      }
+    })
   }
 
   getSegment(index: number): Segment | undefined {
@@ -232,7 +231,10 @@ class SegmentManager {
   getLine(globalOffset: number): string | undefined {
     const segmentIndex = Math.floor(globalOffset / this.segmentSize)
     const segment = this.#segments[segmentIndex]
-    if (!segment) return undefined
+    if (!segment) {
+      DEBUG && console.error('segment does not exist')
+      return undefined
+    }
     const localOffset = globalOffset % this.segmentSize
     return segment.getLine(localOffset) || undefined
   }
@@ -405,6 +407,7 @@ export function createTmTextarea(styles: Record<string, string>) {
     const [manager, setSource] = createManager(props)
 
     const lineSize = createMemo(() => getLongestLineSize(manager()?.lines() || []))
+    const lineCount = () => manager()?.lines().length || 0
 
     const minLine = createMemo(() => Math.floor(scrollTop() / props.lineHeight))
     const maxLine = createMemo(() =>
@@ -417,6 +420,9 @@ export function createTmTextarea(styles: Record<string, string>) {
     const isVisible = createSelector(
       () => [minLine(), maxLine()] as [number, number],
       (index: number, [viewportMin, viewportMax]) => {
+        if (index > lineCount() - 1) {
+          return false
+        }
         return index + WINDOW > viewportMin && index - WINDOW < viewportMax
       },
     )
@@ -467,7 +473,7 @@ export function createTmTextarea(styles: Record<string, string>) {
           '--background-color': manager()?.theme.getBackgroundColor(),
           '--char-height': charHeight(),
           '--foreground-color': manager()?.theme.getForegroundColor(),
-          '--line-count': manager()?.lines().length,
+          '--line-count': lineCount(),
           '--line-height': `${props.lineHeight}px`,
           '--line-size': lineSize(),
           '--selection-color': selectionColor(),

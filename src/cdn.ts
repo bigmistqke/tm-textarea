@@ -1,11 +1,13 @@
+import { IRawGrammar, IRawTheme } from 'vscode-textmate'
+
 type CdnAssetType = 'theme' | 'grammar' | 'oniguruma'
 
-type Cdn = string | ((type: CdnAssetType, id: string) => string)
+type Cdn = string | ((type: CdnAssetType, id: string) => string | IRawGrammar | IRawTheme)
 
 export let CDN: Cdn = 'https://esm.sh'
 const CACHE = {
-  theme: {} as Record<string, Promise<any>>,
-  grammar: {} as Record<string, Promise<any>>,
+  theme: {} as Record<string, any | Promise<any>>,
+  grammar: {} as Record<string, any | Promise<any>>,
 }
 
 /**
@@ -44,7 +46,11 @@ export async function fetchFromCDN(type: 'theme' | 'grammar', key: string) {
   if (key in CACHE[type]) {
     return CACHE[type][key]
   }
-  return (CACHE[type][key] = fetch(urlFromCDN(type, key))
-    .then(response => (response.ok ? response.json() : null))
-    .catch(console.error))
+  const value = urlFromCDN(type, key)
+  return (CACHE[type][key] =
+    typeof value !== 'string'
+      ? value
+      : fetch(value)
+          .then(response => (response.ok ? response.json() : null))
+          .catch(console.error))
 }

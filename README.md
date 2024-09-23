@@ -58,7 +58,7 @@ interface tmTextareaAttributes extends ComponentProps<'div'> {
 ### Usage
 
 ```tsx
-import { setCDN } from 'tm-textarea'
+import { setCDN } from 'tm-textarea/cdn'
 import 'tm-textarea'
 
 setCDN('/tm')
@@ -148,8 +148,6 @@ interface tmTextareaProps extends Omit<ComponentProps<'div'>, 'style'> {
 
 ### Usage
 
-<!-- **Static import of `theme/language`** -->
-
 ```tsx
 import { TmTextarea } from 'tm-textarea/solid'
 
@@ -168,27 +166,6 @@ export default () => (
 )
 ```
 
-<!-- **Dynamic import of `theme/language`**
-
-```tsx
-import { TmTextarea } from 'tm-textarea/solid'
-
-export default () => (
-  <TmTextarea
-    language={import('https://esm.sh/tm/langs/tsx.mjs')}
-    theme={import('https://esm.sh/tm/themes/min-light.mjs')}
-    code="const sum = (a: string, b: string) => a + b"
-    editable={true}
-    style={{
-      padding: '10px',
-      'font-size': '16pt',
-    }}
-    onInput={e => console.log(e.currentTarget.value)}
-  />
-)
-``` -->
-
-
 ## CDN (`tm-textarea/cdn`)
 
 To ease development we provide a way to set themes/grammars by setting the `theme` or `grammar` property with a string. Without configuration these are resolved to [`tm-themes`](https://github.com/shikijs/textmate-grammars-themes/tree/main/packages/tm-themes) and [`tm-grammars`](https://github.com/shikijs/textmate-grammars-themes/tree/main/packages/tm-grammars) hosted on [`esm.sh`](esm.sh).
@@ -198,14 +175,14 @@ To provide a way to customize how these keys are resolved we provide a global fu
 When given a base-url, this will be used to fetch
 - `${cdn}/tm-themes/themes/${theme}.json` for the `themes`
 - `${cdn}/tm-grammars/grammars/${grammar}.json` for the `grammars`
+- `${cdn}/vscode-oniguruma/release/onig.wasm` for the `oniguruma` wasm-file
 
 When given a callback, the returned string will be used to fetch instead.
 
 ### Usage
 
 ```tsx
-// from solid component
-import { setCDN } from 'tm-textarea'
+import { setCDN } from 'tm-textarea/cdn'
 
 // Set absolute base-url
 setCDN('https://unpkg.com')

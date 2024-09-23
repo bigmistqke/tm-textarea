@@ -76,7 +76,6 @@
     line-height: inherit;
     font-family: monospace;
     text-align: inherit;
-    white-space: nowrap;
   }
 
   & .textarea::selection {

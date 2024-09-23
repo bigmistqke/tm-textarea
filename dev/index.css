@@ -94,33 +94,15 @@ main {
   overflow: auto;
 }
 
-.resize-container {
-  z-index: 1;
-  width: 500px;
-  height: 300px;
-  overflow: hidden;
-  resize: both;
-}
-.resize-container::-webkit-resizer {
-  background-color: lightgrey;
-}
-
-.line-numbers pre::before,
 .line-numbers::part(line)::before {
   display: inline-block;
   opacity: 0.5;
   counter-reset: variable calc(var(--line-number) + 1);
-  min-width: 7ch;
+  min-width: calc((min(var(--line-digits), 3) + 1) * 1ch);
   content: counter(variable);
   color: var(--foreground-color);
 }
 
-.line-numbers textarea,
 .line-numbers::part(textarea) {
-  margin-left: 7ch;
-}
-
-.line-numbers code:not([aria-hidden]),
-.line-numbers::part(code) {
-  min-width: calc(var(--min-width) + 7ch);
+  margin-left: calc((min(var(--line-digits), 3) + 1) * 1ch);
 }

@@ -28,9 +28,7 @@
     z-index: 1;
     /* fixes color change when textarea is focused */
     backface-visibility: hidden;
-    contain: strict;
-    min-width: var(--min-width);
-    min-height: var(--min-height);
+    contain: layout;
     pointer-events: none;
     font-size: inherit;
     line-height: inherit;

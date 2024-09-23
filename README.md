@@ -9,7 +9,11 @@
 Textarea with syntax highlighting powered by [solid-js](https://github.com/solidjs/solid), [@lume/element](https://github.com/lume/element) and
 [vscode-oniguruma](https://github.com/microsoft/vscode-oniguruma).
 
-https://github.com/bigmistqke/tm-textarea/assets/10504064/7bb4a2e1-a2c4-460d-b782-fe9bf7cac43a
+
+
+https://github.com/user-attachments/assets/6e785c75-75ae-4274-a904-5e1004153b76
+
+
 
 ## Table of Contents
 

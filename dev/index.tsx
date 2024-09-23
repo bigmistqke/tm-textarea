@@ -5,18 +5,15 @@ import 'tm-textarea'
 import { setCDN } from 'tm-textarea/cdn'
 import { TmTextarea } from 'tm-textarea/solid'
 import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
-import { IRawGrammar } from 'vscode-textmate'
 import './index.css'
-import tsx from './tsx.json'
+import tsx from './tsx.json?url'
 
 setCDN((type, id) => {
   switch (type) {
     case 'theme':
       return `https://esm.sh/tm-themes/themes/${id}.json`
     case 'grammar':
-      return id === 'tsx'
-        ? (tsx as unknown as IRawGrammar)
-        : `https://esm.sh/tm-grammars/grammars/${id}.json`
+      return id === 'tsx' ? tsx : `https://esm.sh/tm-grammars/grammars/${id}.json`
     case 'oniguruma':
       return `https://esm.sh/vscode-oniguruma/release/onig.wasm`
   }
@@ -32,8 +29,8 @@ const App: Component = () => {
   const [editable, setEditable] = createSignal(true)
   const [lineNumbers, setLineNumbers] = createSignal(true)
 
-  const [LOC, setLOC] = createSignal(10_000)
-  const [value, setValue] = createSignal()
+  const [LOC, setLOC] = createSignal(20)
+  const [value, setValue] = createSignal<string>(null!)
 
   createRenderEffect(() => {
     setValue(loopLines(test, LOC()))
@@ -54,7 +51,7 @@ const App: Component = () => {
   return (
     <div class="app">
       <div class="side-panel">
-        <h1>Solid Textmate Textarea</h1>
+        <h1>Tm Textarea</h1>
         <footer>
           <div>
             <label for="mode">mode</label>

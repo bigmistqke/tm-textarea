@@ -2,12 +2,12 @@ import { IRawGrammar, IRawTheme } from 'vscode-textmate'
 
 type CdnAssetType = 'theme' | 'grammar' | 'oniguruma'
 
-type Cdn = string | ((type: CdnAssetType, id: string) => string | IRawGrammar | IRawTheme)
+type Cdn = string | ((type: CdnAssetType, id: string) => string)
 
 export let CDN: Cdn = 'https://esm.sh'
 const CACHE = {
-  theme: {} as Record<string, any | Promise<any>>,
-  grammar: {} as Record<string, any | Promise<any>>,
+  theme: {} as Record<string, any | Promise<IRawTheme>>,
+  grammar: {} as Record<string, any | Promise<IRawGrammar>>,
 }
 
 /**

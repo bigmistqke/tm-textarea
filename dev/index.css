@@ -105,11 +105,17 @@ main {
   background-color: lightgrey;
 }
 
-.line-numbers pre::before {
+.line-numbers pre::before,
+.line-numbers::part(line)::before {
   display: inline-block;
   opacity: 0.5;
   counter-reset: variable calc(var(--line-number) + 1);
   min-width: 7ch;
   content: counter(variable);
   color: var(--foreground-color);
+}
+
+.line-numbers textarea,
+.line-numbers::part(textarea) {
+  margin-left: 7ch;
 }

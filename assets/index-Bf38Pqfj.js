@@ -1,62 +1,67 @@
 function _mergeNamespaces(n, m) {
-  for (var i = 0; i < m.length; i++) {
-    const e = m[i];
-    if (typeof e !== 'string' && !Array.isArray(e)) { for (const k in e) {
-      if (k !== 'default' && !(k in n)) {
-        const d = Object.getOwnPropertyDescriptor(e, k);
-        if (d) {
-          Object.defineProperty(n, k, d.get ? d : {
-            enumerable: true,
-            get: () => e[k]
-          });
-        }
-      }
-    } }
-  }
-  return Object.freeze(Object.defineProperty(n, Symbol.toStringTag, { value: 'Module' }));
+    for (var i = 0; i < m.length; i++) {
+        const e = m[i];
+        if (typeof e !== 'string' && !Array.isArray(e)) { for (const k in e) {
+            if (k !== 'default' && !(k in n)) {
+                const d = Object.getOwnPropertyDescriptor(e, k);
+                if (d) {
+                    Object.defineProperty(n, k, d.get ? d : {
+                        enumerable: true,
+                        get: () => e[k]
+                    });
+                }
+            }
+        } }
+    }
+    return Object.freeze(Object.defineProperty(n, Symbol.toStringTag, { value: 'Module' }));
 }
 
 true&&(function polyfill() {
-  const relList = document.createElement("link").relList;
-  if (relList && relList.supports && relList.supports("modulepreload")) {
-    return;
-  }
-  for (const link of document.querySelectorAll('link[rel="modulepreload"]')) {
-    processPreload(link);
-  }
-  new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      if (mutation.type !== "childList") {
-        continue;
-      }
-      for (const node of mutation.addedNodes) {
-        if (node.tagName === "LINK" && node.rel === "modulepreload")
-          processPreload(node);
-      }
+    const relList = document.createElement('link').relList;
+    if (relList && relList.supports && relList.supports('modulepreload')) {
+        return;
     }
-  }).observe(document, { childList: true, subtree: true });
-  function getFetchOpts(link) {
-    const fetchOpts = {};
-    if (link.integrity) fetchOpts.integrity = link.integrity;
-    if (link.referrerPolicy) fetchOpts.referrerPolicy = link.referrerPolicy;
-    if (link.crossOrigin === "use-credentials")
-      fetchOpts.credentials = "include";
-    else if (link.crossOrigin === "anonymous") fetchOpts.credentials = "omit";
-    else fetchOpts.credentials = "same-origin";
-    return fetchOpts;
-  }
-  function processPreload(link) {
-    if (link.ep)
-      return;
-    link.ep = true;
-    const fetchOpts = getFetchOpts(link);
-    fetch(link.href, fetchOpts);
-  }
+    for (const link of document.querySelectorAll('link[rel="modulepreload"]')) {
+        processPreload(link);
+    }
+    new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            if (mutation.type !== 'childList') {
+                continue;
+            }
+            for (const node of mutation.addedNodes) {
+                if (node.tagName === 'LINK' && node.rel === 'modulepreload')
+                    processPreload(node);
+            }
+        }
+    }).observe(document, { childList: true, subtree: true });
+    function getFetchOpts(link) {
+        const fetchOpts = {};
+        if (link.integrity)
+            fetchOpts.integrity = link.integrity;
+        if (link.referrerPolicy)
+            fetchOpts.referrerPolicy = link.referrerPolicy;
+        if (link.crossOrigin === 'use-credentials')
+            fetchOpts.credentials = 'include';
+        else if (link.crossOrigin === 'anonymous')
+            fetchOpts.credentials = 'omit';
+        else
+            fetchOpts.credentials = 'same-origin';
+        return fetchOpts;
+    }
+    function processPreload(link) {
+        if (link.ep)
+            // ep marker = processed
+            return;
+        link.ep = true;
+        // prepopulate the load record
+        const fetchOpts = getFetchOpts(link);
+        fetch(link.href, fetchOpts);
+    }
 }());
 
 const equalFn = (a, b) => a === b;
 const $PROXY = Symbol("solid-proxy");
-const SUPPORTS_PROXY = typeof Proxy === "function";
 const $TRACK = Symbol("solid-track");
 const signalOptions = {
   equals: equalFn
@@ -193,7 +198,7 @@ function createResource(pSource, pFetcher, pOptions) {
     }, false);
   }
   function read() {
-    const c = SuspenseContext,
+    const c = SuspenseContext ,
       v = value(),
       err = error();
     if (err !== undefined && !pr) throw err;
@@ -201,7 +206,7 @@ function createResource(pSource, pFetcher, pOptions) {
       createComputed(() => {
         track();
         if (pr) {
-          if (c.resolved) ;
+          if (c.resolved  ) ;
           else if (!contexts.has(c)) {
             c.increment();
             contexts.add(c);
@@ -235,7 +240,7 @@ function createResource(pSource, pFetcher, pOptions) {
     pr = p;
     if ("value" in p) {
       if (p.status === "success") loadEnd(pr, p.value, undefined, lookup);
-      else loadEnd(pr, undefined, castError(p.value), lookup);
+      else loadEnd(pr, undefined, undefined, lookup);
       return p;
     }
     scheduled = true;
@@ -579,10 +584,6 @@ function cleanNode(node) {
       }
     }
   }
-  if (node.tOwned) {
-    for (i = node.tOwned.length - 1; i >= 0; i--) cleanNode(node.tOwned[i]);
-    delete node.tOwned;
-  }
   if (node.owned) {
     for (i = node.owned.length - 1; i >= 0; i--) cleanNode(node.owned[i]);
     node.owned = null;
@@ -617,12 +618,20 @@ function mapArray(list, mapFn, options = {}) {
   onCleanup(() => dispose(disposers));
   return () => {
     let newItems = list() || [],
-      newLen = newItems.length,
       i,
       j;
     newItems[$TRACK];
     return untrack(() => {
-      let newIndices, newIndicesNext, temp, tempdisposers, tempIndexes, start, end, newEnd, item;
+      let newLen = newItems.length,
+        newIndices,
+        newIndicesNext,
+        temp,
+        tempdisposers,
+        tempIndexes,
+        start,
+        end,
+        newEnd,
+        item;
       if (newLen === 0) {
         if (len !== 0) {
           dispose(disposers);
@@ -719,11 +728,10 @@ function indexArray(list, mapFn, options = {}) {
     i;
   onCleanup(() => dispose(disposers));
   return () => {
-    const newItems = list() || [],
-      newLen = newItems.length;
+    const newItems = list() || [];
     newItems[$TRACK];
     return untrack(() => {
-      if (newLen === 0) {
+      if (newItems.length === 0) {
         if (len !== 0) {
           dispose(disposers);
           disposers = [];
@@ -749,7 +757,7 @@ function indexArray(list, mapFn, options = {}) {
         mapped = [];
         len = 0;
       }
-      for (i = 0; i < newLen; i++) {
+      for (i = 0; i < newItems.length; i++) {
         if (i < items.length && items[i] !== newItems[i]) {
           signals[i](() => newItems[i]);
         } else if (i >= items.length) {
@@ -759,7 +767,7 @@ function indexArray(list, mapFn, options = {}) {
       for (; i < items.length; i++) {
         disposers[i]();
       }
-      len = signals.length = disposers.length = newLen;
+      len = signals.length = disposers.length = newItems.length;
       items = newItems.slice(0);
       return (mapped = mapped.slice(0, len));
     });
@@ -819,7 +827,7 @@ function mergeProps(...sources) {
     proxy = proxy || (!!s && $PROXY in s);
     sources[i] = typeof s === "function" ? ((proxy = true), createMemo(s)) : s;
   }
-  if (SUPPORTS_PROXY && proxy) {
+  if (proxy) {
     return new Proxy(
       {
         get(property) {
@@ -884,7 +892,7 @@ function mergeProps(...sources) {
   return target;
 }
 function splitProps(props, ...keys) {
-  if (SUPPORTS_PROXY && $PROXY in props) {
+  if ($PROXY in props) {
     const blocked = new Set(keys.length > 1 ? keys.flat() : keys[0]);
     const res = keys.map(k => {
       return new Proxy(
@@ -1246,7 +1254,9 @@ function style(node, value, prev) {
 }
 function spread(node, props = {}, isSVG, skipChildren) {
   const prevProps = {};
-  createRenderEffect(() => typeof props.ref === "function" && use(props.ref, node));
+  createRenderEffect(() =>
+    typeof props.ref === "function" ? use(props.ref, node) : (props.ref = node)
+  );
   createRenderEffect(() => assign(node, props, isSVG, true, prevProps, true));
   return prevProps;
 }
@@ -1360,10 +1370,7 @@ function insertExpression(parent, value, current, marker, unwrapArray) {
     multi = marker !== undefined;
   parent = (multi && current[0] && current[0].parentNode) || parent;
   if (t === "string" || t === "number") {
-    if (t === "number") {
-      value = value.toString();
-      if (value === current) return current;
-    }
+    if (t === "number") value = value.toString();
     if (multi) {
       let node = current[0];
       if (node && node.nodeType === 3) {
@@ -1969,6 +1976,7 @@ override = false) {
     } : function () {
       return s[0](); // read
     },
+
     set: originalSet ? function (newValue) {
       originalSet.call(this, newValue);
       trackPropSetAtLeastOnce(this, prop);
@@ -2200,7 +2208,6 @@ const HTMLElement = globalThis.HTMLElement ??
             throw new Error("@lume/element needs a DOM to operate with! If this code is running during server-side rendering, it means your app is trying to instantiate elements when it shouldn't be, and should be refactored to avoid doing that when no DOM is present.");
         }
     };
-const root = Symbol('root');
 // TODO Make LumeElement `abstract`
 class LumeElement extends Effectful(HTMLElement) {
     /**
@@ -2250,46 +2257,8 @@ class LumeElement extends Effectful(HTMLElement) {
             }
         }
     }
-    /**
-     * Non-decorator users can use this to specify a list of attributes, and the
-     * attributes will automatically be mapped to reactive properties. All
-     * attributes in the list will be treated with the equivalent of the
-     * `@attribute` decorator.
-     *
-     * The ability to provide a map of attribute names to attribute handlers
-     * (`Record<string, AttributeHandler>`) has been deprecaated, and instead
-     * that map should be provided via the `static observedAttributeHandlers`
-     * property, while this property is now typed to accept only a string array
-     * as per DOM spec.
-     */
+    /** Non-decorator users can use this to specify attributes, which automatically map to reactive properties. */
     static observedAttributes;
-    /**
-     * Non-decorator users can use this instead of `observedAttributes` to
-     * specify a map of attribute names to attribute handlers. The named
-     * attributes will automatically be mapped to reactive properties, and each
-     * attribute will be treated with the corresponding attribute handler.
-     *
-     * Example:
-     *
-     * ```js
-     * element('my-el')(
-     *   class MyEl extends LumeElement {
-     *     static observedAttributeHandlers = {
-     *       foo: attribute.string(),
-     *       bar: attribute.number(),
-     *       baz: attribute.boolean(),
-     *     }
-     *
-     *     // The initial values defined here will be the values that these
-     *     // properties revert to when the respective attributes are removed.
-     *     foo = 'hello'
-     *     bar = 123
-     *     baz = false
-     *   }
-     * )
-     * ```
-     */
-    static observedAttributeHandlers;
     #handleInitialPropertyValuesIfAny() {
         // We need to delete initial value-descriptor properties (if they exist)
         // and store the initial values in the storage for our @signal property
@@ -2375,7 +2344,7 @@ class LumeElement extends Effectful(HTMLElement) {
      * selectors converted to tag names.
      */
     hasShadow = true;
-    [root] = null;
+    __root = null;
     /**
      * Subclasses can override this to provide an alternate Node to render into
      * (f.e. a subclass can `return this` to render into itself instead of
@@ -2384,20 +2353,20 @@ class LumeElement extends Effectful(HTMLElement) {
     get root() {
         if (!this.hasShadow)
             return this;
-        if (this[root])
-            return this[root];
+        if (this.__root)
+            return this.__root;
         if (this.shadowRoot)
-            return (this[root] = this.shadowRoot);
+            return (this.__root = this.shadowRoot);
         // TODO use `this.attachInternals()` (ElementInternals API) to get the root instead.
-        return (this[root] = this.attachShadow({ mode: 'open' }));
+        return (this.__root = this.attachShadow({ mode: 'open' }));
     }
     set root(v) {
         if (!this.hasShadow)
             throw new Error('Can not set root, element.hasShadow is false.');
         // @prod-prune
-        if (this[root] || this.shadowRoot)
+        if (this.__root || this.shadowRoot)
             throw new Error('Element root can only be set once if there is no ShadowRoot.');
-        this[root] = v;
+        this.__root = v;
     }
     /**
      * Define which `Node` to append style sheets to when `hasShadow` is `true`.
@@ -2417,9 +2386,9 @@ class LumeElement extends Effectful(HTMLElement) {
         return this.root;
     }
     attachShadow(options) {
-        if (this[root])
+        if (this.__root)
             console.warn('Element already has a root defined.');
-        return (this[root] = super.attachShadow(options));
+        return (this.__root = super.attachShadow(options));
     }
     #disposeTemplate;
     connectedCallback() {
@@ -2433,13 +2402,13 @@ class LumeElement extends Effectful(HTMLElement) {
         this.#disposeTemplate?.();
         this.#cleanupStyle();
     }
-    static #styleRootNodeRefCountPerTagName = new WeakMap();
+    static __styleRootNodeRefCountPerTagName = new WeakMap();
     #styleRootNode = null;
     #defaultHostStyle = (hostSelector) => /*css*/ `${hostSelector} {
 		display: block;
 	}`;
-    static #elementId = 0;
-    #id = _a.#elementId++;
+    static __elementId = 0;
+    #id = _a.__elementId++;
     #dynamicStyle = null;
     #setStyle() {
         ctor = this.constructor;
@@ -2468,9 +2437,9 @@ class LumeElement extends Effectful(HTMLElement) {
             // Document, or a ShadowRoot.
             const rootNode = this.getRootNode();
             this.#styleRootNode = rootNode === document ? document.head : rootNode;
-            let refCountPerTagName = _a.#styleRootNodeRefCountPerTagName.get(this.#styleRootNode);
+            let refCountPerTagName = _a.__styleRootNodeRefCountPerTagName.get(this.#styleRootNode);
             if (!refCountPerTagName)
-                _a.#styleRootNodeRefCountPerTagName.set(this.#styleRootNode, (refCountPerTagName = {}));
+                _a.__styleRootNodeRefCountPerTagName.set(this.#styleRootNode, (refCountPerTagName = {}));
             const refCount = refCountPerTagName[this.tagName] || 0;
             refCountPerTagName[this.tagName] = refCount + 1;
             if (refCount === 0) {
@@ -2509,7 +2478,7 @@ class LumeElement extends Effectful(HTMLElement) {
         do {
             if (this.hasShadow)
                 break;
-            const refCountPerTagName = _a.#styleRootNodeRefCountPerTagName.get(this.#styleRootNode);
+            const refCountPerTagName = _a.__styleRootNodeRefCountPerTagName.get(this.#styleRootNode);
             if (!refCountPerTagName)
                 break;
             let refCount = refCountPerTagName[this.tagName];
@@ -2666,13 +2635,14 @@ function __setUpAttribute(ctor, propName, attributeHandler) {
         ctor.observedAttributes.push(attrName);
     mapAttributeToProp(ctor.prototype, attrName, propName, attributeHandler);
 }
-const hasAttributeChangedCallback = Symbol('hasAttributeChangedCallback');
-const attributesToProps = Symbol('attributesToProps');
-// This stores attribute definitions as an inheritance chain on the constructor.
+// TODO this stores attributes as an inheritance chain on the constructor. It'd
+// be more fool-proof (not publicly exposed) to store attribute-prop mappings in
+// WeakMaps, but then we'd need to implement our own inheritance
+// (prototype-like) lookup for the attributes.
 function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
     // Only define attributeChangedCallback once.
-    if (!prototype[hasAttributeChangedCallback]) {
-        prototype[hasAttributeChangedCallback] = true;
+    if (!prototype.__hasAttributeChangedCallback) {
+        prototype.__hasAttributeChangedCallback = true;
         const originalAttrChanged = prototype.attributeChangedCallback;
         prototype.attributeChangedCallback = function (attr, oldVal, newVal) {
             // If the class already has an attributeChangedCallback, let is run,
@@ -2687,7 +2657,7 @@ function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
                 prototype.__proto__?.attributeChangedCallback?.call(this, attr, oldVal, newVal);
             }
             // map from attribute to property
-            const prop = this[attributesToProps]?.[attr];
+            const prop = this.__attributesToProps && this.__attributesToProps[attr];
             if (prop) {
                 const handler = prop.attributeHandler;
                 // prettier-ignore
@@ -2703,26 +2673,25 @@ function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
             }
         };
     }
-    // Extend the current prototype's attributesToProps object from the super
-    // prototype's attributesToProps object.
+    // Extend the current prototype's __attributesToProps object from the super
+    // prototype's __attributesToProps object.
     //
     // We use inheritance here or else all classes would pile their
     // attribute-prop definitions on a shared base class (they can clash,
     // override each other willy nilly and seemingly randomly).
-    if (!prototype.hasOwnProperty(attributesToProps)) {
+    if (!prototype.hasOwnProperty('__attributesToProps')) {
         // using defineProperty so that it is non-writable, non-enumerable, non-configurable
-        Object.defineProperty(prototype, attributesToProps, {
+        Object.defineProperty(prototype, '__attributesToProps', {
             value: {
-                __proto__: prototype[attributesToProps] || Object.prototype,
+                __proto__: prototype.__attributesToProps || Object.prototype,
             },
         });
-        // Object.create(prototype[attributesToProps] || Object.prototype)
     }
-    prototype[attributesToProps][attr] = { name: prop, attributeHandler };
+    prototype.__attributesToProps[attr] = { name: prop, attributeHandler };
 }
 const toString = (str) => str;
 /**
- * An attribute type for use in the `static observedAttributeHandlers` map
+ * An attribute type for use in the object form of `static observedAttributes`
  * when not using decorators.
  *
  * Example usage without decorators:
@@ -2730,7 +2699,7 @@ const toString = (str) => str;
  * ```js
  * element('my-el')(
  *   class MyEl extends LumeElement {
- *     static observedAttributeHandlers = {
+ *     static observedAttributes = {
  *       name: attribute.string()
  *     }
  *
@@ -2784,7 +2753,7 @@ function stringAttribute(value, context) {
 }
 const toNumber = (str) => +str;
 /**
- * An attribute type for use in the `static observedAttributeHandlers` map
+ * An attribute type for use in the object form of `static observedAttributes`
  * when not using decorators.
  *
  * Example usage without decorators:
@@ -2792,7 +2761,7 @@ const toNumber = (str) => +str;
  * ```js
  * element('my-el')(
  *   class MyEl extends LumeElement {
- *     static observedAttributeHandlers = {
+ *     static observedAttributes = {
  *       money: attribute.number()
  *     }
  *
@@ -2804,7 +2773,7 @@ const toNumber = (str) => +str;
 attribute.number = (() => ({ from: toNumber }));
 const toBoolean = (str) => str !== 'false';
 /**
- * An attribute type for use in the `static observedAttributeHandlers` map
+ * An attribute type for use in the object form of `static observedAttributes`
  * when not using decorators.
  *
  * Example usage without decorators:
@@ -2812,7 +2781,7 @@ const toBoolean = (str) => str !== 'false';
  * ```js
  * element('my-el')(
  *   class MyEl extends LumeElement {
- *     static observedAttributeHandlers = {
+ *     static observedAttributes = {
  *       hasCash: attribute.boolean()
  *     }
  *
@@ -2899,20 +2868,11 @@ function applyElementDecoration(Class, context, tagName, autoDefine) {
         // track the types, and convert observedAttributes to an array so
         // the browser will understand it like usual.
         // Delete it, so that it will be re-created as an array by the
-        // following __setUpAttribute calls.
+        // following _setUpAttribute calls.
         Ctor.observedAttributes = undefined;
-        const stack = new Error().stack;
-        console.warn('Defining the static observedAttributes property as a map of attribute names to attribute handlers is now deprecated, please use the static observedAttributeHandlers property to define the map instead.\n' +
-            stack);
-        const _attrs = attrs;
-        for (const prop in _attrs)
+        for (const prop in attrs)
             __setUpAttribute(Ctor, prop, attrs[prop]);
     }
-    const handlers = Ctor.observedAttributeHandlers;
-    // if (handlers) for (const prop in handlers) __setUpAttribute(Ctor, prop, handlers[prop]!)
-    if (handlers)
-        for (const prop of Object.keys(handlers))
-            __setUpAttribute(Ctor, prop, handlers[prop]);
     // We need to compose with @reactive so that it will signalify any @signal properties.
     Ctor = reactive(Ctor, context);
     class ElementDecorator extends Ctor {
@@ -2924,7 +2884,9 @@ function applyElementDecoration(Class, context, tagName, autoDefine) {
             untrack(() => {
                 handlePreUpgradeValues(this);
                 const propsToSignalify = [];
-                const attrsToProps = ElementDecorator.prototype[attributesToProps] ?? {};
+                const attrsToProps = 
+                // @ts-expect-error private access
+                ElementDecorator.prototype.__attributesToProps ?? {};
                 for (const propSpec of Object.values(attrsToProps)) {
                     const prop = propSpec.name;
                     const useSignal = !noSignal?.has(prop);
@@ -3051,8 +3013,8 @@ var mainExports$1 = main$2.exports;
 const main$1 = /*@__PURE__*/getDefaultExportFromCjs(mainExports$1);
 
 const oniguruma = /*#__PURE__*/_mergeNamespaces({
-  __proto__: null,
-  default: main$1
+    __proto__: null,
+    default: main$1
 }, [mainExports$1]);
 
 var main = {exports: {}};
@@ -3071,12 +3033,15 @@ var main = {exports: {}};
 	      let n2 = 0;
 	      const s2 = [];
 	      let r = e3, i = t3;
-	      for (; r !== i; ) r && (!i || r.depth >= i.depth) ? (n2++, r = r.parent) : (s2.push(i.toStateStackFrame()), i = i.parent);
+	      for (; r !== i; )
+	        r && (!i || r.depth >= i.depth) ? (n2++, r = r.parent) : (s2.push(i.toStateStackFrame()), i = i.parent);
 	      return { pops: n2, newFrames: s2.reverse() };
 	    }, t2.applyStateStackDiff = function(e3, t3) {
 	      let n2 = e3;
-	      for (let e4 = 0; e4 < t3.pops; e4++) n2 = n2.parent;
-	      for (const e4 of t3.newFrames) n2 = s.StateStackImpl.pushFrame(n2, e4);
+	      for (let e4 = 0; e4 < t3.pops; e4++)
+	        n2 = n2.parent;
+	      for (const e4 of t3.newFrames)
+	        n2 = s.StateStackImpl.pushFrame(n2, e4);
 	      return n2;
 	    };
 	  }, 36: (e2, t2) => {
@@ -3131,7 +3096,8 @@ var main = {exports: {}};
 	      }
 	      _toStandardTokenType(e3) {
 	        const t3 = e3.match(i.STANDARD_TOKEN_TYPE_REGEXP);
-	        if (!t3) return 8;
+	        if (!t3)
+	          return 8;
 	        switch (t3[1]) {
 	          case "comment":
 	            return 1;
@@ -3148,7 +3114,8 @@ var main = {exports: {}};
 	    t2.BasicScopeAttributesProvider = i, i._NULL_SCOPE_METADATA = new r(0, 0), i.STANDARD_TOKEN_TYPE_REGEXP = /\b(comment|string|regex|meta\.embedded)\b/;
 	    class o {
 	      constructor(e3) {
-	        if (0 === e3.length) this.values = null, this.scopesRegExp = null;
+	        if (0 === e3.length)
+	          this.values = null, this.scopesRegExp = null;
 	        else {
 	          this.values = new Map(e3);
 	          const t3 = e3.map(([e4, t4]) => s.escapeRegExpCharacters(e4));
@@ -3156,7 +3123,8 @@ var main = {exports: {}};
 	        }
 	      }
 	      match(e3) {
-	        if (!this.scopesRegExp) return;
+	        if (!this.scopesRegExp)
+	          return;
 	        const t3 = e3.match(this.scopesRegExp);
 	        return t3 ? this.values.get(t3[1]) : void 0;
 	      }
@@ -3166,19 +3134,25 @@ var main = {exports: {}};
 	    const s = n(350), r = n(36), i = n(736), o = n(44), a = n(792), c = n(583), l = n(878), u = n(996), h = n(47);
 	    function p(e3, t3, n2, s2, r2) {
 	      const o2 = i.createMatchers(t3, d), c2 = a.RuleFactory.getCompiledRuleId(n2, s2, r2.repository);
-	      for (const n3 of o2) e3.push({ debugSelector: t3, matcher: n3.matcher, ruleId: c2, grammar: r2, priority: n3.priority });
+	      for (const n3 of o2)
+	        e3.push({ debugSelector: t3, matcher: n3.matcher, ruleId: c2, grammar: r2, priority: n3.priority });
 	    }
 	    function d(e3, t3) {
-	      if (t3.length < e3.length) return false;
+	      if (t3.length < e3.length)
+	        return false;
 	      let n2 = 0;
 	      return e3.every((e4) => {
-	        for (let s2 = n2; s2 < t3.length; s2++) if (f(t3[s2], e4)) return n2 = s2 + 1, true;
+	        for (let s2 = n2; s2 < t3.length; s2++)
+	          if (f(t3[s2], e4))
+	            return n2 = s2 + 1, true;
 	        return false;
 	      });
 	    }
 	    function f(e3, t3) {
-	      if (!e3) return false;
-	      if (e3 === t3) return true;
+	      if (!e3)
+	        return false;
+	      if (e3 === t3)
+	        return true;
 	      const n2 = t3.length;
 	      return e3.length > n2 && e3.substr(0, n2) === t3 && "." === e3[n2];
 	    }
@@ -3187,16 +3161,19 @@ var main = {exports: {}};
 	    };
 	    class m {
 	      constructor(e3, t3, n2, s2, r2, o2, a2, c2) {
-	        if (this._rootScopeName = e3, this.balancedBracketSelectors = o2, this._onigLib = c2, this._basicScopeAttributesProvider = new u.BasicScopeAttributesProvider(n2, s2), this._rootId = -1, this._lastRuleId = 0, this._ruleId2desc = [null], this._includedGrammars = {}, this._grammarRepository = a2, this._grammar = g(t3, null), this._injections = null, this._tokenTypeMatchers = [], r2) for (const e4 of Object.keys(r2)) {
-	          const t4 = i.createMatchers(e4, d);
-	          for (const n3 of t4) this._tokenTypeMatchers.push({ matcher: n3.matcher, type: r2[e4] });
-	        }
+	        if (this._rootScopeName = e3, this.balancedBracketSelectors = o2, this._onigLib = c2, this._basicScopeAttributesProvider = new u.BasicScopeAttributesProvider(n2, s2), this._rootId = -1, this._lastRuleId = 0, this._ruleId2desc = [null], this._includedGrammars = {}, this._grammarRepository = a2, this._grammar = g(t3, null), this._injections = null, this._tokenTypeMatchers = [], r2)
+	          for (const e4 of Object.keys(r2)) {
+	            const t4 = i.createMatchers(e4, d);
+	            for (const n3 of t4)
+	              this._tokenTypeMatchers.push({ matcher: n3.matcher, type: r2[e4] });
+	          }
 	      }
 	      get themeProvider() {
 	        return this._grammarRepository;
 	      }
 	      dispose() {
-	        for (const e3 of this._ruleId2desc) e3 && e3.dispose();
+	        for (const e3 of this._ruleId2desc)
+	          e3 && e3.dispose();
 	      }
 	      createOnigScanner(e3) {
 	        return this._onigLib.createOnigScanner(e3);
@@ -3211,7 +3188,9 @@ var main = {exports: {}};
 	        const e3 = [], t3 = this._rootScopeName, n2 = ((e4) => e4 === this._rootScopeName ? this._grammar : this.getExternalGrammar(e4))(t3);
 	        if (n2) {
 	          const s2 = n2.injections;
-	          if (s2) for (let t4 in s2) p(e3, t4, s2[t4], this, n2);
+	          if (s2)
+	            for (let t4 in s2)
+	              p(e3, t4, s2[t4], this, n2);
 	          const r2 = this._grammarRepository.injections(t3);
 	          r2 && r2.forEach((t4) => {
 	            const n3 = this.getExternalGrammar(t4);
@@ -3226,7 +3205,8 @@ var main = {exports: {}};
 	      getInjections() {
 	        if (null === this._injections && (this._injections = this._collectInjections(), s.DebugFlags.InDebugMode && this._injections.length > 0)) {
 	          console.log(`Grammar ${this._rootScopeName} contains the following injections:`);
-	          for (const e3 of this._injections) console.log(`  - ${e3.debugSelector}`);
+	          for (const e3 of this._injections)
+	            console.log(`  - ${e3.debugSelector}`);
 	        }
 	        return this._injections;
 	      }
@@ -3238,10 +3218,12 @@ var main = {exports: {}};
 	        return this._ruleId2desc[a.ruleIdToNumber(e3)];
 	      }
 	      getExternalGrammar(e3, t3) {
-	        if (this._includedGrammars[e3]) return this._includedGrammars[e3];
+	        if (this._includedGrammars[e3])
+	          return this._includedGrammars[e3];
 	        if (this._grammarRepository) {
 	          const n2 = this._grammarRepository.lookup(e3);
-	          if (n2) return this._includedGrammars[e3] = g(n2, t3 && t3.$base), this._includedGrammars[e3];
+	          if (n2)
+	            return this._includedGrammars[e3] = g(n2, t3 && t3.$base), this._includedGrammars[e3];
 	        }
 	      }
 	      tokenizeLine(e3, t3, n2 = 0) {
@@ -3254,7 +3236,8 @@ var main = {exports: {}};
 	      }
 	      _tokenize(e3, t3, n2, s2) {
 	        let i2;
-	        if (-1 === this._rootId && (this._rootId = a.RuleFactory.getCompiledRuleId(this._grammar.repository.$self, this, this._grammar.repository), this.getInjections()), t3 && t3 !== b.NULL) i2 = false, t3.reset();
+	        if (-1 === this._rootId && (this._rootId = a.RuleFactory.getCompiledRuleId(this._grammar.repository.$self, this, this._grammar.repository), this.getInjections()), t3 && t3 !== b.NULL)
+	          i2 = false, t3.reset();
 	        else {
 	          i2 = true;
 	          const e4 = this._basicScopeAttributesProvider.getDefaultAttributes(), n3 = this.themeProvider.getDefaults(), s3 = r.EncodedTokenAttributes.set(0, e4.languageId, e4.tokenType, null, n3.fontStyle, n3.foregroundId, n3.backgroundId), o2 = this.getRule(this._rootId).getName(null, null);
@@ -3276,7 +3259,8 @@ var main = {exports: {}};
 	      }
 	      static fromExtension(e3, t3) {
 	        let n2 = e3, s2 = e3?.scopePath ?? null;
-	        for (const e4 of t3) s2 = c.ScopeStack.push(s2, e4.scopeNames), n2 = new _(n2, s2, e4.encodedTokenAttributes);
+	        for (const e4 of t3)
+	          s2 = c.ScopeStack.push(s2, e4.scopeNames), n2 = new _(n2, s2, e4.encodedTokenAttributes);
 	        return n2;
 	      }
 	      static createRoot(e3, t3) {
@@ -3297,10 +3281,14 @@ var main = {exports: {}};
 	      }
 	      static equals(e3, t3) {
 	        for (; ; ) {
-	          if (e3 === t3) return true;
-	          if (!e3 && !t3) return true;
-	          if (!e3 || !t3) return false;
-	          if (e3.scopeName !== t3.scopeName || e3.tokenAttributes !== t3.tokenAttributes) return false;
+	          if (e3 === t3)
+	            return true;
+	          if (!e3 && !t3)
+	            return true;
+	          if (!e3 || !t3)
+	            return false;
+	          if (e3.scopeName !== t3.scopeName || e3.tokenAttributes !== t3.tokenAttributes)
+	            return false;
 	          e3 = e3.parent, t3 = t3.parent;
 	        }
 	      }
@@ -3309,11 +3297,14 @@ var main = {exports: {}};
 	        return null !== n2 && (s2 = n2.fontStyle, i2 = n2.foregroundId, o2 = n2.backgroundId), r.EncodedTokenAttributes.set(e3, t3.languageId, t3.tokenType, null, s2, i2, o2);
 	      }
 	      pushAttributed(e3, t3) {
-	        if (null === e3) return this;
-	        if (-1 === e3.indexOf(" ")) return _._pushAttributed(this, e3, t3);
+	        if (null === e3)
+	          return this;
+	        if (-1 === e3.indexOf(" "))
+	          return _._pushAttributed(this, e3, t3);
 	        const n2 = e3.split(/ /g);
 	        let s2 = this;
-	        for (const e4 of n2) s2 = _._pushAttributed(s2, e4, t3);
+	        for (const e4 of n2)
+	          s2 = _._pushAttributed(s2, e4, t3);
 	        return s2;
 	      }
 	      static _pushAttributed(e3, t3, n2) {
@@ -3326,7 +3317,8 @@ var main = {exports: {}};
 	      getExtensionIfDefined(e3) {
 	        const t3 = [];
 	        let n2 = this;
-	        for (; n2 && n2 !== e3; ) t3.push({ encodedTokenAttributes: n2.tokenAttributes, scopeNames: n2.scopePath.getExtensionIfDefined(n2.parent?.scopePath ?? null) }), n2 = n2.parent;
+	        for (; n2 && n2 !== e3; )
+	          t3.push({ encodedTokenAttributes: n2.tokenAttributes, scopeNames: n2.scopePath.getExtensionIfDefined(n2.parent?.scopePath ?? null) }), n2 = n2.parent;
 	        return n2 === e3 ? t3.reverse() : void 0;
 	      }
 	    }
@@ -3343,10 +3335,14 @@ var main = {exports: {}};
 	      }
 	      static _structuralEquals(e3, t3) {
 	        for (; ; ) {
-	          if (e3 === t3) return true;
-	          if (!e3 && !t3) return true;
-	          if (!e3 || !t3) return false;
-	          if (e3.depth !== t3.depth || e3.ruleId !== t3.ruleId || e3.endRule !== t3.endRule) return false;
+	          if (e3 === t3)
+	            return true;
+	          if (!e3 && !t3)
+	            return true;
+	          if (!e3 || !t3)
+	            return false;
+	          if (e3.depth !== t3.depth || e3.ruleId !== t3.ruleId || e3.endRule !== t3.endRule)
+	            return false;
 	          e3 = e3.parent, t3 = t3.parent;
 	        }
 	      }
@@ -3354,7 +3350,8 @@ var main = {exports: {}};
 	        return this;
 	      }
 	      static _reset(e3) {
-	        for (; e3; ) e3._enterPos = -1, e3._anchorPos = -1, e3 = e3.parent;
+	        for (; e3; )
+	          e3._enterPos = -1, e3._anchorPos = -1, e3 = e3.parent;
 	      }
 	      reset() {
 	        b._reset(this);
@@ -3393,7 +3390,8 @@ var main = {exports: {}};
 	      hasSameRuleAs(e3) {
 	        let t3 = this;
 	        for (; t3 && t3._enterPos === e3._enterPos; ) {
-	          if (t3.ruleId === e3.ruleId) return true;
+	          if (t3.ruleId === e3.ruleId)
+	            return true;
 	          t3 = t3.parent;
 	        }
 	        return false;
@@ -3417,8 +3415,12 @@ var main = {exports: {}};
 	        return 0 === this.balancedBracketScopes.length && !this.allowAny;
 	      }
 	      match(e3) {
-	        for (const t3 of this.unbalancedBracketScopes) if (t3(e3)) return false;
-	        for (const t3 of this.balancedBracketScopes) if (t3(e3)) return true;
+	        for (const t3 of this.unbalancedBracketScopes)
+	          if (t3(e3))
+	            return false;
+	        for (const t3 of this.balancedBracketScopes)
+	          if (t3(e3))
+	            return true;
 	        return this.allowAny;
 	      }
 	    };
@@ -3430,26 +3432,31 @@ var main = {exports: {}};
 	        this.produceFromScopes(e3.contentNameScopesList, t3);
 	      }
 	      produceFromScopes(e3, t3) {
-	        if (this._lastTokenEndIndex >= t3) return;
+	        if (this._lastTokenEndIndex >= t3)
+	          return;
 	        if (this._emitBinaryTokens) {
 	          let n3 = e3?.tokenAttributes ?? 0, i2 = false;
 	          if (this.balancedBracketSelectors?.matchesAlways && (i2 = true), this._tokenTypeOverrides.length > 0 || this.balancedBracketSelectors && !this.balancedBracketSelectors.matchesAlways && !this.balancedBracketSelectors.matchesNever) {
 	            const t4 = e3?.getScopeNames() ?? [];
-	            for (const e4 of this._tokenTypeOverrides) e4.matcher(t4) && (n3 = r.EncodedTokenAttributes.set(n3, 0, r.toOptionalTokenType(e4.type), null, -1, 0, 0));
+	            for (const e4 of this._tokenTypeOverrides)
+	              e4.matcher(t4) && (n3 = r.EncodedTokenAttributes.set(n3, 0, r.toOptionalTokenType(e4.type), null, -1, 0, 0));
 	            this.balancedBracketSelectors && (i2 = this.balancedBracketSelectors.match(t4));
 	          }
-	          if (i2 && (n3 = r.EncodedTokenAttributes.set(n3, 0, 8, i2, -1, 0, 0)), this._binaryTokens.length > 0 && this._binaryTokens[this._binaryTokens.length - 1] === n3) return void (this._lastTokenEndIndex = t3);
+	          if (i2 && (n3 = r.EncodedTokenAttributes.set(n3, 0, 8, i2, -1, 0, 0)), this._binaryTokens.length > 0 && this._binaryTokens[this._binaryTokens.length - 1] === n3)
+	            return void (this._lastTokenEndIndex = t3);
 	          if (s.DebugFlags.InDebugMode) {
 	            const n4 = e3?.getScopeNames() ?? [];
 	            console.log("  token: |" + this._lineText.substring(this._lastTokenEndIndex, t3).replace(/\n$/, "\\n") + "|");
-	            for (let e4 = 0; e4 < n4.length; e4++) console.log("      * " + n4[e4]);
+	            for (let e4 = 0; e4 < n4.length; e4++)
+	              console.log("      * " + n4[e4]);
 	          }
 	          return this._binaryTokens.push(this._lastTokenEndIndex), this._binaryTokens.push(n3), void (this._lastTokenEndIndex = t3);
 	        }
 	        const n2 = e3?.getScopeNames() ?? [];
 	        if (s.DebugFlags.InDebugMode) {
 	          console.log("  token: |" + this._lineText.substring(this._lastTokenEndIndex, t3).replace(/\n$/, "\\n") + "|");
-	          for (let e4 = 0; e4 < n2.length; e4++) console.log("      * " + n2[e4]);
+	          for (let e4 = 0; e4 < n2.length; e4++)
+	            console.log("      * " + n2[e4]);
 	        }
 	        this._tokens.push({ startIndex: this._lastTokenEndIndex, endIndex: t3, scopes: n2 }), this._lastTokenEndIndex = t3;
 	      }
@@ -3459,7 +3466,8 @@ var main = {exports: {}};
 	      getBinaryResult(e3, t3) {
 	        this._binaryTokens.length > 0 && this._binaryTokens[this._binaryTokens.length - 2] === t3 - 1 && (this._binaryTokens.pop(), this._binaryTokens.pop()), 0 === this._binaryTokens.length && (this._lastTokenEndIndex = -1, this.produce(e3, t3), this._binaryTokens[this._binaryTokens.length - 2] = 0);
 	        const n2 = new Uint32Array(this._binaryTokens.length);
-	        for (let e4 = 0, t4 = this._binaryTokens.length; e4 < t4; e4++) n2[e4] = this._binaryTokens[e4];
+	        for (let e4 = 0, t4 = this._binaryTokens.length; e4 < t4; e4++)
+	          n2[e4] = this._binaryTokens[e4];
 	        return n2;
 	      }
 	    }
@@ -3500,13 +3508,16 @@ var main = {exports: {}};
 	    function a(e3, t3, n2, s2) {
 	      const i2 = n2.lookup(e3.scopeName);
 	      if (!i2) {
-	        if (e3.scopeName === t3) throw new Error(`No grammar provided for <${t3}>`);
+	        if (e3.scopeName === t3)
+	          throw new Error(`No grammar provided for <${t3}>`);
 	        return;
 	      }
 	      const o2 = n2.lookup(t3);
 	      e3 instanceof r ? l({ baseGrammar: o2, selfGrammar: i2 }, s2) : c(e3.ruleName, { baseGrammar: o2, selfGrammar: i2, repository: i2.repository }, s2);
 	      const a2 = n2.injections(e3.scopeName);
-	      if (a2) for (const e4 of a2) s2.add(new r(e4));
+	      if (a2)
+	        for (const e4 of a2)
+	          s2.add(new r(e4));
 	    }
 	    function c(e3, t3, n2) {
 	      t3.repository && t3.repository[e3] && u([t3.repository[e3]], t3, n2);
@@ -3516,12 +3527,14 @@ var main = {exports: {}};
 	    }
 	    function u(e3, t3, n2) {
 	      for (const o2 of e3) {
-	        if (n2.visitedRule.has(o2)) continue;
+	        if (n2.visitedRule.has(o2))
+	          continue;
 	        n2.visitedRule.add(o2);
 	        const e4 = o2.repository ? s.mergeObjects({}, t3.repository, o2.repository) : t3.repository;
 	        Array.isArray(o2.patterns) && u(o2.patterns, { ...t3, repository: e4 }, n2);
 	        const a2 = o2.include;
-	        if (!a2) continue;
+	        if (!a2)
+	          continue;
 	        const h2 = g(a2);
 	        switch (h2.kind) {
 	          case 0:
@@ -3539,7 +3552,8 @@ var main = {exports: {}};
 	            if (s2) {
 	              const r2 = { baseGrammar: t3.baseGrammar, selfGrammar: s2, repository: e4 };
 	              4 === h2.kind ? c(h2.ruleName, r2, n2) : l(r2, n2);
-	            } else 4 === h2.kind ? n2.add(new i(h2.scopeName, h2.ruleName)) : n2.add(new r(h2.scopeName));
+	            } else
+	              4 === h2.kind ? n2.add(new i(h2.scopeName, h2.ruleName)) : n2.add(new r(h2.scopeName));
 	        }
 	      }
 	    }
@@ -3551,15 +3565,20 @@ var main = {exports: {}};
 	        const e3 = this.Q;
 	        this.Q = [];
 	        const t3 = new o();
-	        for (const n2 of e3) a(n2, this.initialScopeName, this.repo, t3);
-	        for (const e4 of t3.references) if (e4 instanceof r) {
-	          if (this.seenFullScopeRequests.has(e4.scopeName)) continue;
-	          this.seenFullScopeRequests.add(e4.scopeName), this.Q.push(e4);
-	        } else {
-	          if (this.seenFullScopeRequests.has(e4.scopeName)) continue;
-	          if (this.seenPartialScopeRequests.has(e4.toKey())) continue;
-	          this.seenPartialScopeRequests.add(e4.toKey()), this.Q.push(e4);
-	        }
+	        for (const n2 of e3)
+	          a(n2, this.initialScopeName, this.repo, t3);
+	        for (const e4 of t3.references)
+	          if (e4 instanceof r) {
+	            if (this.seenFullScopeRequests.has(e4.scopeName))
+	              continue;
+	            this.seenFullScopeRequests.add(e4.scopeName), this.Q.push(e4);
+	          } else {
+	            if (this.seenFullScopeRequests.has(e4.scopeName))
+	              continue;
+	            if (this.seenPartialScopeRequests.has(e4.toKey()))
+	              continue;
+	            this.seenPartialScopeRequests.add(e4.toKey()), this.Q.push(e4);
+	          }
 	      }
 	    };
 	    class h {
@@ -3592,11 +3611,15 @@ var main = {exports: {}};
 	      }
 	    }
 	    function g(e3) {
-	      if ("$base" === e3) return new h();
-	      if ("$self" === e3) return new p();
+	      if ("$base" === e3)
+	        return new h();
+	      if ("$self" === e3)
+	        return new p();
 	      const t3 = e3.indexOf("#");
-	      if (-1 === t3) return new f(e3);
-	      if (0 === t3) return new d(e3.substring(1));
+	      if (-1 === t3)
+	        return new f(e3);
+	      if (0 === t3)
+	        return new d(e3.substring(1));
 	      {
 	        const n2 = e3.substring(0, t3), s2 = e3.substring(t3 + 1);
 	        return new m(n2, s2);
@@ -3611,7 +3634,8 @@ var main = {exports: {}};
 	    } : function(e3, t3, n2, s2) {
 	      void 0 === s2 && (s2 = n2), e3[s2] = t3[n2];
 	    }), r = this && this.__exportStar || function(e3, t3) {
-	      for (var n2 in e3) "default" === n2 || Object.prototype.hasOwnProperty.call(t3, n2) || s(t3, e3, n2);
+	      for (var n2 in e3)
+	        "default" === n2 || Object.prototype.hasOwnProperty.call(t3, n2) || s(t3, e3, n2);
 	    };
 	    Object.defineProperty(t2, "__esModule", { value: true }), r(n(947), t2);
 	  }, 47: (e2, t2, n) => {
@@ -3651,7 +3675,8 @@ var main = {exports: {}};
 	      }
 	      const b = Date.now();
 	      for (; !g; ) {
-	        if (0 !== f && Date.now() - b > f) return new a(c2, true);
+	        if (0 !== f && Date.now() - b > f)
+	          return new a(c2, true);
 	        y();
 	      }
 	      return new a(c2, false);
@@ -3669,33 +3694,41 @@ var main = {exports: {}};
 	            }
 	            return d5 ? { captureIndices: d5.captureIndices, matchedRuleId: d5.ruleId } : null;
 	          }(e4, t4, n3, r3, i2, a3), u3 = e4.getInjections();
-	          if (0 === u3.length) return c3;
+	          if (0 === u3.length)
+	            return c3;
 	          const h3 = function(e5, t5, n4, r4, i3, o2, a4) {
 	            let c4, u4 = Number.MAX_VALUE, h4 = null, p3 = 0;
 	            const d5 = o2.contentNameScopesList.getScopeNames();
 	            for (let o3 = 0, f3 = e5.length; o3 < f3; o3++) {
 	              const f4 = e5[o3];
-	              if (!f4.matcher(d5)) continue;
+	              if (!f4.matcher(d5))
+	                continue;
 	              const m2 = t5.getRule(f4.ruleId), { ruleScanner: g2, findOptions: _2 } = l(m2, t5, null, r4, i3 === a4), b2 = g2.findNextMatchSync(n4, i3, _2);
-	              if (!b2) continue;
+	              if (!b2)
+	                continue;
 	              s.DebugFlags.InDebugMode && (console.log(`  matched injection: ${f4.debugSelector}`), console.log(g2.toString()));
 	              const y2 = b2.captureIndices[0].start;
-	              if (!(y2 >= u4) && (u4 = y2, h4 = b2.captureIndices, c4 = b2.ruleId, p3 = f4.priority, u4 === i3)) break;
+	              if (!(y2 >= u4) && (u4 = y2, h4 = b2.captureIndices, c4 = b2.ruleId, p3 = f4.priority, u4 === i3))
+	                break;
 	            }
 	            return h4 ? { priorityMatch: -1 === p3, captureIndices: h4, matchedRuleId: c4 } : null;
 	          }(u3, e4, t4, n3, r3, i2, a3);
-	          if (!h3) return c3;
-	          if (!c3) return h3;
+	          if (!h3)
+	            return c3;
+	          if (!c3)
+	            return h3;
 	          const p2 = c3.captureIndices[0].start, d4 = h3.captureIndices[0].start;
 	          return d4 < p2 || h3.priorityMatch && d4 === p2 ? h3 : c3;
 	        }(e3, t3, n2, r2, c2, _);
-	        if (!a2) return s.DebugFlags.InDebugMode && console.log("  no more matches."), h2.produce(c2, m), void (g = true);
+	        if (!a2)
+	          return s.DebugFlags.InDebugMode && console.log("  no more matches."), h2.produce(c2, m), void (g = true);
 	        const u2 = a2.captureIndices, d3 = a2.matchedRuleId, f2 = !!(u2 && u2.length > 0) && u2[0].end > r2;
 	        if (d3 === i.endRuleId) {
 	          const i2 = c2.getRule(e3);
 	          s.DebugFlags.InDebugMode && console.log("  popping " + i2.debugName + " - " + i2.debugEndRegExp), h2.produce(c2, u2[0].start), c2 = c2.withContentNameScopesList(c2.nameScopesList), p(e3, t3, n2, c2, h2, i2.endCaptures, u2), h2.produce(c2, u2[0].end);
 	          const o2 = c2;
-	          if (c2 = c2.parent, _ = o2.getAnchorPos(), !f2 && o2.getEnterPos() === r2) return s.DebugFlags.InDebugMode && console.error("[1] - Grammar is in an endless loop - Grammar pushed & popped a rule without advancing"), c2 = o2, h2.produce(c2, m), void (g = true);
+	          if (c2 = c2.parent, _ = o2.getAnchorPos(), !f2 && o2.getEnterPos() === r2)
+	            return s.DebugFlags.InDebugMode && console.error("[1] - Grammar is in an endless loop - Grammar pushed & popped a rule without advancing"), c2 = o2, h2.produce(c2, m), void (g = true);
 	        } else {
 	          const o2 = e3.getRule(d3);
 	          h2.produce(c2, u2[0].start);
@@ -3704,15 +3737,18 @@ var main = {exports: {}};
 	            const r3 = o2;
 	            s.DebugFlags.InDebugMode && console.log("  pushing " + r3.debugName + " - " + r3.debugBeginRegExp), p(e3, t3, n2, c2, h2, r3.beginCaptures, u2), h2.produce(c2, u2[0].end), _ = u2[0].end;
 	            const i2 = r3.getContentName(t3.content, u2), l3 = b2.pushAttributed(i2, e3);
-	            if (c2 = c2.withContentNameScopesList(l3), r3.endHasBackReferences && (c2 = c2.withEndRule(r3.getEndWithResolvedBackReferences(t3.content, u2))), !f2 && a3.hasSameRuleAs(c2)) return s.DebugFlags.InDebugMode && console.error("[2] - Grammar is in an endless loop - Grammar pushed the same rule without advancing"), c2 = c2.pop(), h2.produce(c2, m), void (g = true);
+	            if (c2 = c2.withContentNameScopesList(l3), r3.endHasBackReferences && (c2 = c2.withEndRule(r3.getEndWithResolvedBackReferences(t3.content, u2))), !f2 && a3.hasSameRuleAs(c2))
+	              return s.DebugFlags.InDebugMode && console.error("[2] - Grammar is in an endless loop - Grammar pushed the same rule without advancing"), c2 = c2.pop(), h2.produce(c2, m), void (g = true);
 	          } else if (o2 instanceof i.BeginWhileRule) {
 	            const r3 = o2;
 	            s.DebugFlags.InDebugMode && console.log("  pushing " + r3.debugName), p(e3, t3, n2, c2, h2, r3.beginCaptures, u2), h2.produce(c2, u2[0].end), _ = u2[0].end;
 	            const i2 = r3.getContentName(t3.content, u2), l3 = b2.pushAttributed(i2, e3);
-	            if (c2 = c2.withContentNameScopesList(l3), r3.whileHasBackReferences && (c2 = c2.withEndRule(r3.getWhileWithResolvedBackReferences(t3.content, u2))), !f2 && a3.hasSameRuleAs(c2)) return s.DebugFlags.InDebugMode && console.error("[3] - Grammar is in an endless loop - Grammar pushed the same rule without advancing"), c2 = c2.pop(), h2.produce(c2, m), void (g = true);
+	            if (c2 = c2.withContentNameScopesList(l3), r3.whileHasBackReferences && (c2 = c2.withEndRule(r3.getWhileWithResolvedBackReferences(t3.content, u2))), !f2 && a3.hasSameRuleAs(c2))
+	              return s.DebugFlags.InDebugMode && console.error("[3] - Grammar is in an endless loop - Grammar pushed the same rule without advancing"), c2 = c2.pop(), h2.produce(c2, m), void (g = true);
 	          } else {
 	            const r3 = o2;
-	            if (s.DebugFlags.InDebugMode && console.log("  matched " + r3.debugName + " - " + r3.debugMatchRegExp), p(e3, t3, n2, c2, h2, r3.captures, u2), h2.produce(c2, u2[0].end), c2 = c2.pop(), !f2) return s.DebugFlags.InDebugMode && console.error("[4] - Grammar is in an endless loop - Grammar is not advancing, nor is it pushing/popping"), c2 = c2.safePop(), h2.produce(c2, m), void (g = true);
+	            if (s.DebugFlags.InDebugMode && console.log("  matched " + r3.debugName + " - " + r3.debugMatchRegExp), p(e3, t3, n2, c2, h2, r3.captures, u2), h2.produce(c2, u2[0].end), c2 = c2.pop(), !f2)
+	              return s.DebugFlags.InDebugMode && console.error("[4] - Grammar is in an endless loop - Grammar is not advancing, nor is it pushing/popping"), c2 = c2.safePop(), h2.produce(c2, m), void (g = true);
 	          }
 	        }
 	        u2[0].end > r2 && (r2 = u2[0].end, n2 = false);
@@ -3729,15 +3765,20 @@ var main = {exports: {}};
 	      return e3 || (n2 |= 1), t3 || (n2 |= 4), n2;
 	    }
 	    function p(e3, t3, n2, s2, i2, o2, a2) {
-	      if (0 === o2.length) return;
+	      if (0 === o2.length)
+	        return;
 	      const l2 = t3.content, u2 = Math.min(o2.length, a2.length), h2 = [], p2 = a2[0].end;
 	      for (let t4 = 0; t4 < u2; t4++) {
 	        const u3 = o2[t4];
-	        if (null === u3) continue;
+	        if (null === u3)
+	          continue;
 	        const f = a2[t4];
-	        if (0 === f.length) continue;
-	        if (f.start > p2) break;
-	        for (; h2.length > 0 && h2[h2.length - 1].endPos <= f.start; ) i2.produceFromScopes(h2[h2.length - 1].scopes, h2[h2.length - 1].endPos), h2.pop();
+	        if (0 === f.length)
+	          continue;
+	        if (f.start > p2)
+	          break;
+	        for (; h2.length > 0 && h2[h2.length - 1].endPos <= f.start; )
+	          i2.produceFromScopes(h2[h2.length - 1].scopes, h2[h2.length - 1].endPos), h2.pop();
 	        if (h2.length > 0 ? i2.produceFromScopes(h2[h2.length - 1].scopes, f.start) : i2.produce(s2, f.start), u3.retokenizeCapturedWithRuleId) {
 	          const t5 = u3.getName(l2, a2), o3 = s2.contentNameScopesList.pushAttributed(t5, e3), h3 = u3.getContentName(l2, a2), p3 = o3.pushAttributed(h3, e3), d2 = s2.push(u3.retokenizeCapturedWithRuleId, f.start, -1, false, null, o3, p3), m2 = e3.createOnigString(l2.substring(0, f.end));
 	          c(e3, m2, n2 && 0 === f.start, f.start, d2, i2, false, 0), r.disposeOnigString(m2);
@@ -3749,7 +3790,8 @@ var main = {exports: {}};
 	          h2.push(new d(t5, f.end));
 	        }
 	      }
-	      for (; h2.length > 0; ) i2.produceFromScopes(h2[h2.length - 1].scopes, h2[h2.length - 1].endPos), h2.pop();
+	      for (; h2.length > 0; )
+	        i2.produceFromScopes(h2[h2.length - 1].scopes, h2[h2.length - 1].endPos), h2.pop();
 	    }
 	    t2._tokenizeString = c;
 	    class d {
@@ -3905,18 +3947,24 @@ var main = {exports: {}};
 	      t3.value = null, t3.type = 0, t3.offset = -1, t3.len = -1, t3.line = -1, t3.char = -1;
 	      let s2, r2 = e3.source, i2 = e3.pos, o = e3.len, a = e3.line, c = e3.char;
 	      for (; ; ) {
-	        if (i2 >= o) return false;
+	        if (i2 >= o)
+	          return false;
 	        if (s2 = r2.charCodeAt(i2), 32 !== s2 && 9 !== s2 && 13 !== s2) {
-	          if (10 !== s2) break;
+	          if (10 !== s2)
+	            break;
 	          i2++, a++, c = 0;
-	        } else i2++, c++;
+	        } else
+	          i2++, c++;
 	      }
 	      if (t3.offset = i2, t3.line = a, t3.char = c, 34 === s2) {
 	        for (t3.type = 1, i2++, c++; ; ) {
-	          if (i2 >= o) return false;
+	          if (i2 >= o)
+	            return false;
 	          if (s2 = r2.charCodeAt(i2), i2++, c++, 92 !== s2) {
-	            if (34 === s2) break;
-	          } else i2++, c++;
+	            if (34 === s2)
+	              break;
+	          } else
+	            i2++, c++;
 	        }
 	        t3.value = r2.substring(t3.offset + 1, i2 - 1).replace(/\\u([0-9A-Fa-f]{4})/g, (e4, t4) => String.fromCodePoint(parseInt(t4, 16))).replace(/\\(.)/g, (t4, s3) => {
 	          switch (s3) {
@@ -3941,33 +3989,52 @@ var main = {exports: {}};
 	          }
 	          throw new Error("unreachable");
 	        });
-	      } else if (91 === s2) t3.type = 2, i2++, c++;
-	      else if (123 === s2) t3.type = 3, i2++, c++;
-	      else if (93 === s2) t3.type = 4, i2++, c++;
-	      else if (125 === s2) t3.type = 5, i2++, c++;
-	      else if (58 === s2) t3.type = 6, i2++, c++;
-	      else if (44 === s2) t3.type = 7, i2++, c++;
+	      } else if (91 === s2)
+	        t3.type = 2, i2++, c++;
+	      else if (123 === s2)
+	        t3.type = 3, i2++, c++;
+	      else if (93 === s2)
+	        t3.type = 4, i2++, c++;
+	      else if (125 === s2)
+	        t3.type = 5, i2++, c++;
+	      else if (58 === s2)
+	        t3.type = 6, i2++, c++;
+	      else if (44 === s2)
+	        t3.type = 7, i2++, c++;
 	      else if (110 === s2) {
-	        if (t3.type = 8, i2++, c++, s2 = r2.charCodeAt(i2), 117 !== s2) return false;
-	        if (i2++, c++, s2 = r2.charCodeAt(i2), 108 !== s2) return false;
-	        if (i2++, c++, s2 = r2.charCodeAt(i2), 108 !== s2) return false;
+	        if (t3.type = 8, i2++, c++, s2 = r2.charCodeAt(i2), 117 !== s2)
+	          return false;
+	        if (i2++, c++, s2 = r2.charCodeAt(i2), 108 !== s2)
+	          return false;
+	        if (i2++, c++, s2 = r2.charCodeAt(i2), 108 !== s2)
+	          return false;
 	        i2++, c++;
 	      } else if (116 === s2) {
-	        if (t3.type = 9, i2++, c++, s2 = r2.charCodeAt(i2), 114 !== s2) return false;
-	        if (i2++, c++, s2 = r2.charCodeAt(i2), 117 !== s2) return false;
-	        if (i2++, c++, s2 = r2.charCodeAt(i2), 101 !== s2) return false;
+	        if (t3.type = 9, i2++, c++, s2 = r2.charCodeAt(i2), 114 !== s2)
+	          return false;
+	        if (i2++, c++, s2 = r2.charCodeAt(i2), 117 !== s2)
+	          return false;
+	        if (i2++, c++, s2 = r2.charCodeAt(i2), 101 !== s2)
+	          return false;
 	        i2++, c++;
 	      } else if (102 === s2) {
-	        if (t3.type = 10, i2++, c++, s2 = r2.charCodeAt(i2), 97 !== s2) return false;
-	        if (i2++, c++, s2 = r2.charCodeAt(i2), 108 !== s2) return false;
-	        if (i2++, c++, s2 = r2.charCodeAt(i2), 115 !== s2) return false;
-	        if (i2++, c++, s2 = r2.charCodeAt(i2), 101 !== s2) return false;
+	        if (t3.type = 10, i2++, c++, s2 = r2.charCodeAt(i2), 97 !== s2)
+	          return false;
+	        if (i2++, c++, s2 = r2.charCodeAt(i2), 108 !== s2)
+	          return false;
+	        if (i2++, c++, s2 = r2.charCodeAt(i2), 115 !== s2)
+	          return false;
+	        if (i2++, c++, s2 = r2.charCodeAt(i2), 101 !== s2)
+	          return false;
 	        i2++, c++;
-	      } else for (t3.type = 11; ; ) {
-	        if (i2 >= o) return false;
-	        if (s2 = r2.charCodeAt(i2), !(46 === s2 || s2 >= 48 && s2 <= 57 || 101 === s2 || 69 === s2 || 45 === s2 || 43 === s2)) break;
-	        i2++, c++;
-	      }
+	      } else
+	        for (t3.type = 11; ; ) {
+	          if (i2 >= o)
+	            return false;
+	          if (s2 = r2.charCodeAt(i2), !(46 === s2 || s2 >= 48 && s2 <= 57 || 101 === s2 || 69 === s2 || 45 === s2 || 43 === s2))
+	            break;
+	          i2++, c++;
+	        }
 	      return t3.len = i2 - t3.offset, null === t3.value && (t3.value = r2.substr(t3.offset, t3.len)), e3.pos = i2, e3.line = a, e3.char = c, true;
 	    }
 	  }, 787: function(e2, t2, n) {
@@ -3978,7 +4045,8 @@ var main = {exports: {}};
 	    } : function(e3, t3, n2, s2) {
 	      void 0 === s2 && (s2 = n2), e3[s2] = t3[n2];
 	    }), r = this && this.__exportStar || function(e3, t3) {
-	      for (var n2 in e3) "default" === n2 || Object.prototype.hasOwnProperty.call(t3, n2) || s(t3, e3, n2);
+	      for (var n2 in e3)
+	        "default" === n2 || Object.prototype.hasOwnProperty.call(t3, n2) || s(t3, e3, n2);
 	    };
 	    Object.defineProperty(t2, "__esModule", { value: true }), t2.applyStateStackDiff = t2.diffStateStacksRefEq = t2.parseRawGrammar = t2.INITIAL = t2.Registry = void 0;
 	    const i = n(391), o = n(50), a = n(652), c = n(583), l = n(965), u = n(442);
@@ -4010,7 +4078,8 @@ var main = {exports: {}};
 	      }
 	      async _loadGrammar(e3, t3, n2, s2, r2) {
 	        const i2 = new l.ScopeDependencyProcessor(this._syncRegistry, e3);
-	        for (; i2.Q.length > 0; ) await Promise.all(i2.Q.map((e4) => this._loadSingleGrammar(e4.scopeName))), i2.processQueue();
+	        for (; i2.Q.length > 0; )
+	          await Promise.all(i2.Q.map((e4) => this._loadSingleGrammar(e4.scopeName))), i2.processQueue();
 	        return this._grammarForScopeName(e3, t3, n2, s2, r2);
 	      }
 	      async _loadSingleGrammar(e3) {
@@ -4038,7 +4107,8 @@ var main = {exports: {}};
 	      const s = [], r = function(e4) {
 	        let t4 = /([LR]:|[\w\.:][\w\.:\-]*|[\,\|\-\(\)])/g, n2 = t4.exec(e4);
 	        return { next: () => {
-	          if (!n2) return null;
+	          if (!n2)
+	            return null;
 	          const s2 = n2[0];
 	          return n2 = t4.exec(e4), s2;
 	        } };
@@ -4060,7 +4130,8 @@ var main = {exports: {}};
 	          i = r.next();
 	        }
 	        let t4 = a();
-	        if (s.push({ matcher: t4, priority: e4 }), "," !== i) break;
+	        if (s.push({ matcher: t4, priority: e4 }), "," !== i)
+	          break;
 	        i = r.next();
 	      }
 	      return s;
@@ -4097,7 +4168,8 @@ var main = {exports: {}};
 	      function a() {
 	        const e4 = [];
 	        let t4 = o();
-	        for (; t4; ) e4.push(t4), t4 = o();
+	        for (; t4; )
+	          e4.push(t4), t4 = o();
 	        return (t5) => e4.every((e5) => e5(t5));
 	      }
 	    };
@@ -4119,8 +4191,11 @@ var main = {exports: {}};
 	      const s = e3.length;
 	      let r = 0, i = 1, o = 0;
 	      function a(t4) {
-	        if (null === n2) r += t4;
-	        else for (; t4 > 0; ) 10 === e3.charCodeAt(r) ? (r++, i++, o = 0) : (r++, o++), t4--;
+	        if (null === n2)
+	          r += t4;
+	        else
+	          for (; t4 > 0; )
+	            10 === e3.charCodeAt(r) ? (r++, i++, o = 0) : (r++, o++), t4--;
 	      }
 	      function c(e4) {
 	        null === n2 ? r = e4 : a(e4 - r);
@@ -4128,7 +4203,8 @@ var main = {exports: {}};
 	      function l() {
 	        for (; r < s; ) {
 	          let t4 = e3.charCodeAt(r);
-	          if (32 !== t4 && 9 !== t4 && 13 !== t4 && 10 !== t4) break;
+	          if (32 !== t4 && 9 !== t4 && 13 !== t4 && 10 !== t4)
+	            break;
 	          a(1);
 	        }
 	      }
@@ -4156,18 +4232,21 @@ var main = {exports: {}};
 	        m.push(d), g.push(f), d = e4, f = t4;
 	      }
 	      function y() {
-	        if (0 === m.length) return S("illegal state stack");
+	        if (0 === m.length)
+	          return S("illegal state stack");
 	        d = m.pop(), f = g.pop();
 	      }
 	      function S(t4) {
 	        throw new Error("Near offset " + r + ": " + t4 + " ~~~" + e3.substr(r, 50) + "~~~");
 	      }
 	      const k = function() {
-	        if (null === _) return S("missing <key>");
+	        if (null === _)
+	          return S("missing <key>");
 	        let e4 = {};
 	        null !== n2 && (e4[n2] = { filename: t3, line: i, char: o }), f[_] = e4, _ = null, b(1, e4);
 	      }, C = function() {
-	        if (null === _) return S("missing <key>");
+	        if (null === _)
+	          return S("missing <key>");
 	        let e4 = [];
 	        f[_] = e4, _ = null, b(2, e4);
 	      }, R = function() {
@@ -4178,7 +4257,8 @@ var main = {exports: {}};
 	        f.push(e4), b(2, e4);
 	      };
 	      function w() {
-	        if (1 !== d) return S("unexpected </dict>");
+	        if (1 !== d)
+	          return S("unexpected </dict>");
 	        y();
 	      }
 	      function P() {
@@ -4186,48 +4266,63 @@ var main = {exports: {}};
 	      }
 	      function I(e4) {
 	        if (1 === d) {
-	          if (null === _) return S("missing <key>");
+	          if (null === _)
+	            return S("missing <key>");
 	          f[_] = e4, _ = null;
-	        } else 2 === d ? f.push(e4) : f = e4;
+	        } else
+	          2 === d ? f.push(e4) : f = e4;
 	      }
 	      function v(e4) {
-	        if (isNaN(e4)) return S("cannot parse float");
+	        if (isNaN(e4))
+	          return S("cannot parse float");
 	        if (1 === d) {
-	          if (null === _) return S("missing <key>");
+	          if (null === _)
+	            return S("missing <key>");
 	          f[_] = e4, _ = null;
-	        } else 2 === d ? f.push(e4) : f = e4;
+	        } else
+	          2 === d ? f.push(e4) : f = e4;
 	      }
 	      function N(e4) {
-	        if (isNaN(e4)) return S("cannot parse integer");
+	        if (isNaN(e4))
+	          return S("cannot parse integer");
 	        if (1 === d) {
-	          if (null === _) return S("missing <key>");
+	          if (null === _)
+	            return S("missing <key>");
 	          f[_] = e4, _ = null;
-	        } else 2 === d ? f.push(e4) : f = e4;
+	        } else
+	          2 === d ? f.push(e4) : f = e4;
 	      }
 	      function x(e4) {
 	        if (1 === d) {
-	          if (null === _) return S("missing <key>");
+	          if (null === _)
+	            return S("missing <key>");
 	          f[_] = e4, _ = null;
-	        } else 2 === d ? f.push(e4) : f = e4;
+	        } else
+	          2 === d ? f.push(e4) : f = e4;
 	      }
 	      function T(e4) {
 	        if (1 === d) {
-	          if (null === _) return S("missing <key>");
+	          if (null === _)
+	            return S("missing <key>");
 	          f[_] = e4, _ = null;
-	        } else 2 === d ? f.push(e4) : f = e4;
+	        } else
+	          2 === d ? f.push(e4) : f = e4;
 	      }
 	      function G(e4) {
 	        if (1 === d) {
-	          if (null === _) return S("missing <key>");
+	          if (null === _)
+	            return S("missing <key>");
 	          f[_] = e4, _ = null;
-	        } else 2 === d ? f.push(e4) : f = e4;
+	        } else
+	          2 === d ? f.push(e4) : f = e4;
 	      }
 	      function E() {
 	        let e4 = p(">"), t4 = false;
 	        return 47 === e4.charCodeAt(e4.length - 1) && (t4 = true, e4 = e4.substring(0, e4.length - 1)), { name: e4.trim(), isClosed: t4 };
 	      }
 	      function L(e4) {
-	        if (e4.isClosed) return "";
+	        if (e4.isClosed)
+	          return "";
 	        let t4 = p("</");
 	        return h(">"), t4.replace(/&#([0-9]+);/g, function(e5, t5) {
 	          return String.fromCodePoint(parseInt(t5, 10));
@@ -4251,8 +4346,10 @@ var main = {exports: {}};
 	      }
 	      for (; r < s && (l(), !(r >= s)); ) {
 	        const c2 = e3.charCodeAt(r);
-	        if (a(1), 60 !== c2) return S("expected <");
-	        if (r >= s) return S("unexpected end of input");
+	        if (a(1), 60 !== c2)
+	          return S("expected <");
+	        if (r >= s)
+	          return S("unexpected end of input");
 	        const p2 = e3.charCodeAt(r);
 	        if (63 === p2) {
 	          a(1), h("?>");
@@ -4314,7 +4411,8 @@ var main = {exports: {}};
 	            L(m2), G(false);
 	            continue;
 	        }
-	        if (!/^plist/.test(m2.name)) return S("unexpected opened tag " + m2.name);
+	        if (!/^plist/.test(m2.name))
+	          return S("unexpected opened tag " + m2.name);
 	      }
 	      var M;
 	      return f;
@@ -4332,7 +4430,8 @@ var main = {exports: {}};
 	        this._onigLibPromise = t3, this._grammars = /* @__PURE__ */ new Map(), this._rawGrammars = /* @__PURE__ */ new Map(), this._injectionGrammars = /* @__PURE__ */ new Map(), this._theme = e3;
 	      }
 	      dispose() {
-	        for (const e3 of this._grammars.values()) e3.dispose();
+	        for (const e3 of this._grammars.values())
+	          e3.dispose();
 	      }
 	      setTheme(e3) {
 	        this._theme = e3;
@@ -4358,7 +4457,8 @@ var main = {exports: {}};
 	      async grammarForScopeName(e3, t3, n2, r, i) {
 	        if (!this._grammars.has(e3)) {
 	          let o = this._rawGrammars.get(e3);
-	          if (!o) return null;
+	          if (!o)
+	            return null;
 	          this._grammars.set(e3, s.createGrammar(e3, o, t3, n2, r, i, this, await this._onigLibPromise));
 	        }
 	        return this._grammars.get(e3);
@@ -4437,7 +4537,8 @@ var main = {exports: {}};
 	        this._cachedCompiledPatterns && (this._cachedCompiledPatterns.dispose(), this._cachedCompiledPatterns = null);
 	      }
 	      collectPatterns(e3, t3) {
-	        for (const n2 of this.patterns) e3.getRule(n2).collectPatterns(e3, t3);
+	        for (const n2 of this.patterns)
+	          e3.getRule(n2).collectPatterns(e3, t3);
 	      }
 	      compile(e3, t3) {
 	        return this._getCachedCompiledPatterns(e3).compile(e3);
@@ -4478,7 +4579,8 @@ var main = {exports: {}};
 	      _getCachedCompiledPatterns(e3, t3) {
 	        if (!this._cachedCompiledPatterns) {
 	          this._cachedCompiledPatterns = new m();
-	          for (const t4 of this.patterns) e3.getRule(t4).collectPatterns(e3, this._cachedCompiledPatterns);
+	          for (const t4 of this.patterns)
+	            e3.getRule(t4).collectPatterns(e3, this._cachedCompiledPatterns);
 	          this.applyEndPatternLast ? this._cachedCompiledPatterns.push(this._end.hasBackReferences ? this._end.clone() : this._end) : this._cachedCompiledPatterns.unshift(this._end.hasBackReferences ? this._end.clone() : this._end);
 	        }
 	        return this._end.hasBackReferences && (this.applyEndPatternLast ? this._cachedCompiledPatterns.setSource(this._cachedCompiledPatterns.length() - 1, t3) : this._cachedCompiledPatterns.setSource(0, t3)), this._cachedCompiledPatterns;
@@ -4513,7 +4615,8 @@ var main = {exports: {}};
 	      _getCachedCompiledPatterns(e3) {
 	        if (!this._cachedCompiledPatterns) {
 	          this._cachedCompiledPatterns = new m();
-	          for (const t3 of this.patterns) e3.getRule(t3).collectPatterns(e3, this._cachedCompiledPatterns);
+	          for (const t3 of this.patterns)
+	            e3.getRule(t3).collectPatterns(e3, this._cachedCompiledPatterns);
 	        }
 	        return this._cachedCompiledPatterns;
 	      }
@@ -4534,7 +4637,8 @@ var main = {exports: {}};
 	      }
 	      static getCompiledRuleId(e3, t3, n2) {
 	        return e3.id || t3.registerRule((r2) => {
-	          if (e3.id = r2, e3.match) return new l(e3.$vscodeTextmateLocation, e3.id, e3.name, e3.match, d._compileCaptures(e3.captures, t3, n2));
+	          if (e3.id = r2, e3.match)
+	            return new l(e3.$vscodeTextmateLocation, e3.id, e3.name, e3.match, d._compileCaptures(e3.captures, t3, n2));
 	          if (void 0 === e3.begin) {
 	            e3.repository && (n2 = s.mergeObjects({}, n2, e3.repository));
 	            let r3 = e3.patterns;
@@ -4548,13 +4652,16 @@ var main = {exports: {}};
 	        if (e3) {
 	          let r2 = 0;
 	          for (const t4 in e3) {
-	            if ("$vscodeTextmateLocation" === t4) continue;
+	            if ("$vscodeTextmateLocation" === t4)
+	              continue;
 	            const e4 = parseInt(t4, 10);
 	            e4 > r2 && (r2 = e4);
 	          }
-	          for (let e4 = 0; e4 <= r2; e4++) s2[e4] = null;
+	          for (let e4 = 0; e4 <= r2; e4++)
+	            s2[e4] = null;
 	          for (const r3 in e3) {
-	            if ("$vscodeTextmateLocation" === r3) continue;
+	            if ("$vscodeTextmateLocation" === r3)
+	              continue;
 	            const i2 = parseInt(r3, 10);
 	            let o2 = 0;
 	            e3[r3].patterns && (o2 = d.getCompiledRuleId(e3[r3], t3, n2)), s2[i2] = d.createCaptureRule(t3, e3[r3].$vscodeTextmateLocation, e3[r3].name, e3[r3].contentName, o2);
@@ -4564,36 +4671,41 @@ var main = {exports: {}};
 	      }
 	      static _compilePatterns(e3, t3, n2) {
 	        let s2 = [];
-	        if (e3) for (let i2 = 0, o2 = e3.length; i2 < o2; i2++) {
-	          const o3 = e3[i2];
-	          let a2 = -1;
-	          if (o3.include) {
-	            const e4 = r.parseInclude(o3.include);
-	            switch (e4.kind) {
-	              case 0:
-	              case 1:
-	                a2 = d.getCompiledRuleId(n2[o3.include], t3, n2);
-	                break;
-	              case 2:
-	                let s3 = n2[e4.ruleName];
-	                s3 && (a2 = d.getCompiledRuleId(s3, t3, n2));
-	                break;
-	              case 3:
-	              case 4:
-	                const r2 = e4.scopeName, i3 = 4 === e4.kind ? e4.ruleName : null, c2 = t3.getExternalGrammar(r2, n2);
-	                if (c2) if (i3) {
-	                  let e5 = c2.repository[i3];
-	                  e5 && (a2 = d.getCompiledRuleId(e5, t3, c2.repository));
-	                } else a2 = d.getCompiledRuleId(c2.repository.$self, t3, c2.repository);
+	        if (e3)
+	          for (let i2 = 0, o2 = e3.length; i2 < o2; i2++) {
+	            const o3 = e3[i2];
+	            let a2 = -1;
+	            if (o3.include) {
+	              const e4 = r.parseInclude(o3.include);
+	              switch (e4.kind) {
+	                case 0:
+	                case 1:
+	                  a2 = d.getCompiledRuleId(n2[o3.include], t3, n2);
+	                  break;
+	                case 2:
+	                  let s3 = n2[e4.ruleName];
+	                  s3 && (a2 = d.getCompiledRuleId(s3, t3, n2));
+	                  break;
+	                case 3:
+	                case 4:
+	                  const r2 = e4.scopeName, i3 = 4 === e4.kind ? e4.ruleName : null, c2 = t3.getExternalGrammar(r2, n2);
+	                  if (c2)
+	                    if (i3) {
+	                      let e5 = c2.repository[i3];
+	                      e5 && (a2 = d.getCompiledRuleId(e5, t3, c2.repository));
+	                    } else
+	                      a2 = d.getCompiledRuleId(c2.repository.$self, t3, c2.repository);
+	              }
+	            } else
+	              a2 = d.getCompiledRuleId(o3, t3, n2);
+	            if (-1 !== a2) {
+	              const e4 = t3.getRule(a2);
+	              let n3 = false;
+	              if ((e4 instanceof u || e4 instanceof h || e4 instanceof p) && e4.hasMissingPatterns && 0 === e4.patterns.length && (n3 = true), n3)
+	                continue;
+	              s2.push(a2);
 	            }
-	          } else a2 = d.getCompiledRuleId(o3, t3, n2);
-	          if (-1 !== a2) {
-	            const e4 = t3.getRule(a2);
-	            let n3 = false;
-	            if ((e4 instanceof u || e4 instanceof h || e4 instanceof p) && e4.hasMissingPatterns && 0 === e4.patterns.length && (n3 = true), n3) continue;
-	            s2.push(a2);
 	          }
-	        }
 	        return { patterns: s2, hasMissingPatterns: (e3 ? e3.length : 0) !== s2.length };
 	      }
 	    }
@@ -4603,12 +4715,14 @@ var main = {exports: {}};
 	        if (e3) {
 	          const t4 = e3.length;
 	          let n2 = 0, s2 = [], r2 = false;
-	          for (let i2 = 0; i2 < t4; i2++) if ("\\" === e3.charAt(i2) && i2 + 1 < t4) {
-	            const t5 = e3.charAt(i2 + 1);
-	            "z" === t5 ? (s2.push(e3.substring(n2, i2)), s2.push("$(?!\\n)(?<!\\n)"), n2 = i2 + 2) : "A" !== t5 && "G" !== t5 || (r2 = true), i2++;
-	          }
+	          for (let i2 = 0; i2 < t4; i2++)
+	            if ("\\" === e3.charAt(i2) && i2 + 1 < t4) {
+	              const t5 = e3.charAt(i2 + 1);
+	              "z" === t5 ? (s2.push(e3.substring(n2, i2)), s2.push("$(?!\\n)(?<!\\n)"), n2 = i2 + 2) : "A" !== t5 && "G" !== t5 || (r2 = true), i2++;
+	            }
 	          this.hasAnchor = r2, 0 === n2 ? this.source = e3 : (s2.push(e3.substring(n2, t4)), this.source = s2.join(""));
-	        } else this.hasAnchor = false, this.source = e3;
+	        } else
+	          this.hasAnchor = false, this.source = e3;
 	        this.hasAnchor ? this._anchorCache = this._buildAnchorCache() : this._anchorCache = null, this.ruleId = t3, this.hasBackReferences = i.test(this.source);
 	      }
 	      clone() {
@@ -4623,7 +4737,8 @@ var main = {exports: {}};
 	      }
 	      _buildAnchorCache() {
 	        let e3, t3, n2, s2, r2 = [], i2 = [], o2 = [], a2 = [];
-	        for (e3 = 0, t3 = this.source.length; e3 < t3; e3++) n2 = this.source.charAt(e3), r2[e3] = n2, i2[e3] = n2, o2[e3] = n2, a2[e3] = n2, "\\" === n2 && e3 + 1 < t3 && (s2 = this.source.charAt(e3 + 1), "A" === s2 ? (r2[e3 + 1] = "￿", i2[e3 + 1] = "￿", o2[e3 + 1] = "A", a2[e3 + 1] = "A") : "G" === s2 ? (r2[e3 + 1] = "￿", i2[e3 + 1] = "G", o2[e3 + 1] = "￿", a2[e3 + 1] = "G") : (r2[e3 + 1] = s2, i2[e3 + 1] = s2, o2[e3 + 1] = s2, a2[e3 + 1] = s2), e3++);
+	        for (e3 = 0, t3 = this.source.length; e3 < t3; e3++)
+	          n2 = this.source.charAt(e3), r2[e3] = n2, i2[e3] = n2, o2[e3] = n2, a2[e3] = n2, "\\" === n2 && e3 + 1 < t3 && (s2 = this.source.charAt(e3 + 1), "A" === s2 ? (r2[e3 + 1] = "￿", i2[e3 + 1] = "￿", o2[e3 + 1] = "A", a2[e3 + 1] = "A") : "G" === s2 ? (r2[e3 + 1] = "￿", i2[e3 + 1] = "G", o2[e3 + 1] = "￿", a2[e3 + 1] = "G") : (r2[e3 + 1] = s2, i2[e3 + 1] = s2, o2[e3 + 1] = s2, a2[e3 + 1] = s2), e3++);
 	        return { A0_G0: r2.join(""), A0_G1: i2.join(""), A1_G0: o2.join(""), A1_G1: a2.join("") };
 	      }
 	      resolveAnchors(e3, t3) {
@@ -4678,7 +4793,8 @@ var main = {exports: {}};
 	      }
 	      toString() {
 	        const e3 = [];
-	        for (let t3 = 0, n2 = this.rules.length; t3 < n2; t3++) e3.push("   - " + this.rules[t3] + ": " + this.regExps[t3]);
+	        for (let t3 = 0, n2 = this.rules.length; t3 < n2; t3++)
+	          e3.push("   - " + this.rules[t3] + ": " + this.regExps[t3]);
 	        return e3.join("\n");
 	      }
 	      findNextMatchSync(e3, t3, n2) {
@@ -4723,20 +4839,25 @@ var main = {exports: {}};
 	        return this._defaults;
 	      }
 	      match(e3) {
-	        if (null === e3) return this._defaults;
+	        if (null === e3)
+	          return this._defaults;
 	        const t3 = e3.scopeName, n2 = this._cachedMatchRoot.get(t3).find((t4) => function(e4, t5) {
-	          if (0 === t5.length) return true;
+	          if (0 === t5.length)
+	            return true;
 	          for (let n3 = 0; n3 < t5.length; n3++) {
 	            let s2 = t5[n3], r2 = false;
 	            if (">" === s2) {
-	              if (n3 === t5.length - 1) return false;
+	              if (n3 === t5.length - 1)
+	                return false;
 	              s2 = t5[++n3], r2 = true;
 	            }
 	            for (; e4 && !o(e4.scopeName, s2); ) {
-	              if (r2) return false;
+	              if (r2)
+	                return false;
 	              e4 = e4.parent;
 	            }
-	            if (!e4) return false;
+	            if (!e4)
+	              return false;
 	            e4 = e4.parent;
 	          }
 	          return true;
@@ -4750,12 +4871,14 @@ var main = {exports: {}};
 	        this.parent = e3, this.scopeName = t3;
 	      }
 	      static push(e3, t3) {
-	        for (const n2 of t3) e3 = new i(e3, n2);
+	        for (const n2 of t3)
+	          e3 = new i(e3, n2);
 	        return e3;
 	      }
 	      static from(...e3) {
 	        let t3 = null;
-	        for (let n2 = 0; n2 < e3.length; n2++) t3 = new i(t3, e3[n2]);
+	        for (let n2 = 0; n2 < e3.length; n2++)
+	          t3 = new i(t3, e3[n2]);
 	        return t3;
 	      }
 	      push(e3) {
@@ -4764,7 +4887,8 @@ var main = {exports: {}};
 	      getSegments() {
 	        let e3 = this;
 	        const t3 = [];
-	        for (; e3; ) t3.push(e3.scopeName), e3 = e3.parent;
+	        for (; e3; )
+	          t3.push(e3.scopeName), e3 = e3.parent;
 	        return t3.reverse(), t3;
 	      }
 	      toString() {
@@ -4776,7 +4900,8 @@ var main = {exports: {}};
 	      getExtensionIfDefined(e3) {
 	        const t3 = [];
 	        let n2 = this;
-	        for (; n2 && n2 !== e3; ) t3.push(n2.scopeName), n2 = n2.parent;
+	        for (; n2 && n2 !== e3; )
+	          t3.push(n2.scopeName), n2 = n2.parent;
 	        return n2 === e3 ? t3.reverse() : void 0;
 	      }
 	    }
@@ -4790,33 +4915,38 @@ var main = {exports: {}};
 	      }
 	    }
 	    function c(e3) {
-	      if (!e3) return [];
-	      if (!e3.settings || !Array.isArray(e3.settings)) return [];
+	      if (!e3)
+	        return [];
+	      if (!e3.settings || !Array.isArray(e3.settings))
+	        return [];
 	      let t3 = e3.settings, n2 = [], r2 = 0;
 	      for (let e4 = 0, i2 = t3.length; e4 < i2; e4++) {
 	        let i3, o2 = t3[e4];
-	        if (!o2.settings) continue;
+	        if (!o2.settings)
+	          continue;
 	        if ("string" == typeof o2.scope) {
 	          let e5 = o2.scope;
 	          e5 = e5.replace(/^[,]+/, ""), e5 = e5.replace(/[,]+$/, ""), i3 = e5.split(",");
-	        } else i3 = Array.isArray(o2.scope) ? o2.scope : [""];
+	        } else
+	          i3 = Array.isArray(o2.scope) ? o2.scope : [""];
 	        let a2 = -1;
 	        if ("string" == typeof o2.settings.fontStyle) {
 	          a2 = 0;
 	          let e5 = o2.settings.fontStyle.split(" ");
-	          for (let t4 = 0, n3 = e5.length; t4 < n3; t4++) switch (e5[t4]) {
-	            case "italic":
-	              a2 |= 1;
-	              break;
-	            case "bold":
-	              a2 |= 2;
-	              break;
-	            case "underline":
-	              a2 |= 4;
-	              break;
-	            case "strikethrough":
-	              a2 |= 8;
-	          }
+	          for (let t4 = 0, n3 = e5.length; t4 < n3; t4++)
+	            switch (e5[t4]) {
+	              case "italic":
+	                a2 |= 1;
+	                break;
+	              case "bold":
+	                a2 |= 2;
+	                break;
+	              case "underline":
+	                a2 |= 4;
+	                break;
+	              case "strikethrough":
+	                a2 |= 8;
+	            }
 	        }
 	        let c2 = null;
 	        "string" == typeof o2.settings.foreground && s.isValidHexColor(o2.settings.foreground) && (c2 = o2.settings.foreground);
@@ -4836,7 +4966,8 @@ var main = {exports: {}};
 	      }
 	    }
 	    t2.ParsedThemeRule = l, t2.fontStyleToString = function(e3) {
-	      if (-1 === e3) return "not set";
+	      if (-1 === e3)
+	        return "not set";
 	      let t3 = "";
 	      return 1 & e3 && (t3 += "italic "), 2 & e3 && (t3 += "bold "), 4 & e3 && (t3 += "underline "), 8 & e3 && (t3 += "strikethrough "), "" === t3 && (t3 = "none"), t3.trim();
 	    };
@@ -4844,15 +4975,20 @@ var main = {exports: {}};
 	      constructor(e3) {
 	        if (this._lastColorId = 0, this._id2color = [], this._color2id = /* @__PURE__ */ Object.create(null), Array.isArray(e3)) {
 	          this._isFrozen = true;
-	          for (let t3 = 0, n2 = e3.length; t3 < n2; t3++) this._color2id[e3[t3]] = t3, this._id2color[t3] = e3[t3];
-	        } else this._isFrozen = false;
+	          for (let t3 = 0, n2 = e3.length; t3 < n2; t3++)
+	            this._color2id[e3[t3]] = t3, this._id2color[t3] = e3[t3];
+	        } else
+	          this._isFrozen = false;
 	      }
 	      getId(e3) {
-	        if (null === e3) return 0;
+	        if (null === e3)
+	          return 0;
 	        e3 = e3.toUpperCase();
 	        let t3 = this._color2id[e3];
-	        if (t3) return t3;
-	        if (this._isFrozen) throw new Error(`Missing color in color map - ${e3}`);
+	        if (t3)
+	          return t3;
+	        if (this._isFrozen)
+	          throw new Error(`Missing color in color map - ${e3}`);
 	        return t3 = ++this._lastColorId, this._color2id[e3] = t3, this._id2color[t3] = e3, t3;
 	      }
 	      getColorMap() {
@@ -4870,7 +5006,8 @@ var main = {exports: {}};
 	      }
 	      static cloneArr(e3) {
 	        let t3 = [];
-	        for (let n2 = 0, s2 = e3.length; n2 < s2; n2++) t3[n2] = e3[n2].clone();
+	        for (let n2 = 0, s2 = e3.length; n2 < s2; n2++)
+	          t3[n2] = e3[n2].clone();
 	        return t3;
 	      }
 	      acceptOverwrite(e3, t3, n2, s2) {
@@ -4883,11 +5020,13 @@ var main = {exports: {}};
 	        this._mainRule = e3, this._children = n2, this._rulesWithParentScopes = t3;
 	      }
 	      static _cmpBySpecificity(e3, t3) {
-	        if (e3.scopeDepth !== t3.scopeDepth) return t3.scopeDepth - e3.scopeDepth;
+	        if (e3.scopeDepth !== t3.scopeDepth)
+	          return t3.scopeDepth - e3.scopeDepth;
 	        let n2 = 0, s2 = 0;
 	        for (; ">" === e3.parentScopes[n2] && n2++, ">" === t3.parentScopes[s2] && s2++, !(n2 >= e3.parentScopes.length || s2 >= t3.parentScopes.length); ) {
 	          const r2 = t3.parentScopes[s2].length - e3.parentScopes[n2].length;
-	          if (0 !== r2) return r2;
+	          if (0 !== r2)
+	            return r2;
 	          n2++, s2++;
 	        }
 	        return t3.parentScopes.length - e3.parentScopes.length;
@@ -4895,13 +5034,15 @@ var main = {exports: {}};
 	      match(e3) {
 	        if ("" !== e3) {
 	          let t4, n2, s2 = e3.indexOf(".");
-	          if (-1 === s2 ? (t4 = e3, n2 = "") : (t4 = e3.substring(0, s2), n2 = e3.substring(s2 + 1)), this._children.hasOwnProperty(t4)) return this._children[t4].match(n2);
+	          if (-1 === s2 ? (t4 = e3, n2 = "") : (t4 = e3.substring(0, s2), n2 = e3.substring(s2 + 1)), this._children.hasOwnProperty(t4))
+	            return this._children[t4].match(n2);
 	        }
 	        const t3 = this._rulesWithParentScopes.concat(this._mainRule);
 	        return t3.sort(d._cmpBySpecificity), t3;
 	      }
 	      insert(e3, t3, n2, s2, r2, i2) {
-	        if ("" === t3) return void this._doInsertHere(e3, n2, s2, r2, i2);
+	        if ("" === t3)
+	          return void this._doInsertHere(e3, n2, s2, r2, i2);
 	        let o2, a2, c2, l2 = t3.indexOf(".");
 	        -1 === l2 ? (o2 = t3, a2 = "") : (o2 = t3.substring(0, l2), a2 = t3.substring(l2 + 1)), this._children.hasOwnProperty(o2) ? c2 = this._children[o2] : (c2 = new d(this._mainRule.clone(), p.cloneArr(this._rulesWithParentScopes)), this._children[o2] = c2), c2.insert(e3 + 1, a2, n2, s2, r2, i2);
 	      }
@@ -4909,10 +5050,12 @@ var main = {exports: {}};
 	        if (null !== t3) {
 	          for (let o2 = 0, a2 = this._rulesWithParentScopes.length; o2 < a2; o2++) {
 	            let a3 = this._rulesWithParentScopes[o2];
-	            if (0 === s.strArrCmp(a3.parentScopes, t3)) return void a3.acceptOverwrite(e3, n2, r2, i2);
+	            if (0 === s.strArrCmp(a3.parentScopes, t3))
+	              return void a3.acceptOverwrite(e3, n2, r2, i2);
 	          }
 	          -1 === n2 && (n2 = this._mainRule.fontStyle), 0 === r2 && (r2 = this._mainRule.foreground), 0 === i2 && (i2 = this._mainRule.background), this._rulesWithParentScopes.push(new p(e3, t3, n2, r2, i2));
-	        } else this._mainRule.acceptOverwrite(e3, n2, r2, i2);
+	        } else
+	          this._mainRule.acceptOverwrite(e3, n2, r2, i2);
 	      }
 	    }
 	    t2.ThemeTrieElement = d;
@@ -4920,11 +5063,13 @@ var main = {exports: {}};
 	    function n(e3) {
 	      return Array.isArray(e3) ? function(e4) {
 	        let t3 = [];
-	        for (let s2 = 0, r2 = e4.length; s2 < r2; s2++) t3[s2] = n(e4[s2]);
+	        for (let s2 = 0, r2 = e4.length; s2 < r2; s2++)
+	          t3[s2] = n(e4[s2]);
 	        return t3;
 	      }(e3) : "object" == typeof e3 ? function(e4) {
 	        let t3 = {};
-	        for (let s2 in e4) t3[s2] = n(e4[s2]);
+	        for (let s2 in e4)
+	          t3[s2] = n(e4[s2]);
 	        return t3;
 	      }(e3) : e3;
 	    }
@@ -4932,7 +5077,8 @@ var main = {exports: {}};
 	      return n(e3);
 	    }, t2.mergeObjects = function(e3, ...t3) {
 	      return t3.forEach((t4) => {
-	        for (let n2 in t4) e3[n2] = t4[n2];
+	        for (let n2 in t4)
+	          e3[n2] = t4[n2];
 	      }), e3;
 	    }, t2.basename = function e3(t3) {
 	      const n2 = ~t3.lastIndexOf("/") || ~t3.lastIndexOf("\\");
@@ -4949,10 +5095,12 @@ var main = {exports: {}};
 	      static replaceCaptures(e3, t3, n2) {
 	        return e3.replace(s, (e4, s2, r2, i) => {
 	          let o = n2[parseInt(s2 || r2, 10)];
-	          if (!o) return e4;
+	          if (!o)
+	            return e4;
 	          {
 	            let e5 = t3.substring(o.start, o.end);
-	            for (; "." === e5[0]; ) e5 = e5.substring(1);
+	            for (; "." === e5[0]; )
+	              e5 = e5.substring(1);
 	            switch (i) {
 	              case "downcase":
 	                return e5.toLowerCase();
@@ -4965,14 +5113,18 @@ var main = {exports: {}};
 	        });
 	      }
 	    }, t2.strcmp = r, t2.strArrCmp = function(e3, t3) {
-	      if (null === e3 && null === t3) return 0;
-	      if (!e3) return -1;
-	      if (!t3) return 1;
+	      if (null === e3 && null === t3)
+	        return 0;
+	      if (!e3)
+	        return -1;
+	      if (!t3)
+	        return 1;
 	      let n2 = e3.length, s2 = t3.length;
 	      if (n2 === s2) {
 	        for (let s3 = 0; s3 < n2; s3++) {
 	          let n3 = r(e3[s3], t3[s3]);
-	          if (0 !== n3) return n3;
+	          if (0 !== n3)
+	            return n3;
 	        }
 	        return 0;
 	      }
@@ -4986,7 +5138,8 @@ var main = {exports: {}};
 	        this.fn = e3, this.cache = /* @__PURE__ */ new Map();
 	      }
 	      get(e3) {
-	        if (this.cache.has(e3)) return this.cache.get(e3);
+	        if (this.cache.has(e3))
+	          return this.cache.get(e3);
 	        const t3 = this.fn(e3);
 	        return this.cache.set(e3, t3), t3;
 	      }
@@ -4998,7 +5151,8 @@ var main = {exports: {}};
 	  } }, t = {};
 	  return function n(s) {
 	    var r = t[s];
-	    if (void 0 !== r) return r.exports;
+	    if (void 0 !== r)
+	      return r.exports;
 	    var i = t[s] = { exports: {} };
 	    return e[s].call(i.exports, i, i.exports, n), i.exports;
 	  }(787);
@@ -5071,7 +5225,8 @@ function every(...accessors) {
     const values = new Array(accessors.length);
     for (let i = 0; i < accessors.length; i++) {
       const _value = typeof accessors[i] === "function" ? accessors[i]() : accessors[i];
-      if (!_value) return void 0;
+      if (!_value)
+        return void 0;
       values[i] = _value;
     }
     return values;
@@ -5080,7 +5235,8 @@ function every(...accessors) {
 }
 
 function countDigits(value) {
-  if (value === 0) return 1;
+  if (value === 0)
+    return 1;
   return Math.floor(Math.log10(Math.abs(value))) + 1;
 }
 
@@ -5106,7 +5262,8 @@ class ThemeManager {
   // Resolve styles for a given scope
   resolveScope(scope) {
     const id = scope.join("-");
-    if (this.#scopes[id]) return this.#scopes[id];
+    if (this.#scopes[id])
+      return this.#scopes[id];
     let finalStyle = {};
     for (let i = 0; i < scope.length; i++) {
       const currentScope = scope[i];
@@ -5206,7 +5363,8 @@ class SegmentManager {
 }
 function equalStack(stateA, stateB) {
   let changed = false;
-  if (stateA === stateB) return true;
+  if (stateA === stateB)
+    return true;
   if (!stateA || !stateB) {
     return false;
   }
@@ -5225,8 +5383,10 @@ function equalStack(stateA, stateB) {
   return !changed;
 }
 function equalScopes(scopeA, scopeB) {
-  if (!scopeA && !scopeB) return true;
-  if (!scopeA || !scopeB) return false;
+  if (!scopeA && !scopeB)
+    return true;
+  if (!scopeA || !scopeB)
+    return false;
   if (scopeA.scopePath === scopeB.scopePath) {
     return false;
   }
@@ -5288,7 +5448,8 @@ function createTmTextarea(styles) {
       return `rgba(98, 114, 164, ${opacity})`;
     });
     const style = () => {
-      if (!config.style) return void 0;
+      if (!config.style)
+        return void 0;
       const [_, style2] = splitProps(config.style, ["width", "height"]);
       return style2;
     };
@@ -5448,16 +5609,19 @@ function _applyDecs(e, t, r, n, o, a) {
     };
   }
   function c(e2, t2) {
-    for (var r2 = 0; r2 < e2.length; r2++) e2[r2].call(t2);
+    for (var r2 = 0; r2 < e2.length; r2++)
+      e2[r2].call(t2);
     return t2;
   }
   function s(e2, t2, r2, n2) {
-    if ("function" != typeof e2 && (n2 || void 0 !== e2)) throw new TypeError(t2 + " must " + (r2 || "be") + " a function" + (n2 ? "" : " or undefined"));
+    if ("function" != typeof e2 && (n2 || void 0 !== e2))
+      throw new TypeError(t2 + " must " + (r2 || "be") + " a function" + (n2 ? "" : " or undefined"));
     return e2;
   }
   function applyDec(e2, t2, r2, n2, o2, a2, c2, u2, l2, f2, p2, d, h) {
     function m(e3) {
-      if (!h(e3)) throw new TypeError("Attempted to access private element on non-instance");
+      if (!h(e3))
+        throw new TypeError("Attempted to access private element on non-instance");
     }
     var y, v = t2[0], g = t2[3], b = !u2;
     if (!b) {
@@ -5471,11 +5635,13 @@ function _applyDecs(e, t, r, n, o, a) {
     }
     for (var P = e2, j = v.length - 1; j >= 0; j -= r2 ? 2 : 1) {
       var D = v[j], E = r2 ? v[j - 1] : void 0, I = {}, O = { kind: ["field", "accessor", "method", "getter", "setter", "class"][o2], name: n2, metadata: a2, addInitializer: function(e3, t3) {
-        if (e3.v) throw Error("attempted to call addInitializer after decoration was finished");
+        if (e3.v)
+          throw Error("attempted to call addInitializer after decoration was finished");
         s(t3, "An initializer", "be", true), c2.push(t3);
       }.bind(null, I) };
       try {
-        if (b) (y = s(D.call(E, P, O), "class decorators", "return")) && (P = y);
+        if (b)
+          (y = s(D.call(E, P, O), "class decorators", "return")) && (P = y);
         else {
           var k, F;
           O.static = l2, O.private = f2, f2 ? 2 === o2 ? k = function(e3) {
@@ -5489,23 +5655,28 @@ function _applyDecs(e, t, r, n, o, a) {
             return n2 in e3;
           } };
           if (k && (N.get = k), F && (N.set = F), P = D.call(E, d ? { get: w.get, set: w.set } : w[A], O), d) {
-            if ("object" == typeof P && P) (y = s(P.get, "accessor.get")) && (w.get = y), (y = s(P.set, "accessor.set")) && (w.set = y), (y = s(P.init, "accessor.init")) && S.push(y);
-            else if (void 0 !== P) throw new TypeError("accessor decorators must return an object with get, set, or init properties or void 0");
-          } else s(P, (p2 ? "field" : "method") + " decorators", "return") && (p2 ? S.push(P) : w[A] = P);
+            if ("object" == typeof P && P)
+              (y = s(P.get, "accessor.get")) && (w.get = y), (y = s(P.set, "accessor.set")) && (w.set = y), (y = s(P.init, "accessor.init")) && S.push(y);
+            else if (void 0 !== P)
+              throw new TypeError("accessor decorators must return an object with get, set, or init properties or void 0");
+          } else
+            s(P, (p2 ? "field" : "method") + " decorators", "return") && (p2 ? S.push(P) : w[A] = P);
         }
       } finally {
         I.v = true;
       }
     }
     return (p2 || d) && u2.push(function(e3, t3) {
-      for (var r3 = S.length - 1; r3 >= 0; r3--) t3 = S[r3].call(e3, t3);
+      for (var r3 = S.length - 1; r3 >= 0; r3--)
+        t3 = S[r3].call(e3, t3);
       return t3;
     }), p2 || b || (f2 ? d ? u2.push(i(w, "get"), i(w, "set")) : u2.push(2 === o2 ? w[A] : i.call.bind(w[A])) : Object.defineProperty(e2, n2, w)), P;
   }
   function u(e2, t2) {
     return Object.defineProperty(e2, Symbol.metadata || Symbol.for("Symbol.metadata"), { configurable: true, enumerable: true, value: t2 });
   }
-  if (arguments.length >= 6) var l = a[Symbol.metadata || Symbol.for("Symbol.metadata")];
+  if (arguments.length >= 6)
+    var l = a[Symbol.metadata || Symbol.for("Symbol.metadata")];
   var f = Object.create(null == l ? null : l), p = function(e2, t2, r2, n2) {
     var o2, a2, i2 = [], s2 = function(t3) {
       return _checkInRHS(t3) === e2;
@@ -5519,7 +5690,8 @@ function _applyDecs(e, t, r, n, o, a) {
         var d = p2[1], h = p2[2], m = p2.length > 3, y = 16 & d, v = !!(8 & d), g = 0 == (d &= 7), b = h + "/" + v;
         if (!g && !m) {
           var w = u2.get(b);
-          if (true === w || 3 === w && 4 !== d || 4 === w && 3 !== d) throw Error("Attempted to decorate a public method/accessor that has the same name as a previously decorated public method/accessor. This is not currently supported by the decorators plugin. Property name was: " + h);
+          if (true === w || 3 === w && 4 !== d || 4 === w && 3 !== d)
+            throw Error("Attempted to decorate a public method/accessor that has the same name as a previously decorated public method/accessor. This is not currently supported by the decorators plugin. Property name was: " + h);
           u2.set(b, !(d > 2) || d);
         }
         applyDec(v ? e2 : e2.prototype, p2, y, m ? "#" + h : _toPropertyKey(h), d, n2, v ? a2 = a2 || [] : o2 = o2 || [], i2, v, m, g, 1 === d, v && m ? s2 : r2);
@@ -5537,11 +5709,13 @@ function _toPropertyKey(t) {
   return "symbol" == typeof i ? i : i + "";
 }
 function _toPrimitive(t, r) {
-  if ("object" != typeof t || !t) return t;
+  if ("object" != typeof t || !t)
+    return t;
   var e = t[Symbol.toPrimitive];
   if (void 0 !== e) {
-    var i = e.call(t, r);
-    if ("object" != typeof i) return i;
+    var i = e.call(t, r );
+    if ("object" != typeof i)
+      return i;
     throw new TypeError("@@toPrimitive must return a primitive value.");
   }
   return (String )(t);
@@ -5555,7 +5729,8 @@ function _setFunctionName(e, t, n) {
   return e;
 }
 function _checkInRHS(e) {
-  if (Object(e) !== e) throw TypeError("right-hand side of 'in' should be an object, got " + (null !== e ? typeof e : "null"));
+  if (Object(e) !== e)
+    throw TypeError("right-hand side of 'in' should be an object, got " + (null !== e ? typeof e : "null"));
   return e;
 }
 const TmTextarea$1 = createTmTextarea(Object.fromEntries(classnames.map((name) => [name, name])));

@@ -9,7 +9,7 @@ import { createTmTextarea } from './core'
 import classnames from './index.module.css?classnames'
 import css from './index.module.css?raw'
 import { Grammar, Theme } from './tm'
-import { sheet } from './utils/sheet.js'
+import { sheet } from './utils/sheet'
 
 /**********************************************************************************/
 /*                                                                                */

@@ -22,7 +22,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: {
-        index: normalizePath(path.resolve(__dirname, 'src/custom-element.tsx')),
+        index: normalizePath(path.resolve(__dirname, 'src/index.tsx')),
         solid: normalizePath(path.resolve(__dirname, 'src/solid.tsx')),
         tm: normalizePath(path.resolve(__dirname, 'src/tm/index.ts')),
         cdn: normalizePath(path.resolve(__dirname, 'src/cdn.ts')),

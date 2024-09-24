@@ -6,14 +6,11 @@
 
 [![pnpm](https://img.shields.io/badge/maintained%20with-pnpm-cc00ff.svg?style=for-the-badge&logo=pnpm)](https://pnpm.io/)
 
-Textarea with syntax highlighting powered by [solid-js](https://github.com/solidjs/solid), [@lume/element](https://github.com/lume/element) and
+Textarea with syntax highlighting powered by [solid-js](https://github.com/solidjs/solid),
+[@lume/element](https://github.com/lume/element) and
 [vscode-oniguruma](https://github.com/microsoft/vscode-oniguruma).
 
-
-
 https://github.com/user-attachments/assets/6e785c75-75ae-4274-a904-5e1004153b76
-
-
 
 ## Table of Contents
 
@@ -45,12 +42,12 @@ The main export is a custom-element `<tm-textarea/>` powered by
 <summary>Attribute/Property Types</summary>
 
 ```ts
-import type { Language, Theme } from 'tm-textarea/tm'
+import type { Grammar, Theme } from 'tm-textarea/tm'
 
 interface tmTextareaAttributes extends ComponentProps<'div'> {
-  language?: Language
+  grammar?: Grammar
   theme?: Theme
-  code?: string
+  value?: string
   editable?: boolean
   stylesheet?: string | CSSStyleSheet
   onInput?: (event: InputEvent & { currentTarget: tmTextareaElement }) => void
@@ -62,16 +59,16 @@ interface tmTextareaAttributes extends ComponentProps<'div'> {
 ### Usage
 
 ```tsx
-import { setCDN } from 'tm-textarea/cdn'
 import 'tm-textarea'
 
+import { setCDN } from 'tm-textarea/cdn'
 setCDN('/tm')
 
 export default () => (
   <tm-textarea
-    language="tsx"
+    grammar="tsx"
     theme="andromeeda"
-    code="const sum = (a: string, b: string) => a + b"
+    value="const sum = (a: string, b: string) => a + b"
     editable={true}
     style={{
       padding: '10px',
@@ -87,8 +84,10 @@ export default () => (
 
 Some DOM [`::part()`](https://developer.mozilla.org/en-US/docs/Web/CSS/::part) are exported.
 
-- `textarea` can be used to change the selection color.
-- `code` can be used to change the `code` tag.
+- `root` exposes root container.
+- `code` exposes the `code` tag.
+- `line` exposes the lines.
+- `textarea` exposes textarea to maybe change the selection color.
 
 ```css
 tm-textarea {
@@ -98,11 +97,12 @@ tm-textarea {
   line-height: 16pt;
 }
 
+/* overwrite the theme background-color */
 tm-textarea::part(root) {
-  /* overwrite the internal background-color */
   background: transparent;
 }
 
+/* overwrite the selected text background color */
 tm-textarea::part(textarea)::selection {
   background: deepskyblue;
 }
@@ -121,14 +121,14 @@ tm-textarea::part(textarea) {
 ```
 
 The attribute `stylesheet` could be used as a last resort to customize the theme. In the following
-example we avoid italics in the rendered coded. The stylesheet is created, cached and reused on the
-different `tm-textarea` instances.
+example we avoid italics in the rendered coded. The stylesheet is created, cached and possibly
+reused on the different `tm-textarea` instances.
 
 ```tsx
 <tm-textarea
-  language="tsx"
+  grammar="tsx"
   theme="andromeeda"
-  code="const sum = (a: string, b: string) => a + b"
+  value="const sum = (a: string, b: string) => a + b"
   stylesheet="code, code * { font-style: normal; }"
 />
 ```
@@ -141,12 +141,12 @@ A solid component of `tm-textarea` is available at `tm-textarea/solid`
 <summary>Prop Types</summary>
 
 ```ts
-import { Language, Theme } from "tm-textarea/tm"
+import { Grammar, Theme } from 'tm-textarea/tm'
 
 interface tmTextareaProps extends Omit<ComponentProps<'div'>, 'style'> {
-  language: Language
+  grammar: Grammar
   theme: Theme
-  code: string
+  value: string
   editable?: boolean
   style?: JSX.CSSProperties
   onInput?: (event: InputEvent & { currentTarget: HTMLTextAreaElement }) => void
@@ -162,9 +162,9 @@ import { TmTextarea } from 'tm-textarea/solid'
 
 export default () => (
   <TmTextarea
-    language="tsx"
+    grammar="tsx"
     theme="min-light"
-    code="const sum = (a: string, b: string) => a + b"
+    value="const sum = (a: string, b: string) => a + b"
     editable={true}
     style={{
       padding: '10px',
@@ -177,11 +177,18 @@ export default () => (
 
 ## CDN (`tm-textarea/cdn`)
 
-To ease development we provide a way to set themes/grammars by setting the `theme` or `grammar` property with a string. Without configuration these are resolved to [`tm-themes`](https://github.com/shikijs/textmate-grammars-themes/tree/main/packages/tm-themes) and [`tm-grammars`](https://github.com/shikijs/textmate-grammars-themes/tree/main/packages/tm-grammars) hosted on [`esm.sh`](esm.sh).
+To ease development we provide a way to set themes/grammars by setting the `theme` or `grammar`
+property with a string. Without configuration these are resolved to
+[`tm-themes`](https://github.com/shikijs/textmate-grammars-themes/tree/main/packages/tm-themes) and
+[`tm-grammars`](https://github.com/shikijs/textmate-grammars-themes/tree/main/packages/tm-grammars)
+hosted on [`esm.sh`](esm.sh).
 
-To provide a way to customize how these keys are resolved we provide a global function `setCDN`, exported from `tm-textarea`. This function accepts as arguments either a base-url or a callback-function.
+To provide a way to customize how these keys are resolved we provide a global function `setCDN`,
+exported from `tm-textarea`. This function accepts as arguments either a base-url or a
+callback-function.
 
 When given a base-url, this will be used to fetch
+
 - `${cdn}/tm-themes/themes/${theme}.json` for the `themes`
 - `${cdn}/tm-grammars/grammars/${grammar}.json` for the `grammars`
 - `${cdn}/vscode-oniguruma/release/onig.wasm` for the `oniguruma` wasm-file
@@ -200,12 +207,15 @@ setCDN('https://unpkg.com')
 setCDN('/assets/tm')
 
 // Use the callback-form
-setCDN((type, id) => type === 'oniguruma' ? `./oniguruma.wasm` : `./${type}/${id}.json`)
+setCDN((type, id) => (type === 'oniguruma' ? `./oniguruma.wasm` : `./${type}/${id}.json`))
 ```
 
 ## Themes & Grammars (`tm-textarea/tm`)
 
-We export a list of textmate grammars and themes that are hosted on [`tm-grammars`](https://github.com/shikijs/textmate-grammars-themes/tree/main/packages/tm-grammars) and [`tm-themes`](https://github.com/shikijs/textmate-grammars-themes/tree/main/packages/tm-themes). These are used internally and maintained by [`shiki`](https://github.com/shikijs/shiki).
+We export a list of textmate grammars and themes that are hosted on
+[`tm-grammars`](https://github.com/shikijs/textmate-grammars-themes/tree/main/packages/tm-grammars)
+and [`tm-themes`](https://github.com/shikijs/textmate-grammars-themes/tree/main/packages/tm-themes).
+These are used internally and maintained by [`shiki`](https://github.com/shikijs/shiki).
 
 ```tsx
 import type { Theme, Grammar } from 'tm-textarea/tm'

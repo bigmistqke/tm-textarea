@@ -526,9 +526,10 @@ export function createTmTextarea(styles: Record<string, string>) {
           <code
             ref={element => {
               new ResizeObserver(([entry]) => {
+                const { height, width } = getComputedStyle(entry!.target)
                 setCharacter({
-                  height: entry!.contentRect.height,
-                  width: entry!.contentRect.width,
+                  height: Number(height.replace('px', '')),
+                  width: Number(width.replace('px', '')),
                 })
               }).observe(element)
             }}

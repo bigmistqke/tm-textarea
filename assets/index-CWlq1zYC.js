@@ -1569,10 +1569,14 @@ const App: Component = () => {
     let result = ''
 
     for (let i = 0; i < lineCount; i++) {
-      result += lines[i % totalLines] + '\\n'
+      if (i === lineCount - 1) {
+        result += lines[i % totalLines]
+      } else {
+        result += lines[i % totalLines] + '\\n'
+      }
     }
 
-    return result.trim() // Trim to remove the trailing newline
+    return result
   }
 
   return (
@@ -5435,7 +5439,7 @@ function createTmTextarea(styles) {
       });
       setStack(currentStack);
       return result;
-    }));
+    }, () => context.lines.slice(start, end)));
     context.segments.push({
       get stack() {
         return stack();
@@ -6162,9 +6166,13 @@ const App = () => {
     const totalLines = lines.length;
     let result = "";
     for (let i = 0; i < lineCount; i++) {
-      result += lines[i % totalLines] + "\n";
+      if (i === lineCount - 1) {
+        result += lines[i % totalLines];
+      } else {
+        result += lines[i % totalLines] + "\n";
+      }
     }
-    return result.trim();
+    return result;
   }
   return (() => {
     var _el$ = _tmpl$2(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild, _el$4 = _el$3.nextSibling, _el$5 = _el$4.firstChild, _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling, _el$8 = _el$5.nextSibling, _el$9 = _el$8.nextSibling, _el$10 = _el$9.firstChild, _el$11 = _el$10.nextSibling, _el$12 = _el$9.nextSibling, _el$13 = _el$12.firstChild, _el$14 = _el$13.nextSibling, _el$15 = _el$12.nextSibling, _el$16 = _el$15.nextSibling, _el$17 = _el$16.firstChild, _el$18 = _el$17.nextSibling, _el$19 = _el$16.nextSibling, _el$20 = _el$19.firstChild, _el$21 = _el$20.nextSibling, _el$22 = _el$19.nextSibling, _el$23 = _el$22.firstChild, _el$24 = _el$23.nextSibling, _el$25 = _el$22.nextSibling, _el$26 = _el$25.firstChild, _el$27 = _el$26.nextSibling, _el$28 = _el$25.nextSibling, _el$29 = _el$28.firstChild, _el$30 = _el$29.nextSibling, _el$31 = _el$2.nextSibling;

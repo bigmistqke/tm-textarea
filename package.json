@@ -26,7 +26,8 @@
     ".": "./dist/index.js",
     "./solid": "./dist/solid.js",
     "./cdn": "./dist/cdn.js",
-    "./tm": "./dist/tm.js"
+    "./tm": "./dist/tm/index.js",
+    "./core": "./dist/core.js"
   },
   "typesVersions": {
     "*": {
@@ -38,6 +39,9 @@
       ],
       "cdn": [
         "dist/cdn.d.ts"
+      ],
+      "core": [
+        "dist/core.d.ts"
       ],
       "tm": [
         "dist/tm/index.d.ts"

@@ -24,8 +24,9 @@ export default defineConfig({
       entry: {
         index: normalizePath(path.resolve(__dirname, 'src/index.tsx')),
         solid: normalizePath(path.resolve(__dirname, 'src/solid.tsx')),
-        tm: normalizePath(path.resolve(__dirname, 'src/tm/index.ts')),
+        'tm/index': normalizePath(path.resolve(__dirname, 'src/tm/index.ts')),
         cdn: normalizePath(path.resolve(__dirname, 'src/cdn.ts')),
+        core: normalizePath(path.resolve(__dirname, 'src/core.tsx')),
       },
       name: 'solid-tm-textarea',
       formats: ['es'],

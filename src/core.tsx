@@ -31,6 +31,8 @@ import { escapeHTML } from './utils/escape-html'
 import { getLongestLineSize } from './utils/get-longest-linesize'
 import { Stack } from './utils/stack'
 
+export { css } from './css'
+
 /**********************************************************************************/
 /*                                                                                */
 /*                                    Constants                                   */

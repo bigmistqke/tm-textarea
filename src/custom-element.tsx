@@ -1,12 +1,10 @@
 import {
-  attribute,
   booleanAttribute,
   element,
   Element,
   ElementAttributes,
   stringAttribute,
 } from '@lume/element'
-import { signal } from 'classy-solid'
 import { createTmTextarea } from './core'
 import classnames from './index.module.css?classnames'
 import css from './index.module.css?raw'
@@ -56,20 +54,16 @@ const TmTextareaStyleSheet = sheet(css)
 
 @element('tm-textarea')
 class TmTextareaElement extends Element {
-  @attribute() grammar: Grammar = 'tsx'
-  @attribute() theme: Theme = 'dark-plus'
-  @stringAttribute stylesheet = ''
   @booleanAttribute editable = true
-  @signal private _value = ''
-
-  textarea: HTMLTextAreaElement = null!
+  @stringAttribute grammar: Grammar = 'tsx'
+  @stringAttribute stylesheet = ''
+  @stringAttribute theme: Theme = 'dark-plus'
+  @stringAttribute value = ''
 
   template = () => {
     const adoptedStyleSheets = this.shadowRoot!.adoptedStyleSheets
-
     // local component stylesheet
     adoptedStyleSheets.push(TmTextareaStyleSheet)
-
     // user provided stylesheet
     if (this.stylesheet) {
       adoptedStyleSheets.push(sheet(this.stylesheet))
@@ -79,19 +73,11 @@ class TmTextareaElement extends Element {
       <TmTextarea
         grammar={this.grammar}
         theme={this.theme}
-        value={this._value}
+        value={this.value}
         editable={this.editable}
-        textareaRef={textarea => (this.textarea = textarea)}
+        onInput={e => (this.value = e.currentTarget.value)}
       />
     )
-  }
-
-  get value() {
-    return this.textarea.value
-  }
-
-  set value(value) {
-    this._value = value
   }
 }
 

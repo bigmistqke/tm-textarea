@@ -1,29 +1,29 @@
 :host {
   display: contents;
 
-  & ._container_1s4r7_4 {
+  & ._container_12tgk_4 {
     all: inherit;
     display: flex;
     position: relative;
     box-sizing: border-box;
-    background-color: var(--background-color);
+    background: var(--tm-background-color, inherit);
     overflow: auto;
-    color: var(--foreground-color);
+    color: var(--tm-foreground-color, inherit);
   }
 }
 
-._container_1s4r7_4 {
-  --min-height: calc(var(--line-count) * var(--char-height));
-  --min-width: calc(var(--line-size) * 1ch);
+._container_12tgk_4 {
+  --tm-min-height: calc(var(--tm-line-count) * var(--tm-char-height));
+  --tm-min-width: calc(var(--tm-line-size) * 1ch);
   display: flex;
   position: relative;
   box-sizing: border-box;
-  background-color: var(--background-color);
+  background-color: var(--tm-background-color);
   overflow: auto;
-  color: var(--foreground-color);
+  color: var(--tm-foreground-color);
   font-size: 13px;
 
-  & ._code_1s4r7_26 {
+  & ._code_12tgk_26 {
     display: block;
     position: absolute;
     z-index: 1;
@@ -36,9 +36,9 @@
     font-family: monospace;
     white-space: pre;
 
-    & ._line_1s4r7_39 {
+    & ._line_12tgk_39 {
       position: absolute;
-      top: calc(var(--line-number) * var(--char-height));
+      top: calc(var(--tm-line-number) * var(--tm-char-height));
       margin: 0px;
 
       & span {
@@ -48,7 +48,7 @@
     }
   }
 
-  & ._character_1s4r7_51 {
+  & ._character_12tgk_51 {
     position: absolute;
     align-self: start;
     visibility: hidden;
@@ -57,20 +57,20 @@
     line-height: inherit;
   }
 
-  & ._textarea_1s4r7_60 {
+  & ._textarea_12tgk_60 {
     transition: color 0.5s;
     outline: none;
     border: none;
     background: transparent;
     padding: 0px;
     width: 100%;
-    min-width: var(--min-width);
+    min-width: var(--tm-min-width);
     height: 100%;
-    min-height: var(--min-height);
+    min-height: var(--tm-min-height);
     overflow: hidden;
     resize: none;
     color: transparent;
-    caret-color: var(--foreground-color);
+    caret-color: var(--tm-foreground-color);
     font-size: inherit;
     line-height: inherit;
     font-family: monospace;
@@ -78,8 +78,8 @@
     white-space: pre;
   }
 
-  & ._textarea_1s4r7_60::selection {
-    background: var(--selection-color);
+  & ._textarea_12tgk_60::selection {
+    background: var(--tm-selection-color);
   }
 }
 body {
@@ -174,22 +174,24 @@ main {
 }
 
 .tm-textarea {
+  background: white;
   max-height: 100%;
+  color: black;
 }
 
 .line-numbers,
 .line-numbers::part(root) {
-  --line-number-width: calc((var(--line-digits) + 1) * 1ch);
+  --line-number-width: calc((var(--tm-line-digits) + 1) * 1ch);
 }
 
 .line-numbers pre::before,
 .line-numbers::part(line)::before {
   display: inline-block;
   opacity: 0.5;
-  counter-reset: variable calc(var(--line-number) + 1);
+  counter-reset: variable calc(var(--tm-line-number) + 1);
   min-width: var(--line-number-width);
   content: counter(variable);
-  color: var(--foreground-color);
+  color: var(--tm-foreground-color);
 }
 
 .line-numbers textarea,

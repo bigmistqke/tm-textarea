@@ -5366,10 +5366,10 @@ class ThemeManager {
     return this.#scopes[id] = finalStyle;
   }
   getBackgroundColor() {
-    return this.themeData.colors?.["editor.background"] || "#FFFFFF";
+    return this.themeData.colors?.["editor.background"] || void 0;
   }
   getForegroundColor() {
-    return this.themeData.colors?.["editor.foreground"] || "#000000";
+    return this.themeData.colors?.["editor.foreground"] || void 0;
   }
 }
 function compareStacks(stateA, stateB) {
@@ -5467,7 +5467,7 @@ function createTmTextarea(styles) {
                 var _v$ = styles.line, _v$2 = html()?.[index], _v$3 = props.index * SEGMENT_SIZE + index;
                 _v$ !== _p$.e && className(_el$, _p$.e = _v$);
                 _v$2 !== _p$.t && (_el$.innerHTML = _p$.t = _v$2);
-                _v$3 !== _p$.a && ((_p$.a = _v$3) != null ? _el$.style.setProperty("--line-number", _v$3) : _el$.style.removeProperty("--line-number"));
+                _v$3 !== _p$.a && ((_p$.a = _v$3) != null ? _el$.style.setProperty("--tm-line-number", _v$3) : _el$.style.removeProperty("--tm-line-number"));
                 return _p$;
               }, {
                 e: void 0,
@@ -5491,7 +5491,7 @@ function createTmTextarea(styles) {
     const [scrollTop, setScrollTop] = createSignal(0);
     const [source, setSource] = createSignal(props.value);
     const [tokenizer] = createResource(every(() => props.grammar, WASM_LOADED), async ([grammar]) => grammar in TOKENIZER_CACHE ? TOKENIZER_CACHE[grammar] : TOKENIZER_CACHE[grammar] = await REGISTRY.loadGrammar(grammar));
-    const [theme] = createResource(() => props.theme, (theme2) => fetchFromCDN("theme", theme2).then((theme3) => new ThemeManager(theme3)));
+    const [theme] = createResource(() => props.theme, async (theme2) => fetchFromCDN("theme", theme2).then((theme3) => new ThemeManager(theme3)));
     const lines = createMemo(() => source().split("\n"));
     const lineSize = createMemo(() => getLongestLineSize(lines()));
     const minLine = createMemo(() => Math.floor(scrollTop() / (character()?.height || 1)));
@@ -5507,6 +5507,7 @@ function createTmTextarea(styles) {
     const style = when(() => config.style, (style2) => splitProps(style2, ["width", "height"])[1]);
     onMount(() => new ResizeObserver(([entry]) => setViewport(entry?.contentRect)).observe(container));
     createRenderEffect(() => setSource(props.value));
+    createRenderEffect(() => console.log(theme()?.getForegroundColor()));
     return createComponent(TmTextareaContext.Provider, {
       get value() {
         return {
@@ -5559,14 +5560,14 @@ function createTmTextarea(styles) {
           },
           get style() {
             return {
-              "--background-color": theme()?.getBackgroundColor(),
-              "--char-height": `${character()?.height || 0}px`,
-              "--char-width": `${character()?.width || 0}px`,
-              "--foreground-color": theme()?.getForegroundColor(),
-              "--line-count": lines().length,
-              "--line-size": lineSize(),
-              "--selection-color": selectionColor(),
-              "--line-digits": countDigits(lines().length),
+              "--tm-background-color": theme()?.getBackgroundColor(),
+              "--tm-char-height": `${character()?.height || 0}px`,
+              "--tm-char-width": `${character()?.width || 0}px`,
+              "--tm-foreground-color": theme()?.getForegroundColor(),
+              "--tm-line-count": lines().length,
+              "--tm-line-size": lineSize(),
+              "--tm-selection-color": selectionColor(),
+              "--tm-line-digits": countDigits(lines().length),
               ...style()
             };
           }
@@ -5643,7 +5644,7 @@ delegateEvents(["keydown"]);
 
 const classnames = ["container","code","line","character","textarea"];
 
-const css = ":host {\n  display: contents;\n\n  & .container {\n    all: inherit;\n    display: flex;\n    position: relative;\n    box-sizing: border-box;\n    background-color: var(--background-color);\n    overflow: auto;\n    color: var(--foreground-color);\n  }\n}\n\n.container {\n  --min-height: calc(var(--line-count) * var(--char-height));\n  --min-width: calc(var(--line-size) * 1ch);\n  display: flex;\n  position: relative;\n  box-sizing: border-box;\n  background-color: var(--background-color);\n  overflow: auto;\n  color: var(--foreground-color);\n  font-size: 13px;\n\n  & .code {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: layout;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .line {\n      position: absolute;\n      top: calc(var(--line-number) * var(--char-height));\n      margin: 0px;\n\n      & span {\n        margin: 0px;\n        background: transparent !important;\n      }\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: var(--min-width);\n    height: 100%;\n    min-height: var(--min-height);\n    overflow: hidden;\n    resize: none;\n    color: transparent;\n    caret-color: var(--foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n    white-space: pre;\n  }\n\n  & .textarea::selection {\n    background: var(--selection-color);\n  }\n}\n";
+const css = ":host {\n  display: contents;\n\n  & .container {\n    all: inherit;\n    display: flex;\n    position: relative;\n    box-sizing: border-box;\n    background: var(--tm-background-color, inherit);\n    overflow: auto;\n    color: var(--tm-foreground-color, inherit);\n  }\n}\n\n.container {\n  --tm-min-height: calc(var(--tm-line-count) * var(--tm-char-height));\n  --tm-min-width: calc(var(--tm-line-size) * 1ch);\n  display: flex;\n  position: relative;\n  box-sizing: border-box;\n  background-color: var(--tm-background-color);\n  overflow: auto;\n  color: var(--tm-foreground-color);\n  font-size: 13px;\n\n  & .code {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: layout;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .line {\n      position: absolute;\n      top: calc(var(--tm-line-number) * var(--tm-char-height));\n      margin: 0px;\n\n      & span {\n        margin: 0px;\n        background: transparent !important;\n      }\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: var(--tm-min-width);\n    height: 100%;\n    min-height: var(--tm-min-height);\n    overflow: hidden;\n    resize: none;\n    color: transparent;\n    caret-color: var(--tm-foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n    white-space: pre;\n  }\n\n  & .textarea::selection {\n    background: var(--tm-selection-color);\n  }\n}\n";
 
 const cache = /* @__PURE__ */ new Map();
 function sheet(text) {
@@ -5834,11 +5835,11 @@ class TmTextareaElement extends LumeElement {
   }
 }
 
-const container = "_container_1s4r7_4";
-const code = "_code_1s4r7_26";
-const line = "_line_1s4r7_39";
-const character = "_character_1s4r7_51";
-const textarea = "_textarea_1s4r7_60";
+const container = "_container_12tgk_4";
+const code = "_code_12tgk_26";
+const line = "_line_12tgk_39";
+const character = "_character_12tgk_51";
+const textarea = "_textarea_12tgk_60";
 const styles = {
 	container: container,
 	code: code,

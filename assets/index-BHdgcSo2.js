@@ -363,6 +363,28 @@ function runWithOwner(o, fn) {
     Listener = prevListener;
   }
 }
+function createContext(defaultValue, options) {
+  const id = Symbol("context");
+  return {
+    id,
+    Provider: createProvider(id),
+    defaultValue
+  };
+}
+function useContext(context) {
+  return Owner && Owner.context && Owner.context[context.id] !== undefined
+    ? Owner.context[context.id]
+    : context.defaultValue;
+}
+function children(fn) {
+  const children = createMemo(fn);
+  const memo = createMemo(() => resolveChildren(children()));
+  memo.toArray = () => {
+    const c = memo();
+    return Array.isArray(c) ? c : c != null ? [c] : [];
+  };
+  return memo;
+}
 let SuspenseContext;
 function readSignal() {
   if (this.sources && (this.state)) {
@@ -603,6 +625,35 @@ function castError(err) {
 function handleError(err, owner = Owner) {
   const error = castError(err);
   throw error;
+}
+function resolveChildren(children) {
+  if (typeof children === "function" && !children.length) return resolveChildren(children());
+  if (Array.isArray(children)) {
+    const results = [];
+    for (let i = 0; i < children.length; i++) {
+      const result = resolveChildren(children[i]);
+      Array.isArray(result) ? results.push.apply(results, result) : results.push(result);
+    }
+    return results;
+  }
+  return children;
+}
+function createProvider(id, options) {
+  return function provider(props) {
+    let res;
+    createRenderEffect(
+      () =>
+        (res = untrack(() => {
+          Owner.context = {
+            ...Owner.context,
+            [id]: props.value
+          };
+          return children(() => props.children);
+        })),
+      undefined
+    );
+    return res;
+  };
 }
 
 const FALLBACK = Symbol("fallback");
@@ -5240,6 +5291,10 @@ function countDigits(value) {
   return Math.floor(Math.log10(Math.abs(value))) + 1;
 }
 
+function escapeHTML(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 function getLongestLineSize(lines) {
   let maxLength = 0;
   for (const line of lines) {
@@ -5250,16 +5305,41 @@ function getLongestLineSize(lines) {
   return maxLength;
 }
 
-var _tmpl$$1 = /* @__PURE__ */ template(`<div part=root><textarea part=textarea autocomplete=off inputmode=none></textarea><code aria-hidden>&nbsp;`), _tmpl$2$1 = /* @__PURE__ */ template(`<code part=code>`), _tmpl$3$1 = /* @__PURE__ */ template(`<pre part=line>`);
+class Stack {
+  #array = [];
+  peek() {
+    return this.#array[this.#array.length - 1];
+  }
+  push(value) {
+    this.#array.push(value);
+  }
+  pop() {
+    return this.#array.pop();
+  }
+}
+
+var _tmpl$$1 = /* @__PURE__ */ template(`<pre part=line>`), _tmpl$2$1 = /* @__PURE__ */ template(`<div part=root><code part=code></code><textarea part=textarea autocomplete=off inputmode=none></textarea><code aria-hidden>&nbsp;`);
 const SEGMENT_SIZE = 100;
 const WINDOW = 50;
+const TOKENIZER_CACHE = {};
+const REGISTRY = new mainExports.Registry({
+  // @ts-ignore
+  onigLib: oniguruma,
+  loadGrammar: (grammar) => fetchFromCDN("grammar", grammar).then((response) => {
+    response.scopeName = grammar;
+    return response;
+  })
+});
+const [WASM_LOADED] = createRoot(() => createResource(async () => fetch(urlFromCDN("oniguruma", null)).then((buffer) => buffer.arrayBuffer()).then((buffer) => mainExports$1.loadWASM(buffer)).then(() => true)));
 class ThemeManager {
   themeData;
   constructor(themeData) {
     this.themeData = themeData;
   }
   #scopes = {};
-  // Resolve styles for a given scope
+  // TODO:  Pretty sure this is an incomplete implementation.
+  //        Should either re-factor to use REGISTRY.getColorMap() and tokenizer.tokenizeLine2()
+  //        or complete the implementation.
   resolveScope(scope) {
     const id = scope.join("-");
     if (this.#scopes[id])
@@ -5281,87 +5361,14 @@ class ThemeManager {
     }
     return this.#scopes[id] = finalStyle;
   }
-  // Get background color
   getBackgroundColor() {
     return this.themeData.colors?.["editor.background"] || "#FFFFFF";
   }
-  // Get foreground color
   getForegroundColor() {
     return this.themeData.colors?.["editor.foreground"] || "#000000";
   }
 }
-function escapeHTML(str) {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-class Segment {
-  constructor(manager, previous, index) {
-    this.manager = manager;
-    this.previous = previous;
-    const start = index * this.manager.segmentSize;
-    const end = start + this.manager.segmentSize;
-    [this.stack, this.setStack] = createSignal(this.previous?.stack() || mainExports.INITIAL, {
-      equals: equalStack
-    });
-    const lines = createLazyMemo(() => this.manager.lines().slice(start, end));
-    this.#generated = createLazyMemo(() => {
-      let currentStack = this.previous?.stack() || mainExports.INITIAL;
-      const result = lines().map((line) => {
-        const {
-          ruleStack,
-          tokens
-        } = this.manager.tokenizer.tokenizeLine(line, currentStack);
-        currentStack = ruleStack;
-        return tokens.map((token) => {
-          const style = this.manager.theme.resolveScope(token.scopes);
-          const tokenValue = line.slice(token.startIndex, token.endIndex);
-          return `<span style="${style.foreground ? `color:${style.foreground};` : ""}${style.fontStyle ? `text-decoration:${style.fontStyle}` : ""}">${escapeHTML(tokenValue)}</span>`;
-        }).join("");
-      });
-      this.setStack(currentStack);
-      return result;
-    });
-  }
-  #generated;
-  next = null;
-  stack;
-  setStack;
-  getLine(localOffset) {
-    return this.#generated()[localOffset];
-  }
-}
-class SegmentManager {
-  constructor(tokenizer, theme, source) {
-    this.tokenizer = tokenizer;
-    this.theme = theme;
-    this.source = source;
-    this.lines = createMemo(() => source().split("\n"));
-    this.#segments = createMemo(indexArray(() => {
-      const newLineCount = this.lines().length;
-      return Array.from({
-        length: Math.ceil(newLineCount / this.segmentSize)
-      });
-    }, (_, index) => {
-      let previousSegment = typeof this.#segments === "function" ? this.#segments()[this.#segments.length - 1] || null : null;
-      return new Segment(this, previousSegment, index);
-    }));
-  }
-  #segments;
-  segmentSize = SEGMENT_SIZE;
-  lines;
-  getSegment(index) {
-    return this.#segments()[index] || void 0;
-  }
-  getLine(globalOffset) {
-    const segmentIndex = Math.floor(globalOffset / this.segmentSize);
-    const segment = this.#segments()[segmentIndex];
-    if (!segment) {
-      return void 0;
-    }
-    const localOffset = globalOffset % this.segmentSize;
-    return segment.getLine(localOffset) || void 0;
-  }
-}
-function equalStack(stateA, stateB) {
+function compareStacks(stateA, stateB) {
   let changed = false;
   if (stateA === stateB)
     return true;
@@ -5374,20 +5381,20 @@ function equalStack(stateA, stateB) {
   if (stateA.depth !== stateB.depth) {
     changed = true;
   }
-  if (!equalScopes(stateA.nameScopesList, stateB.nameScopesList)) {
+  if (!compareScopes(stateA.nameScopesList, stateB.nameScopesList)) {
     changed = true;
   }
-  if (!equalScopes(stateA.contentNameScopesList, stateB.contentNameScopesList)) {
+  if (!compareScopes(stateA.contentNameScopesList, stateB.contentNameScopesList)) {
     changed = true;
   }
   return !changed;
 }
-function equalScopes(scopeA, scopeB) {
+function compareScopes(scopeA, scopeB) {
   if (!scopeA && !scopeB)
     return true;
   if (!scopeA || !scopeB)
     return false;
-  if (scopeA.scopePath === scopeB.scopePath) {
+  if (scopeA.scopePath?.scopeName !== scopeB.scopePath?.scopeName) {
     return false;
   }
   if (scopeA.tokenAttributes !== scopeB.tokenAttributes) {
@@ -5395,191 +5402,233 @@ function equalScopes(scopeA, scopeB) {
   }
   return true;
 }
-const TOKENIZER_CACHE = {};
-const REGISTRY = new mainExports.Registry({
-  // @ts-ignore
-  onigLib: oniguruma,
-  loadGrammar: (grammar) => fetchFromCDN("grammar", grammar).then((response) => {
-    response.scopeName = grammar;
-    return response;
-  })
-});
-const [WASM_LOADED] = createRoot(() => createResource(async () => fetch(urlFromCDN("oniguruma", null)).then((buffer) => buffer.arrayBuffer()).then((buffer) => mainExports$1.loadWASM(buffer)).then(() => true)));
-function createManager(props) {
-  const [source, setSource] = createSignal(props.value);
-  const [tokenizer] = createResource(every(() => props.grammar, WASM_LOADED), async ([grammar]) => grammar in TOKENIZER_CACHE ? TOKENIZER_CACHE[grammar] : TOKENIZER_CACHE[grammar] = await REGISTRY.loadGrammar(grammar));
-  const [theme] = createResource(() => props.theme, (theme2) => fetchFromCDN("theme", theme2).then((theme3) => new ThemeManager(theme3)));
-  const manager = createMemo(when(every(tokenizer, theme), ([tokenizer2, theme2]) => new SegmentManager(tokenizer2, theme2, source)));
-  createRenderEffect(() => setSource(props.value));
-  return [manager, setSource];
+const TmTextareaContext = createContext(null);
+function useTmTextarea() {
+  const context = useContext(TmTextareaContext);
+  if (!context) {
+    throw `useTextarea should be used in a descendant of TmTextarea`;
+  }
+  return context;
 }
 function createTmTextarea(styles) {
+  function Segment(props) {
+    const context = useTmTextarea();
+    const previous = context.segments.peek();
+    const [stack, setStack] = createSignal(previous?.stack || mainExports.INITIAL, {
+      equals: compareStacks
+    });
+    const start = props.index * SEGMENT_SIZE;
+    const end = start + SEGMENT_SIZE;
+    const html = createLazyMemo(when(every(() => context.tokenizer, () => context.theme), ([tokenizer, theme]) => {
+      let currentStack = previous?.stack || mainExports.INITIAL;
+      const result = context.lines.slice(start, end).map((line) => {
+        const {
+          ruleStack,
+          tokens
+        } = tokenizer.tokenizeLine(line, currentStack);
+        currentStack = ruleStack;
+        return tokens.map((token) => {
+          const style = theme.resolveScope(token.scopes);
+          const tokenValue = line.slice(token.startIndex, token.endIndex);
+          return `<span style="${style.foreground ? `color:${style.foreground};` : ""}${style.fontStyle ? `text-decoration:${style.fontStyle}` : ""}">${escapeHTML(tokenValue)}</span>`;
+        }).join("");
+      });
+      setStack(currentStack);
+      return result;
+    }));
+    context.segments.push({
+      get stack() {
+        return stack();
+      }
+    });
+    onCleanup(() => context.segments.pop());
+    return createComponent(Show, {
+      get when() {
+        return context.isSegmentVisible(props.index * SEGMENT_SIZE);
+      },
+      get children() {
+        return createComponent(Index, {
+          get each() {
+            return Array.from({
+              length: SEGMENT_SIZE
+            });
+          },
+          children: (_, index) => createComponent(Show, {
+            get when() {
+              return context.isVisible(props.index * SEGMENT_SIZE + index);
+            },
+            get children() {
+              var _el$ = _tmpl$$1();
+              createRenderEffect((_p$) => {
+                var _v$ = styles.line, _v$2 = html()?.[index], _v$3 = props.index * SEGMENT_SIZE + index;
+                _v$ !== _p$.e && className(_el$, _p$.e = _v$);
+                _v$2 !== _p$.t && (_el$.innerHTML = _p$.t = _v$2);
+                _v$3 !== _p$.a && ((_p$.a = _v$3) != null ? _el$.style.setProperty("--line-number", _v$3) : _el$.style.removeProperty("--line-number"));
+                return _p$;
+              }, {
+                e: void 0,
+                t: void 0,
+                a: void 0
+              });
+              return _el$;
+            }
+          })
+        });
+      }
+    });
+  }
   return function TmTextarea(props) {
     const [config, rest] = splitProps(mergeProps({
       editable: true
     }, props), ["class", "grammar", "onInput", "value", "style", "theme", "editable", "onScroll", "textareaRef"]);
     let container;
-    const [charHeight, setCharHeight] = createSignal(0);
-    const [dimensions, setDimensions] = createSignal();
+    const [character, setCharacter] = createSignal();
+    const [viewport, setViewport] = createSignal();
     const [scrollTop, setScrollTop] = createSignal(0);
-    const [manager, setSource] = createManager(props);
-    const lineSize = createMemo(() => getLongestLineSize(manager()?.lines() || []));
-    const lineCount = () => manager()?.lines().length || 0;
-    const minLine = createMemo(() => Math.floor(scrollTop() / charHeight()));
-    const maxLine = createMemo(() => Math.floor((scrollTop() + (dimensions()?.height || 0)) / charHeight()));
+    const [source, setSource] = createSignal(props.value);
+    const [tokenizer] = createResource(every(() => props.grammar, WASM_LOADED), async ([grammar]) => grammar in TOKENIZER_CACHE ? TOKENIZER_CACHE[grammar] : TOKENIZER_CACHE[grammar] = await REGISTRY.loadGrammar(grammar));
+    const [theme] = createResource(() => props.theme, (theme2) => fetchFromCDN("theme", theme2).then((theme3) => new ThemeManager(theme3)));
+    const lines = createMemo(() => source().split("\n"));
+    const lineSize = createMemo(() => getLongestLineSize(lines()));
+    const minLine = createMemo(() => Math.floor(scrollTop() / (character()?.height || 1)));
+    const maxLine = createMemo(() => Math.floor((scrollTop() + (viewport()?.height || 0)) / (character()?.height || 1)));
     const minSegment = createMemo(() => Math.floor(minLine() / SEGMENT_SIZE));
     const maxSegment = createMemo(() => Math.ceil(maxLine() / SEGMENT_SIZE));
-    const isVisible = createSelector(() => [minLine(), maxLine()], (index, [viewportMin, viewportMax]) => {
-      if (index > lineCount() - 1) {
-        return false;
-      }
-      return index + WINDOW > viewportMin && index - WINDOW < viewportMax;
-    });
-    const isSegmentVisible = createSelector(() => [minSegment(), maxSegment()], (index, [viewportMin, viewportMax]) => {
-      const segmentMin = Math.floor((index - WINDOW) / SEGMENT_SIZE);
-      const segmentMax = Math.ceil((index + WINDOW) / SEGMENT_SIZE);
-      return segmentMin <= viewportMin && segmentMax >= viewportMax || segmentMin >= viewportMin && segmentMin <= viewportMax || segmentMax >= viewportMin && segmentMax <= viewportMax;
-    });
-    onMount(() => new ResizeObserver(([entry]) => setDimensions(entry?.contentRect)).observe(container));
-    const selectionColor = when(manager, (manager2) => {
-      const bg = manager2.theme.getBackgroundColor();
+    const selectionColor = when(theme, (theme2) => {
+      const bg = theme2.getBackgroundColor();
       const commentLuminance = luminance(...hexToRgb(bg));
       const opacity = commentLuminance > 0.9 ? 0.1 : commentLuminance < 0.1 ? 0.25 : 0.175;
       return `rgba(98, 114, 164, ${opacity})`;
     });
-    const style = () => {
-      if (!config.style)
-        return void 0;
-      const [_, style2] = splitProps(config.style, ["width", "height"]);
-      return style2;
-    };
-    return (() => {
-      var _el$ = _tmpl$$1(), _el$2 = _el$.firstChild, _el$3 = _el$2.nextSibling;
-      _el$.addEventListener("scroll", (e) => {
-        setScrollTop(e.currentTarget.scrollTop);
-        props.onScroll?.(e);
-      });
-      use((element) => {
-        container = element;
-        applyStyle(element, props, "width");
-        applyStyle(element, props, "height");
-      }, _el$);
-      spread(_el$, mergeProps({
-        get ["class"]() {
-          return clsx(styles.container, config.class);
-        },
-        get style() {
-          return {
-            "--background-color": manager()?.theme.getBackgroundColor(),
-            "--char-height": `${charHeight()}px`,
-            "--foreground-color": manager()?.theme.getForegroundColor(),
-            "--line-count": lineCount(),
-            "--line-size": lineSize(),
-            "--selection-color": selectionColor(),
-            "--line-digits": countDigits(lineCount()),
-            ...style()
-          };
-        }
-      }, rest), false);
-      insert(_el$, createComponent(Show, {
-        get when() {
-          return manager();
-        },
-        children: (manager2) => (() => {
-          var _el$4 = _tmpl$2$1();
-          insert(_el$4, createComponent(Index, {
-            get each() {
-              return Array.from({
-                length: Math.ceil(manager2().lines().length / SEGMENT_SIZE)
-              });
-            },
-            children: (_, segmentIndex) => createComponent(Show, {
-              get when() {
-                return isSegmentVisible(segmentIndex * SEGMENT_SIZE);
-              },
-              get children() {
-                return createComponent(Index, {
-                  get each() {
-                    return Array.from({
-                      length: SEGMENT_SIZE
-                    });
-                  },
-                  children: (_2, index) => createComponent(Show, {
-                    get when() {
-                      return isVisible(segmentIndex * SEGMENT_SIZE + index);
-                    },
-                    get children() {
-                      var _el$5 = _tmpl$3$1();
-                      segmentIndex * SEGMENT_SIZE + index != null ? _el$5.style.setProperty("--line-number", segmentIndex * SEGMENT_SIZE + index) : _el$5.style.removeProperty("--line-number");
-                      createRenderEffect((_p$) => {
-                        var _v$5 = styles.line, _v$6 = manager2().getLine(segmentIndex * SEGMENT_SIZE + index);
-                        _v$5 !== _p$.e && className(_el$5, _p$.e = _v$5);
-                        _v$6 !== _p$.t && (_el$5.innerHTML = _p$.t = _v$6);
-                        return _p$;
-                      }, {
-                        e: void 0,
-                        t: void 0
-                      });
-                      return _el$5;
-                    }
-                  })
-                });
-              }
-            })
-          }));
-          createRenderEffect(() => className(_el$4, styles.code));
-          return _el$4;
-        })()
-      }), _el$2);
-      _el$2.$$keydown = (e) => {
-        if (e.key === "Enter") {
+    const style = when(() => config.style, (style2) => splitProps(style2, ["width", "height"])[1]);
+    onMount(() => new ResizeObserver(([entry]) => setViewport(entry?.contentRect)).observe(container));
+    createRenderEffect(() => setSource(props.value));
+    return createComponent(TmTextareaContext.Provider, {
+      get value() {
+        return {
+          get viewport() {
+            return viewport();
+          },
+          get character() {
+            return character();
+          },
+          get scrollTop() {
+            return scrollTop();
+          },
+          get lines() {
+            return lines();
+          },
+          get theme() {
+            return theme();
+          },
+          get tokenizer() {
+            return tokenizer();
+          },
+          segments: new Stack(),
+          isVisible: createSelector(() => [minLine(), maxLine()], (index, [viewportMin, viewportMax]) => {
+            if (index > lines().length - 1) {
+              return false;
+            }
+            return index + WINDOW > viewportMin && index - WINDOW < viewportMax;
+          }),
+          isSegmentVisible: createSelector(() => [minSegment(), maxSegment()], (index) => {
+            const segmentMin = Math.floor((index - WINDOW) / SEGMENT_SIZE);
+            const segmentMax = Math.ceil((index + WINDOW) / SEGMENT_SIZE);
+            return segmentMin <= minSegment() && segmentMax >= maxSegment() || segmentMin >= minSegment() && segmentMin <= maxSegment() || segmentMax >= minSegment() && segmentMax <= maxSegment();
+          })
+        };
+      },
+      get children() {
+        var _el$2 = _tmpl$2$1(), _el$3 = _el$2.firstChild, _el$4 = _el$3.nextSibling, _el$5 = _el$4.nextSibling;
+        _el$2.addEventListener("scroll", (e) => {
+          setScrollTop(e.currentTarget.scrollTop);
+          props.onScroll?.(e);
+        });
+        use((element) => {
+          container = element;
+          applyStyle(element, props, "width");
+          applyStyle(element, props, "height");
+        }, _el$2);
+        spread(_el$2, mergeProps({
+          get ["class"]() {
+            return clsx(styles.container, config.class);
+          },
+          get style() {
+            return {
+              "--background-color": theme()?.getBackgroundColor(),
+              "--char-height": `${character()?.height || 0}px`,
+              "--char-width": `${character()?.width || 0}px`,
+              "--foreground-color": theme()?.getForegroundColor(),
+              "--line-count": lines().length,
+              "--line-size": lineSize(),
+              "--selection-color": selectionColor(),
+              "--line-digits": countDigits(lines().length),
+              ...style()
+            };
+          }
+        }, rest), false);
+        insert(_el$3, createComponent(Index, {
+          get each() {
+            return Array.from({
+              length: Math.ceil(lines().length / SEGMENT_SIZE)
+            });
+          },
+          children: (_, segmentIndex) => createComponent(Segment, {
+            index: segmentIndex
+          })
+        }));
+        _el$4.$$keydown = (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            const scrollTop2 = container.scrollTop;
+            const start = e.currentTarget.selectionStart;
+            const end = e.currentTarget.selectionEnd;
+            const value = e.currentTarget.value;
+            e.currentTarget.value = setSource(value.substring(0, start) + "\n" + value.substring(end));
+            e.currentTarget.selectionStart = e.currentTarget.selectionEnd = start + 1;
+            container.scrollTop = scrollTop2;
+          }
+        };
+        _el$4.addEventListener("scroll", (e) => {
           e.preventDefault();
-          const scrollTop2 = container.scrollTop;
-          const start = e.currentTarget.selectionStart;
-          const end = e.currentTarget.selectionEnd;
-          const value = e.currentTarget.value;
-          e.currentTarget.value = setSource(value.substring(0, start) + "\n" + value.substring(end));
-          e.currentTarget.selectionStart = e.currentTarget.selectionEnd = start + 1;
-          container.scrollTop = scrollTop2;
-        }
-      };
-      _el$2.addEventListener("scroll", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      });
-      var _ref$ = config.textareaRef;
-      typeof _ref$ === "function" ? use(_ref$, _el$2) : config.textareaRef = _el$2;
-      setAttribute(_el$2, "spellcheck", false);
-      _el$2.addEventListener("input", (e) => {
-        const target = e.currentTarget;
-        const value = target.value;
-        setSource(value);
-        config.onInput?.(e);
-      });
-      use((element) => {
-        new ResizeObserver(() => {
-          const {
-            height
-          } = getComputedStyle(element);
-          setCharHeight(Number(height.replace("px", "")));
-        }).observe(element);
-      }, _el$3);
-      createRenderEffect((_p$) => {
-        var _v$ = styles.textarea, _v$2 = !config.editable, _v$3 = lineCount(), _v$4 = styles.character;
-        _v$ !== _p$.e && className(_el$2, _p$.e = _v$);
-        _v$2 !== _p$.t && (_el$2.disabled = _p$.t = _v$2);
-        _v$3 !== _p$.a && setAttribute(_el$2, "rows", _p$.a = _v$3);
-        _v$4 !== _p$.o && className(_el$3, _p$.o = _v$4);
-        return _p$;
-      }, {
-        e: void 0,
-        t: void 0,
-        a: void 0,
-        o: void 0
-      });
-      createRenderEffect(() => _el$2.value = config.value);
-      return _el$;
-    })();
+          e.stopPropagation();
+        });
+        var _ref$ = config.textareaRef;
+        typeof _ref$ === "function" ? use(_ref$, _el$4) : config.textareaRef = _el$4;
+        setAttribute(_el$4, "spellcheck", false);
+        _el$4.addEventListener("input", (e) => {
+          const target = e.currentTarget;
+          const value = target.value;
+          setSource(value);
+          config.onInput?.(e);
+        });
+        use((element) => {
+          new ResizeObserver(([entry]) => {
+            setCharacter({
+              height: entry.contentRect.height,
+              width: entry.contentRect.width
+            });
+          }).observe(element);
+        }, _el$5);
+        createRenderEffect((_p$) => {
+          var _v$4 = styles.code, _v$5 = styles.textarea, _v$6 = !config.editable, _v$7 = lines().length, _v$8 = styles.character;
+          _v$4 !== _p$.e && className(_el$3, _p$.e = _v$4);
+          _v$5 !== _p$.t && className(_el$4, _p$.t = _v$5);
+          _v$6 !== _p$.a && (_el$4.disabled = _p$.a = _v$6);
+          _v$7 !== _p$.o && setAttribute(_el$4, "rows", _p$.o = _v$7);
+          _v$8 !== _p$.i && className(_el$5, _p$.i = _v$8);
+          return _p$;
+        }, {
+          e: void 0,
+          t: void 0,
+          a: void 0,
+          o: void 0,
+          i: void 0
+        });
+        createRenderEffect(() => _el$4.value = config.value);
+        return _el$2;
+      }
+    });
   };
 }
 delegateEvents(["keydown"]);
@@ -5601,7 +5650,7 @@ function sheet(text) {
   return cache.get(text);
 }
 
-let _initClass, _classDecs, _grammarDecs, _init_grammar, _themeDecs, _init_theme, _init_stylesheet, _init_editable, _init__value;
+let _initClass, _classDecs, _init_editable, _init_grammar, _init_stylesheet, _init_theme, _init_value;
 function _applyDecs(e, t, r, n, o, a) {
   function i(e2, t2, r2) {
     return function(n2, o2) {
@@ -5740,16 +5789,15 @@ let _TmTextareaElement;
 class TmTextareaElement extends LumeElement {
   static {
     ({
-      e: [_init_grammar, _init_theme, _init_stylesheet, _init_editable, _init__value],
+      e: [_init_editable, _init_grammar, _init_stylesheet, _init_theme, _init_value],
       c: [_TmTextareaElement, _initClass]
-    } = _applyDecs(this, [[_grammarDecs, 0, "grammar"], [_themeDecs, 0, "theme"], [stringAttribute, 0, "stylesheet"], [booleanAttribute, 0, "editable"], [signal, 0, "_value"]], _classDecs, 0, void 0, LumeElement));
+    } = _applyDecs(this, [[booleanAttribute, 0, "editable"], [stringAttribute, 0, "grammar"], [stringAttribute, 0, "stylesheet"], [stringAttribute, 0, "theme"], [stringAttribute, 0, "value"]], _classDecs, 0, void 0, LumeElement));
   }
-  [(_grammarDecs = attribute(), _themeDecs = attribute(), "grammar")] = _init_grammar(this, "tsx");
-  theme = _init_theme(this, "dark-plus");
-  stylesheet = _init_stylesheet(this, "");
   editable = _init_editable(this, true);
-  _value = _init__value(this, "");
-  textarea = null;
+  grammar = _init_grammar(this, "tsx");
+  stylesheet = _init_stylesheet(this, "");
+  theme = _init_theme(this, "dark-plus");
+  value = _init_value(this, "");
   template = () => {
     const _self$ = this;
     const adoptedStyleSheets = this.shadowRoot.adoptedStyleSheets;
@@ -5765,20 +5813,14 @@ class TmTextareaElement extends LumeElement {
         return _self$.theme;
       },
       get value() {
-        return _self$._value;
+        return _self$.value;
       },
       get editable() {
         return _self$.editable;
       },
-      textareaRef: (textarea) => _self$.textarea = textarea
+      onInput: (e) => _self$.value = e.currentTarget.value
     });
   };
-  get value() {
-    return this.textarea.value;
-  }
-  set value(value) {
-    this._value = value;
-  }
   static {
     _initClass();
   }

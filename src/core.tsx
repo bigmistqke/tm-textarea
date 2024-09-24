@@ -1,8 +1,8 @@
 import { createLazyMemo } from '@solid-primitives/memo'
 import clsx from 'clsx'
 import {
-  type Accessor,
   ComponentProps,
+  createContext,
   createMemo,
   createRenderEffect,
   createResource,
@@ -10,14 +10,14 @@ import {
   createSelector,
   createSignal,
   Index,
-  indexArray,
   type JSX,
   mergeProps,
+  onCleanup,
   onMount,
   Ref,
-  type Setter,
   Show,
   splitProps,
+  useContext,
 } from 'solid-js'
 import * as oniguruma from 'vscode-oniguruma'
 import * as textmate from 'vscode-textmate'
@@ -27,7 +27,9 @@ import { applyStyle } from './utils/apply-style'
 import { hexToRgb, luminance } from './utils/colors'
 import { every, when } from './utils/conditionals'
 import { countDigits } from './utils/count-digits'
+import { escapeHTML } from './utils/escape-html'
 import { getLongestLineSize } from './utils/get-longest-linesize'
+import { Stack } from './utils/stack'
 
 /**********************************************************************************/
 /*                                                                                */
@@ -38,6 +40,24 @@ import { getLongestLineSize } from './utils/get-longest-linesize'
 const DEBUG = false
 const SEGMENT_SIZE = 100
 const WINDOW = 50
+const TOKENIZER_CACHE: Record<string, textmate.IGrammar | null> = {}
+const REGISTRY = new textmate.Registry({
+  // @ts-ignore
+  onigLib: oniguruma,
+  loadGrammar: (grammar: string) =>
+    fetchFromCDN('grammar', grammar).then(response => {
+      response.scopeName = grammar
+      return response
+    }),
+})
+const [WASM_LOADED] = createRoot(() =>
+  createResource(async () =>
+    fetch(urlFromCDN('oniguruma', null!))
+      .then(buffer => buffer.arrayBuffer())
+      .then(buffer => oniguruma.loadWASM(buffer))
+      .then(() => true),
+  ),
+)
 
 /**********************************************************************************/
 /*                                                                                */
@@ -62,6 +82,26 @@ interface ThemeData {
     [key: string]: string | undefined
   }
 }
+interface Dimensions {
+  height: number
+  width: number
+}
+interface SegmentData {
+  stack: textmate.StateStack
+}
+interface ScopeNode {
+  scopeName?: string
+  parent: ScopeNode
+}
+interface ScopesList {
+  scopePath: ScopeNode
+  tokenAttributes: number
+}
+interface StateStack extends textmate.StateStack {
+  ruleId: number
+  nameScopesList: ScopesList
+  contentNameScopesList: ScopesList
+}
 
 /**********************************************************************************/
 /*                                                                                */
@@ -79,7 +119,9 @@ class ThemeManager {
 
   #scopes: Record<string, { foreground?: string; fontStyle?: string }> = {}
 
-  // Resolve styles for a given scope
+  // TODO:  Pretty sure this is an incomplete implementation.
+  //        Should either re-factor to use REGISTRY.getColorMap() and tokenizer.tokenizeLine2()
+  //        or complete the implementation.
   resolveScope(scope: string[]): { foreground?: string; fontStyle?: string } {
     const id = scope.join('-')
 
@@ -103,12 +145,10 @@ class ThemeManager {
     return (this.#scopes[id] = finalStyle)
   }
 
-  // Get background color
   getBackgroundColor() {
     return this.themeData.colors?.['editor.background'] || '#FFFFFF'
   }
 
-  // Get foreground color
   getForegroundColor() {
     return this.themeData.colors?.['editor.foreground'] || '#000000'
   }
@@ -116,126 +156,12 @@ class ThemeManager {
 
 /**********************************************************************************/
 /*                                                                                */
-/*                                     Segment                                    */
+/*                                 Compare Stacks                                 */
 /*                                                                                */
 /**********************************************************************************/
 
-function escapeHTML(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-// Segment class that tokenizes and renders lines
-class Segment {
-  #generated: Accessor<string[]>
-
-  next: Segment | null = null
-
-  stack: Accessor<textmate.StateStack>
-  setStack: Setter<textmate.StateStack>
-
-  constructor(
-    public manager: SegmentManager,
-    public previous: Segment | null,
-    index: number,
-  ) {
-    const start = index * this.manager.segmentSize
-    const end = start + this.manager.segmentSize
-
-    ;[this.stack, this.setStack] = createSignal<any>(this.previous?.stack() || textmate.INITIAL, {
-      equals: equalStack,
-    })
-
-    const lines = createLazyMemo(() => this.manager.lines().slice(start, end))
-
-    this.#generated = createLazyMemo(() => {
-      let currentStack = this.previous?.stack() || textmate.INITIAL
-
-      const result = lines().map(line => {
-        const { ruleStack, tokens } = this.manager.tokenizer.tokenizeLine(line, currentStack)
-
-        currentStack = ruleStack
-
-        return tokens
-          .map(token => {
-            const style = this.manager.theme.resolveScope(token.scopes)
-            const tokenValue = line.slice(token.startIndex, token.endIndex)
-            return `<span style="${style.foreground ? `color:${style.foreground};` : ''}${
-              style.fontStyle ? `text-decoration:${style.fontStyle}` : ''
-            }">${escapeHTML(tokenValue)}</span>`
-          })
-          .join('')
-      })
-
-      this.setStack(currentStack)
-
-      return result
-    })
-  }
-
-  getLine(localOffset: number): string | undefined {
-    return this.#generated()[localOffset]
-  }
-}
-
-/**********************************************************************************/
-/*                                                                                */
-/*                                 Segment Manager                                */
-/*                                                                                */
-/**********************************************************************************/
-
-/** SegmentManager class to manage source into multiple segments. */
-class SegmentManager {
-  #segments: Accessor<Segment[]>
-  segmentSize = SEGMENT_SIZE
-  lines: Accessor<string[]>
-
-  constructor(
-    public tokenizer: textmate.IGrammar,
-    public theme: ThemeManager,
-    public source: Accessor<string>,
-  ) {
-    this.lines = createMemo(() => source().split('\n'))
-
-    this.#segments = createMemo(
-      indexArray(
-        () => {
-          const newLineCount = this.lines().length
-          return Array.from({ length: Math.ceil(newLineCount / this.segmentSize) })
-        },
-        (_, index) => {
-          let previousSegment =
-            typeof this.#segments === 'function'
-              ? this.#segments()[this.#segments.length - 1] || null
-              : null
-          return new Segment(this, previousSegment, index)
-        },
-      ),
-    )
-  }
-
-  getSegment(index: number): Segment | undefined {
-    return this.#segments()[index] || undefined
-  }
-
-  getLine(globalOffset: number): string | undefined {
-    const segmentIndex = Math.floor(globalOffset / this.segmentSize)
-    const segment = this.#segments()[segmentIndex]
-    if (!segment) {
-      DEBUG && console.error('segment does not exist')
-      return undefined
-    }
-    const localOffset = globalOffset % this.segmentSize
-    return segment.getLine(localOffset) || undefined
-  }
-}
-
-/**********************************************************************************/
-/*                                                                                */
-/*                                      Equals                                    */
-/*                                                                                */
-/**********************************************************************************/
-
-function equalStack(stateA: any, stateB: any): boolean {
+/** Utility-function that comparse two textmate.StateStack */
+function compareStacks(stateA: StateStack, stateB: StateStack): boolean {
   let changed = false
 
   if (stateA === stateB) return true
@@ -245,7 +171,6 @@ function equalStack(stateA: any, stateB: any): boolean {
     return false
   }
 
-  // Compare relevant fields
   if (stateA.ruleId !== stateB.ruleId) {
     DEBUG && console.info(`ruleId changed: ${stateA.ruleId} -> ${stateB.ruleId}`)
     changed = true
@@ -256,12 +181,12 @@ function equalStack(stateA: any, stateB: any): boolean {
     changed = true
   }
 
-  if (!equalScopes(stateA.nameScopesList, stateB.nameScopesList)) {
+  if (!compareScopes(stateA.nameScopesList, stateB.nameScopesList)) {
     DEBUG && console.info('nameScopesList changed')
     changed = true
   }
 
-  if (!equalScopes(stateA.contentNameScopesList, stateB.contentNameScopesList)) {
+  if (!compareScopes(stateA.contentNameScopesList, stateB.contentNameScopesList)) {
     DEBUG && console.info('contentNameScopesList changed')
     changed = true
   }
@@ -269,11 +194,11 @@ function equalStack(stateA: any, stateB: any): boolean {
   return !changed
 }
 
-function equalScopes(scopeA: any, scopeB: any): boolean {
+function compareScopes(scopeA: ScopesList, scopeB: ScopesList): boolean {
   if (!scopeA && !scopeB) return true
   if (!scopeA || !scopeB) return false
 
-  if (scopeA.scopePath === scopeB.scopePath) {
+  if (scopeA.scopePath?.scopeName !== scopeB.scopePath?.scopeName) {
     DEBUG && console.info(`scopePath changed: ${scopeA.scopePath} -> ${scopeB.scopePath}`)
     return false
   }
@@ -291,62 +216,33 @@ function equalScopes(scopeA: any, scopeB: any): boolean {
 
 /**********************************************************************************/
 /*                                                                                */
-/*                                 Create Manager                                 */
+/*                               Tm Textarea Context                              */
 /*                                                                                */
 /**********************************************************************************/
 
-const TOKENIZER_CACHE: Record<string, textmate.IGrammar | null> = {}
-const REGISTRY = new textmate.Registry({
-  // @ts-ignore
-  onigLib: oniguruma,
-  loadGrammar: (grammar: string) =>
-    fetchFromCDN('grammar', grammar).then(response => {
-      response.scopeName = grammar
-      return response
-    }),
-})
-const [WASM_LOADED] = createRoot(() =>
-  createResource(async () =>
-    fetch(urlFromCDN('oniguruma', null!))
-      .then(buffer => buffer.arrayBuffer())
-      .then(buffer => oniguruma.loadWASM(buffer))
-      .then(() => true),
-  ),
-)
+const TmTextareaContext = createContext<{
+  viewport: Dimensions | undefined
+  character: Dimensions | undefined
+  scrollTop: number
+  lines: string[]
+  segments: Stack<SegmentData>
+  tokenizer: textmate.IGrammar | null | undefined
+  theme: ThemeManager | undefined
+  isVisible: (index: number) => boolean
+  isSegmentVisible: (index: number) => boolean
+} | null>(null)
 
-function createManager(props: TmTextareaProps) {
-  const [source, setSource] = createSignal(props.value)
-
-  const [tokenizer] = createResource(
-    every(() => props.grammar, WASM_LOADED),
-    async ([grammar]) =>
-      grammar in TOKENIZER_CACHE
-        ? TOKENIZER_CACHE[grammar]
-        : (TOKENIZER_CACHE[grammar] = await REGISTRY.loadGrammar(grammar)),
-  )
-
-  const [theme] = createResource(
-    () => props.theme,
-    theme => fetchFromCDN('theme', theme).then(theme => new ThemeManager(theme)),
-  )
-
-  const manager = createMemo(
-    when(
-      every(tokenizer, theme),
-      ([tokenizer, theme]) => new SegmentManager(tokenizer, theme, source),
-    ),
-  )
-
-  // NOTE:  Update to projection once this lands in solid 2.0
-  //        Sync local source signal with config.source
-  createRenderEffect(() => setSource(props.value))
-
-  return [manager, setSource] as const
+function useTmTextarea() {
+  const context = useContext(TmTextareaContext)
+  if (!context) {
+    throw `useTextarea should be used in a descendant of TmTextarea`
+  }
+  return context
 }
 
 /**********************************************************************************/
 /*                                                                                */
-/*                                  Tm Textarea                                   */
+/*                              Create Tm Textarea                                */
 /*                                                                                */
 /**********************************************************************************/
 
@@ -354,26 +250,93 @@ export interface TmTextareaProps
   extends Omit<ComponentProps<'div'>, 'style' | 'onInput' | 'onScroll'> {
   /** If textarea is editable or not. */
   editable?: boolean
-  /**
-   * The grammar of the source code for syntax highlighting.
-   */
+  /** The grammar of the source code for syntax highlighting. */
   grammar: Grammar
   /** Custom CSS properties to apply to the editor. */
   style?: JSX.CSSProperties
   /** Ref to the internal html-textarea-element. */
   textareaRef?: Ref<HTMLTextAreaElement>
-  /**
-   * The theme to apply for syntax highlighting.
-   */
+  /** The theme to apply for syntax highlighting. */
   theme: Theme
   /** The source code to be displayed and edited. */
   value: string
-  /** Callback function to handle updates to the source code. */
+  /** Callback function to handle input-event. */
   onInput?: (event: InputEvent & { currentTarget: HTMLTextAreaElement }) => void
+  /** Callback function to handle scroll-event. */
   onScroll?: (event: Event & { currentTarget: HTMLDivElement }) => void
 }
 
 export function createTmTextarea(styles: Record<string, string>) {
+  function Segment(props: { index: number }) {
+    const context = useTmTextarea()
+    const previous = context.segments.peek()
+
+    const [stack, setStack] = createSignal<any>(previous?.stack || textmate.INITIAL, {
+      equals: compareStacks,
+    })
+
+    const start = props.index * SEGMENT_SIZE
+    const end = start + SEGMENT_SIZE
+
+    const html = createLazyMemo(
+      when(
+        every(
+          () => context.tokenizer,
+          () => context.theme,
+        ),
+        ([tokenizer, theme]) => {
+          let currentStack = previous?.stack || textmate.INITIAL
+
+          const result = context.lines.slice(start, end).map(line => {
+            const { ruleStack, tokens } = tokenizer.tokenizeLine(line, currentStack)
+
+            currentStack = ruleStack
+
+            return tokens
+              .map(token => {
+                const style = theme.resolveScope(token.scopes)
+                const tokenValue = line.slice(token.startIndex, token.endIndex)
+                return `<span style="${style.foreground ? `color:${style.foreground};` : ''}${
+                  style.fontStyle ? `text-decoration:${style.fontStyle}` : ''
+                }">${escapeHTML(tokenValue)}</span>`
+              })
+              .join('')
+          })
+
+          setStack(currentStack)
+
+          return result
+        },
+      ),
+    )
+
+    context.segments.push({
+      get stack() {
+        return stack()
+      },
+    })
+    onCleanup(() => context.segments.pop())
+
+    return (
+      <Show when={context.isSegmentVisible(props.index * SEGMENT_SIZE)}>
+        <Index each={Array.from({ length: SEGMENT_SIZE })}>
+          {(_, index) => (
+            <Show when={context.isVisible(props.index * SEGMENT_SIZE + index)}>
+              <pre
+                class={styles.line}
+                part="line"
+                innerHTML={html()?.[index]}
+                style={{
+                  '--line-number': props.index * SEGMENT_SIZE + index,
+                }}
+              />
+            </Show>
+          )}
+        </Index>
+      </Show>
+    )
+  }
+
   return function TmTextarea(props: TmTextareaProps) {
     const [config, rest] = splitProps(mergeProps({ editable: true }, props), [
       'class',
@@ -389,178 +352,193 @@ export function createTmTextarea(styles: Record<string, string>) {
 
     let container: HTMLDivElement
 
-    const [charHeight, setCharHeight] = createSignal<number>(0)
-    const [dimensions, setDimensions] = createSignal<{ width: number; height: number }>()
+    const [character, setCharacter] = createSignal<Dimensions>()
+    const [viewport, setViewport] = createSignal<Dimensions>()
     const [scrollTop, setScrollTop] = createSignal(0)
-    const [manager, setSource] = createManager(props)
+    const [source, setSource] = createSignal(props.value)
 
-    const lineSize = createMemo(() => getLongestLineSize(manager()?.lines() || []))
-    const lineCount = () => manager()?.lines().length || 0
-
-    const minLine = createMemo(() => Math.floor(scrollTop() / charHeight()))
-    const maxLine = createMemo(() =>
-      Math.floor((scrollTop() + (dimensions()?.height || 0)) / charHeight()),
+    const [tokenizer] = createResource(
+      every(() => props.grammar, WASM_LOADED),
+      async ([grammar]) =>
+        grammar in TOKENIZER_CACHE
+          ? TOKENIZER_CACHE[grammar]
+          : (TOKENIZER_CACHE[grammar] = await REGISTRY.loadGrammar(grammar)),
     )
 
+    const [theme] = createResource(
+      () => props.theme,
+      theme => fetchFromCDN('theme', theme).then(theme => new ThemeManager(theme)),
+    )
+
+    const lines = createMemo(() => source().split('\n'))
+    const lineSize = createMemo(() => getLongestLineSize(lines()))
+    const minLine = createMemo(() => Math.floor(scrollTop() / (character()?.height || 1)))
+    const maxLine = createMemo(() =>
+      Math.floor((scrollTop() + (viewport()?.height || 0)) / (character()?.height || 1)),
+    )
     const minSegment = createMemo(() => Math.floor(minLine() / SEGMENT_SIZE))
     const maxSegment = createMemo(() => Math.ceil(maxLine() / SEGMENT_SIZE))
 
-    const isVisible = createSelector(
-      () => [minLine(), maxLine()] as [number, number],
-      (index: number, [viewportMin, viewportMax]) => {
-        if (index > lineCount() - 1) {
-          return false
-        }
-        return index + WINDOW > viewportMin && index - WINDOW < viewportMax
-      },
-    )
-
-    const isSegmentVisible = createSelector(
-      () => [minSegment(), maxSegment()] as [number, number],
-      (index: number, [viewportMin, viewportMax]) => {
-        const segmentMin = Math.floor((index - WINDOW) / SEGMENT_SIZE)
-        const segmentMax = Math.ceil((index + WINDOW) / SEGMENT_SIZE)
-        return (
-          (segmentMin <= viewportMin && segmentMax >= viewportMax) ||
-          (segmentMin >= viewportMin && segmentMin <= viewportMax) ||
-          (segmentMax >= viewportMin && segmentMax <= viewportMax)
-        )
-      },
-    )
-
-    onMount(() =>
-      new ResizeObserver(([entry]) => setDimensions(entry?.contentRect)).observe(container),
-    )
-
-    const selectionColor = when(manager, manager => {
-      const bg = manager.theme.getBackgroundColor()
+    const selectionColor = when(theme, theme => {
+      const bg = theme.getBackgroundColor()
       const commentLuminance = luminance(...hexToRgb(bg))
       const opacity = commentLuminance > 0.9 ? 0.1 : commentLuminance < 0.1 ? 0.25 : 0.175
       return `rgba(98, 114, 164, ${opacity})`
     })
+    const style = when(
+      () => config.style,
+      style => splitProps(style, ['width', 'height'])[1],
+    )
 
-    const style = () => {
-      if (!config.style) return undefined
-      const [_, style] = splitProps(config.style, ['width', 'height'])
-      return style
-    }
+    onMount(() =>
+      new ResizeObserver(([entry]) => setViewport(entry?.contentRect)).observe(container),
+    )
+
+    // NOTE:  Update to projection once this lands in solid 2.0
+    //        Sync local source signal with config.source
+    createRenderEffect(() => setSource(props.value))
 
     return (
-      <div
-        part="root"
-        ref={element => {
-          container = element
-          applyStyle(element, props, 'width')
-          applyStyle(element, props, 'height')
-        }}
-        class={clsx(styles.container, config.class)}
-        onScroll={e => {
-          setScrollTop(e.currentTarget.scrollTop)
-          props.onScroll?.(e)
-        }}
-        style={{
-          '--background-color': manager()?.theme.getBackgroundColor(),
-          '--char-height': `${charHeight()}px`,
-          '--foreground-color': manager()?.theme.getForegroundColor(),
-          '--line-count': lineCount(),
-          '--line-size': lineSize(),
-          '--selection-color': selectionColor(),
-          '--line-digits': countDigits(lineCount()),
-          ...style(),
-        }}
-        {...rest}
-      >
-        <Show when={manager()}>
-          {manager => (
-            <code part="code" class={styles.code}>
-              <Index
-                each={Array.from({ length: Math.ceil(manager().lines().length / SEGMENT_SIZE) })}
-              >
-                {(_, segmentIndex) => (
-                  <Show when={isSegmentVisible(segmentIndex * SEGMENT_SIZE)}>
-                    <Index each={Array.from({ length: SEGMENT_SIZE })}>
-                      {(_, index) => (
-                        <Show when={isVisible(segmentIndex * SEGMENT_SIZE + index)}>
-                          <pre
-                            class={styles.line}
-                            part="line"
-                            innerHTML={manager().getLine(segmentIndex * SEGMENT_SIZE + index)}
-                            style={{
-                              '--line-number': segmentIndex * SEGMENT_SIZE + index,
-                            }}
-                          />
-                        </Show>
-                      )}
-                    </Index>
-                  </Show>
-                )}
-              </Index>
-            </code>
-          )}
-        </Show>
-        <textarea
-          ref={config.textareaRef}
-          part="textarea"
-          autocomplete="off"
-          class={styles.textarea}
-          disabled={!config.editable}
-          inputmode="none"
-          spellcheck={false}
-          value={config.value}
-          rows={lineCount()}
-          onScroll={e => {
-            e.preventDefault()
-            e.stopPropagation()
-          }}
-          onKeyDown={e => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-
-              // Get current scroll position
-              const scrollTop = container.scrollTop
-
-              // Get current cursor position (caret)
-              const start = e.currentTarget.selectionStart
-              const end = e.currentTarget.selectionEnd
-
-              // Insert the new line at the cursor position
-              const value = e.currentTarget.value
-              e.currentTarget.value = setSource(
-                value.substring(0, start) + '\n' + value.substring(end),
+      <TmTextareaContext.Provider
+        value={{
+          get viewport() {
+            return viewport()
+          },
+          get character() {
+            return character()
+          },
+          get scrollTop() {
+            return scrollTop()
+          },
+          get lines() {
+            return lines()
+          },
+          get theme() {
+            return theme()
+          },
+          get tokenizer() {
+            return tokenizer()
+          },
+          segments: new Stack<SegmentData>(),
+          isVisible: createSelector(
+            () => [minLine(), maxLine()] as [number, number],
+            (index: number, [viewportMin, viewportMax]) => {
+              if (index > lines().length - 1) {
+                return false
+              }
+              return index + WINDOW > viewportMin && index - WINDOW < viewportMax
+            },
+          ),
+          isSegmentVisible: createSelector(
+            () => [minSegment(), maxSegment()],
+            (index: number) => {
+              const segmentMin = Math.floor((index - WINDOW) / SEGMENT_SIZE)
+              const segmentMax = Math.ceil((index + WINDOW) / SEGMENT_SIZE)
+              return (
+                (segmentMin <= minSegment() && segmentMax >= maxSegment()) ||
+                (segmentMin >= minSegment() && segmentMin <= maxSegment()) ||
+                (segmentMax >= minSegment() && segmentMax <= maxSegment())
               )
-
-              // Move the cursor to just after the inserted new line
-              e.currentTarget.selectionStart = e.currentTarget.selectionEnd = start + 1
-
-              // Restore the scroll position
-              container.scrollTop = scrollTop
-            }
-          }}
-          /* @ts-ignore */
-          on:input={e => {
-            const target = e.currentTarget
-            const value = target.value
-
-            // local
-            setSource(value)
-
-            // user provided callback
-            config.onInput?.(e)
-          }}
-        />
-        <code
+            },
+          ),
+        }}
+      >
+        <div
+          part="root"
           ref={element => {
-            new ResizeObserver(() => {
-              const { height } = getComputedStyle(element)
-              setCharHeight(Number(height.replace('px', '')))
-            }).observe(element)
+            container = element
+            applyStyle(element, props, 'width')
+            applyStyle(element, props, 'height')
           }}
-          aria-hidden
-          class={styles.character}
+          class={clsx(styles.container, config.class)}
+          onScroll={e => {
+            setScrollTop(e.currentTarget.scrollTop)
+            props.onScroll?.(e)
+          }}
+          style={{
+            '--background-color': theme()?.getBackgroundColor(),
+            '--char-height': `${character()?.height || 0}px`,
+            '--char-width': `${character()?.width || 0}px`,
+            '--foreground-color': theme()?.getForegroundColor(),
+            '--line-count': lines().length,
+            '--line-size': lineSize(),
+            '--selection-color': selectionColor(),
+            '--line-digits': countDigits(lines().length),
+            ...style(),
+          }}
+          {...rest}
         >
-          &nbsp;
-        </code>
-      </div>
+          <code part="code" class={styles.code}>
+            <Index each={Array.from({ length: Math.ceil(lines().length / SEGMENT_SIZE) })}>
+              {(_, segmentIndex) => <Segment index={segmentIndex} />}
+            </Index>
+          </code>
+          <textarea
+            ref={config.textareaRef}
+            part="textarea"
+            autocomplete="off"
+            class={styles.textarea}
+            disabled={!config.editable}
+            inputmode="none"
+            spellcheck={false}
+            value={config.value}
+            rows={lines().length}
+            onScroll={e => {
+              e.preventDefault()
+              e.stopPropagation()
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+
+                // Get current scroll position
+                const scrollTop = container.scrollTop
+
+                // Get current cursor position (caret)
+                const start = e.currentTarget.selectionStart
+                const end = e.currentTarget.selectionEnd
+
+                // Insert the new line at the cursor position
+                const value = e.currentTarget.value
+                e.currentTarget.value = setSource(
+                  value.substring(0, start) + '\n' + value.substring(end),
+                )
+
+                // Move the cursor to just after the inserted new line
+                e.currentTarget.selectionStart = e.currentTarget.selectionEnd = start + 1
+
+                // Restore the scroll position
+                container.scrollTop = scrollTop
+              }
+            }}
+            /* @ts-ignore */
+            on:input={e => {
+              const target = e.currentTarget
+              const value = target.value
+
+              // local
+              setSource(value)
+
+              // user provided callback
+              config.onInput?.(e)
+            }}
+          />
+          <code
+            ref={element => {
+              new ResizeObserver(([entry]) => {
+                setCharacter({
+                  height: entry!.contentRect.height,
+                  width: entry!.contentRect.width,
+                })
+              }).observe(element)
+            }}
+            aria-hidden
+            class={styles.character}
+          >
+            &nbsp;
+          </code>
+        </div>
+      </TmTextareaContext.Provider>
     )
   }
 }

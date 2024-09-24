@@ -146,11 +146,11 @@ class ThemeManager {
   }
 
   getBackgroundColor() {
-    return this.themeData.colors?.['editor.background'] || '#FFFFFF'
+    return this.themeData.colors?.['editor.background'] || undefined
   }
 
   getForegroundColor() {
-    return this.themeData.colors?.['editor.foreground'] || '#000000'
+    return this.themeData.colors?.['editor.foreground'] || undefined
   }
 }
 
@@ -328,7 +328,7 @@ export function createTmTextarea(styles: Record<string, string>) {
                 part="line"
                 innerHTML={html()?.[index]}
                 style={{
-                  '--line-number': props.index * SEGMENT_SIZE + index,
+                  '--tm-line-number': props.index * SEGMENT_SIZE + index,
                 }}
               />
             </Show>
@@ -368,7 +368,7 @@ export function createTmTextarea(styles: Record<string, string>) {
 
     const [theme] = createResource(
       () => props.theme,
-      theme => fetchFromCDN('theme', theme).then(theme => new ThemeManager(theme)),
+      async theme => fetchFromCDN('theme', theme).then(theme => new ThemeManager(theme)),
     )
 
     const lines = createMemo(() => source().split('\n'))
@@ -398,6 +398,8 @@ export function createTmTextarea(styles: Record<string, string>) {
     // NOTE:  Update to projection once this lands in solid 2.0
     //        Sync local source signal with config.source
     createRenderEffect(() => setSource(props.value))
+
+    createRenderEffect(() => console.log(theme()?.getForegroundColor()))
 
     return (
       <TmTextareaContext.Provider
@@ -457,14 +459,14 @@ export function createTmTextarea(styles: Record<string, string>) {
             props.onScroll?.(e)
           }}
           style={{
-            '--background-color': theme()?.getBackgroundColor(),
-            '--char-height': `${character()?.height || 0}px`,
-            '--char-width': `${character()?.width || 0}px`,
-            '--foreground-color': theme()?.getForegroundColor(),
-            '--line-count': lines().length,
-            '--line-size': lineSize(),
-            '--selection-color': selectionColor(),
-            '--line-digits': countDigits(lines().length),
+            '--tm-background-color': theme()?.getBackgroundColor(),
+            '--tm-char-height': `${character()?.height || 0}px`,
+            '--tm-char-width': `${character()?.width || 0}px`,
+            '--tm-foreground-color': theme()?.getForegroundColor(),
+            '--tm-line-count': lines().length,
+            '--tm-line-size': lineSize(),
+            '--tm-selection-color': selectionColor(),
+            '--tm-line-digits': countDigits(lines().length),
             ...style(),
           }}
           {...rest}

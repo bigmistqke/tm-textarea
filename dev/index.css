@@ -90,22 +90,24 @@ main {
 }
 
 .tm-textarea {
+  background: white;
   max-height: 100%;
+  color: black;
 }
 
 .line-numbers,
 .line-numbers::part(root) {
-  --line-number-width: calc((var(--line-digits) + 1) * 1ch);
+  --line-number-width: calc((var(--tm-line-digits) + 1) * 1ch);
 }
 
 .line-numbers pre::before,
 .line-numbers::part(line)::before {
   display: inline-block;
   opacity: 0.5;
-  counter-reset: variable calc(var(--line-number) + 1);
+  counter-reset: variable calc(var(--tm-line-number) + 1);
   min-width: var(--line-number-width);
   content: counter(variable);
-  color: var(--foreground-color);
+  color: var(--tm-foreground-color);
 }
 
 .line-numbers textarea,

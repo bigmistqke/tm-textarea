@@ -6,21 +6,21 @@
     display: flex;
     position: relative;
     box-sizing: border-box;
-    background-color: var(--background-color);
+    background: var(--tm-background-color, inherit);
     overflow: auto;
-    color: var(--foreground-color);
+    color: var(--tm-foreground-color, inherit);
   }
 }
 
 .container {
-  --min-height: calc(var(--line-count) * var(--char-height));
-  --min-width: calc(var(--line-size) * 1ch);
+  --tm-min-height: calc(var(--tm-line-count) * var(--tm-char-height));
+  --tm-min-width: calc(var(--tm-line-size) * 1ch);
   display: flex;
   position: relative;
   box-sizing: border-box;
-  background-color: var(--background-color);
+  background-color: var(--tm-background-color);
   overflow: auto;
-  color: var(--foreground-color);
+  color: var(--tm-foreground-color);
   font-size: 13px;
 
   & .code {
@@ -38,7 +38,7 @@
 
     & .line {
       position: absolute;
-      top: calc(var(--line-number) * var(--char-height));
+      top: calc(var(--tm-line-number) * var(--tm-char-height));
       margin: 0px;
 
       & span {
@@ -64,13 +64,13 @@
     background: transparent;
     padding: 0px;
     width: 100%;
-    min-width: var(--min-width);
+    min-width: var(--tm-min-width);
     height: 100%;
-    min-height: var(--min-height);
+    min-height: var(--tm-min-height);
     overflow: hidden;
     resize: none;
     color: transparent;
-    caret-color: var(--foreground-color);
+    caret-color: var(--tm-foreground-color);
     font-size: inherit;
     line-height: inherit;
     font-family: monospace;
@@ -79,6 +79,6 @@
   }
 
   & .textarea::selection {
-    background: var(--selection-color);
+    background: var(--tm-selection-color);
   }
 }

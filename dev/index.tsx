@@ -42,10 +42,14 @@ const App: Component = () => {
     let result = ''
 
     for (let i = 0; i < lineCount; i++) {
-      result += lines[i % totalLines] + '\n'
+      if (i === lineCount - 1) {
+        result += lines[i % totalLines]
+      } else {
+        result += lines[i % totalLines] + '\n'
+      }
     }
 
-    return result.trim() // Trim to remove the trailing newline
+    return result
   }
 
   return (

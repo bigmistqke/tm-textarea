@@ -307,7 +307,7 @@ export function createTmTextarea(styles: Record<string, string>) {
 
           return result
         },
-        () => context.lines.slice(start, end),
+        () => context.lines.slice(start, end).map(escapeHTML),
       ),
     )
 

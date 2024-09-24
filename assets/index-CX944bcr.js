@@ -5439,7 +5439,7 @@ function createTmTextarea(styles) {
       });
       setStack(currentStack);
       return result;
-    }, () => context.lines.slice(start, end)));
+    }, () => context.lines.slice(start, end).map(escapeHTML)));
     context.segments.push({
       get stack() {
         return stack();

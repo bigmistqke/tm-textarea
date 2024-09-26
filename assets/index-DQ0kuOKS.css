@@ -1,7 +1,7 @@
 :host {
   display: contents;
 
-  & ._container_m8xbj_4 {
+  & ._container_1b76z_4 {
     all: inherit;
     display: flex;
     position: relative;
@@ -12,7 +12,7 @@
   }
 }
 
-._container_m8xbj_4 {
+._container_1b76z_4 {
   --tm-min-height: calc(var(--tm-line-count) * var(--tm-char-height));
   --tm-min-width: calc(var(--tm-line-size) * 1ch);
   display: flex;
@@ -23,7 +23,7 @@
   color: var(--tm-foreground-color);
   font-size: 13px;
 
-  & ._code_m8xbj_26 {
+  & ._code_1b76z_26 {
     display: block;
     position: absolute;
     z-index: 1;
@@ -36,7 +36,7 @@
     font-family: monospace;
     white-space: pre;
 
-    & ._line_m8xbj_39 {
+    & ._line_1b76z_39 {
       position: absolute;
       top: calc(var(--tm-line-number) * var(--tm-char-height));
       margin: 0px;
@@ -48,7 +48,7 @@
     }
   }
 
-  & ._character_m8xbj_51 {
+  & ._character_1b76z_51 {
     position: absolute;
     align-self: start;
     visibility: hidden;
@@ -57,7 +57,7 @@
     line-height: inherit;
   }
 
-  & ._textarea_m8xbj_60 {
+  & ._textarea_1b76z_60 {
     transition: color 0.5s;
     outline: none;
     border: none;
@@ -68,6 +68,7 @@
     height: 100%;
     min-height: var(--tm-min-height);
     overflow: hidden;
+    overflow-anchor: none;
     resize: none;
     color: transparent;
     caret-color: var(--tm-foreground-color);
@@ -76,10 +77,9 @@
     font-family: monospace;
     text-align: inherit;
     white-space: pre;
-    overflow-anchor: none;
   }
 
-  & ._textarea_m8xbj_60::selection {
+  & ._textarea_1b76z_60::selection {
     background: var(--tm-selection-color);
   }
 }

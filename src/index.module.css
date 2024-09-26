@@ -76,6 +76,7 @@
     font-family: monospace;
     text-align: inherit;
     white-space: pre;
+    overflow-anchor: none;
   }
 
   & .textarea::selection {

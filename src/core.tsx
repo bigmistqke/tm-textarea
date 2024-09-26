@@ -492,30 +492,7 @@ export function createTmTextarea(styles: Record<string, string>) {
               e.preventDefault()
               e.stopPropagation()
             }}
-            onKeyDown={e => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
 
-                // Get current scroll position
-                const scrollTop = container.scrollTop
-
-                // Get current cursor position (caret)
-                const start = e.currentTarget.selectionStart
-                const end = e.currentTarget.selectionEnd
-
-                // Insert the new line at the cursor position
-                const value = e.currentTarget.value
-                e.currentTarget.value = setSource(
-                  value.substring(0, start) + '\n' + value.substring(end),
-                )
-
-                // Move the cursor to just after the inserted new line
-                e.currentTarget.selectionStart = e.currentTarget.selectionEnd = start + 1
-
-                // Restore the scroll position
-                container.scrollTop = scrollTop
-              }
-            }}
             /* @ts-ignore */
             on:input={e => {
               const target = e.currentTarget

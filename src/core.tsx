@@ -492,7 +492,6 @@ export function createTmTextarea(styles: Record<string, string>) {
               e.preventDefault()
               e.stopPropagation()
             }}
-
             /* @ts-ignore */
             on:input={e => {
               const target = e.currentTarget

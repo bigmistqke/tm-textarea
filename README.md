@@ -100,6 +100,8 @@ tm-textarea {
 /* overwrite the theme background-color */
 tm-textarea::part(root) {
   background: transparent;
+  /* set a  color for meanwhile the theme loads */
+  color: grey;
 }
 
 /* overwrite the selected text background color */

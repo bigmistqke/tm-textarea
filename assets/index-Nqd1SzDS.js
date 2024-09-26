@@ -5322,7 +5322,7 @@ class Stack {
   }
 }
 
-const _css = ":host {\n  display: contents;\n\n  & .container {\n    all: inherit;\n    display: flex;\n    position: relative;\n    box-sizing: border-box;\n    background: var(--tm-background-color, inherit);\n    overflow: auto;\n    color: var(--tm-foreground-color, inherit);\n  }\n}\n\n.container {\n  --tm-min-height: calc(var(--tm-line-count) * var(--tm-char-height));\n  --tm-min-width: calc(var(--tm-line-size) * 1ch);\n  display: flex;\n  position: relative;\n  box-sizing: border-box;\n  background-color: var(--tm-background-color);\n  overflow: auto;\n  color: var(--tm-foreground-color);\n  font-size: 13px;\n\n  & .code {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: layout;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .line {\n      position: absolute;\n      top: calc(var(--tm-line-number) * var(--tm-char-height));\n      margin: 0px;\n\n      & span {\n        margin: 0px;\n        background: transparent !important;\n      }\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: var(--tm-min-width);\n    height: 100%;\n    min-height: var(--tm-min-height);\n    overflow: hidden;\n    resize: none;\n    color: transparent;\n    caret-color: var(--tm-foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n    white-space: pre;\n  }\n\n  & .textarea::selection {\n    background: var(--tm-selection-color);\n  }\n}\n";
+const _css = ":host {\n  display: contents;\n\n  & .container {\n    all: inherit;\n    display: flex;\n    position: relative;\n    box-sizing: border-box;\n    background: var(--tm-background-color, inherit);\n    overflow: auto;\n    color: var(--tm-foreground-color, inherit);\n  }\n}\n\n.container {\n  --tm-min-height: calc(var(--tm-line-count) * var(--tm-char-height));\n  --tm-min-width: calc(var(--tm-line-size) * 1ch);\n  display: flex;\n  position: relative;\n  box-sizing: border-box;\n  background-color: var(--tm-background-color);\n  overflow: auto;\n  color: var(--tm-foreground-color);\n  font-size: 13px;\n\n  & .code {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: layout;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .line {\n      position: absolute;\n      top: calc(var(--tm-line-number) * var(--tm-char-height));\n      margin: 0px;\n\n      & span {\n        margin: 0px;\n        background: transparent !important;\n      }\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: var(--tm-min-width);\n    height: 100%;\n    min-height: var(--tm-min-height);\n    overflow: hidden;\n    resize: none;\n    color: transparent;\n    caret-color: var(--tm-foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n    white-space: pre;\n    overflow-anchor: none;\n  }\n\n  & .textarea::selection {\n    background: var(--tm-selection-color);\n  }\n}\n";
 
 const css = _css;
 
@@ -5586,18 +5586,6 @@ function createTmTextarea(styles) {
             index: segmentIndex
           })
         }));
-        _el$4.$$keydown = (e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            const scrollTop2 = container.scrollTop;
-            const start = e.currentTarget.selectionStart;
-            const end = e.currentTarget.selectionEnd;
-            const value = e.currentTarget.value;
-            e.currentTarget.value = setSource(value.substring(0, start) + "\n" + value.substring(end));
-            e.currentTarget.selectionStart = e.currentTarget.selectionEnd = start + 1;
-            container.scrollTop = scrollTop2;
-          }
-        };
         _el$4.addEventListener("scroll", (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -5644,7 +5632,6 @@ function createTmTextarea(styles) {
     });
   };
 }
-delegateEvents(["keydown"]);
 
 const classnames = ["container","code","line","character","textarea"];
 
@@ -5837,11 +5824,11 @@ class TmTextareaElement extends LumeElement {
   }
 }
 
-const container = "_container_12tgk_4";
-const code = "_code_12tgk_26";
-const line = "_line_12tgk_39";
-const character = "_character_12tgk_51";
-const textarea = "_textarea_12tgk_60";
+const container = "_container_m8xbj_4";
+const code = "_code_m8xbj_26";
+const line = "_line_m8xbj_39";
+const character = "_character_m8xbj_51";
+const textarea = "_textarea_m8xbj_60";
 const styles = {
 	container: container,
 	code: code,

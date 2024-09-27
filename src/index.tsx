@@ -53,6 +53,8 @@ const TmTextareaStyleSheet = sheet(css)
 
 @element('tm-textarea')
 class TmTextareaElement extends Element {
+  shadowOptions = { mode: 'open' as const, serialize: true }
+
   @booleanAttribute editable = true
   @stringAttribute grammar: Grammar = 'tsx'
   @stringAttribute stylesheet = ''

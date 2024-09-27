@@ -9,14 +9,14 @@ importers:
   .:
     dependencies:
       '@lume/element':
-        specifier: ^0.12.0
-        version: 0.12.0(@babel/core@7.25.2)(@types/react@18.3.5)
+        specifier: ^0.13.1
+        version: 0.13.1(@babel/core@7.25.2)(@types/react@18.3.5)
       '@solid-primitives/memo':
         specifier: ^1.3.9
         version: 1.3.9(solid-js@1.8.17)
       classy-solid:
-        specifier: ^0.3.8
-        version: 0.3.8
+        specifier: ^0.4.0
+        version: 0.4.2
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -507,8 +507,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.25':
     resolution: {integrity: sha512-vNk6aEwybGtawWmy/PzwnGDOjCkLWSD2wqvjGGAgOAwCGWySYXfYoxt00IJkTF+8Lb57DwOb3Aa0o9CApepiYQ==}
 
-  '@lume/element@0.12.0':
-    resolution: {integrity: sha512-djgAR4EiSIaPmrG3m4DWpB/Wt3qp99Mj876T7vxN26QBJA3f03m7a+AcUZri3J11Jzl0moiWCFxonsTLiV+l1g==}
+  '@lume/element@0.13.1':
+    resolution: {integrity: sha512-IiSgUeTXX1SjnzvxB+pnoERW5YaeGEtwbR7vyFAmBvI5PvccbTv4TR6mPweHKK/XiO/ZDT1whOS8HmSkRrxMCg==}
     peerDependencies:
       '@types/react': '*'
 
@@ -948,8 +948,8 @@ packages:
     resolution: {integrity: sha512-7VT13fmjotKpGipCW9JEQAusEPE+Ei8nl6/g4FBAmIm0GOOLMua9NDDo/DWp0ZAxCr3cPq5ZpBqmPAQgDda2Pw==}
     engines: {node: '>= 8.10.0'}
 
-  classy-solid@0.3.8:
-    resolution: {integrity: sha512-xKEpJkKsaBmecdfKoiCD1eIAcFhIsc0BhmkmaVwB2889kWcNk/cTtBXXiPCPhNLSnAdw6icn0Qcmx8MVVNGyUg==}
+  classy-solid@0.4.2:
+    resolution: {integrity: sha512-dGT0gWObBK7PeIbuxQBpatRprOKCZx+eH6g1khNFrAqUch+EA6EL72AOVE8qImlMYLnnTBVC5Dg+OdoRVCm6SQ==}
 
   cliui@8.0.1:
     resolution: {integrity: sha512-BSeNnyus75C4//NQ9gQt1/csTXyo/8Sb+afLAkzAptFuMsod9HFokGNudZpi/oQV73hnVK+sR+5PVRMd+Dr7YQ==}
@@ -1426,9 +1426,6 @@ packages:
 
   loupe@2.3.7:
     resolution: {integrity: sha512-zSMINGVYkdpYSOBmLi0D1Uo7JU9nVdQKrHxC8eYlV+9YKK9WePqAlL7lSlorG/U2Fw1w0hTBmaa/jrQ3UbPHtA==}
-
-  lowclass@7.0.1:
-    resolution: {integrity: sha512-MUCYry/VsWP3jfShf0TUyQ9tnmo6qsNUGnxbRo02GHtnyz1pq12ZlI7ep+H1s+FqpoDgA/TVrGqSScrvYhaWAQ==}
 
   lowclass@8.0.0:
     resolution: {integrity: sha512-ewnwmQN4yJx0qgQT64/nNKws1/ITiVn0/fScxaJvJWTplrcwVeK+tNV7ZlL2dMUjbig5TfAEmEWlcmJcLDedNA==}
@@ -2527,12 +2524,12 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.4.15
 
-  '@lume/element@0.12.0(@babel/core@7.25.2)(@types/react@18.3.5)':
+  '@lume/element@0.13.1(@babel/core@7.25.2)(@types/react@18.3.5)':
     dependencies:
       '@types/react': 18.3.5
       babel-preset-solid: 1.8.17(@babel/core@7.25.2)
-      classy-solid: 0.3.8
-      lowclass: 7.0.1
+      classy-solid: 0.4.2
+      lowclass: 8.0.0
       solid-js: 1.8.17
     transitivePeerDependencies:
       - '@babel/core'
@@ -3051,7 +3048,7 @@ snapshots:
       fsevents: 2.3.3
     optional: true
 
-  classy-solid@0.3.8:
+  classy-solid@0.4.2:
     dependencies:
       lowclass: 8.0.0
       solid-js: 1.8.17
@@ -3565,8 +3562,6 @@ snapshots:
   loupe@2.3.7:
     dependencies:
       get-func-name: 2.0.2
-
-  lowclass@7.0.1: {}
 
   lowclass@8.0.0: {}
 

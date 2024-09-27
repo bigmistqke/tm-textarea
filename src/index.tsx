@@ -54,7 +54,7 @@ const TmTextarea = createTmTextarea(Object.fromEntries(classnames.map(name => [n
 const TmTextareaStyleSheet = sheet(css)
 
 @element('tm-textarea')
-class TmTextareaElement extends Element {
+export class TmTextareaElement extends Element {
   shadowOptions = { mode: 'open' as const, serializable: true }
 
   @booleanAttribute editable = true
@@ -72,12 +72,11 @@ class TmTextareaElement extends Element {
     // `self` is necessary otherwise, otherwise the solid-transform would place it before super()
     const self = this
 
-    // Defining jsx in the constructor so TmTextareaElement.textarea is defined.
+    // Defining jsx in the constructor so TmTextareaElement.textarea is always defined;
     // Otherwise methods relying on textarea will not work.
     this.jsx = (
       <TmTextarea
         textareaRef={element => {
-          element.value = self.value
           self.textarea = element
         }}
         grammar={self.grammar}

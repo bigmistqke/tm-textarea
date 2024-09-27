@@ -1,7 +1,8 @@
 import test from '.?raw'
-import { createRenderEffect, createSignal, For, Show, type Component } from 'solid-js'
+import { createRenderEffect, createSignal, For, onMount, Show, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
 import 'tm-textarea'
+import { TmTextareaElement } from 'tm-textarea'
 import { setCDN } from 'tm-textarea/cdn'
 import { TmTextarea } from 'tm-textarea/solid'
 import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
@@ -169,6 +170,61 @@ const App: Component = () => {
             }}
             class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
             onInput={e => setValue(e.currentTarget.value)}
+            ref={element => {
+              // element.setRangeText('import ', 0, 0)
+              onMount(() => {
+                setTimeout(() => {}, 1000)
+              })
+            }}
+            /* @ts-ignore */
+            on:keydown={e => {
+              const { tabSize } = getComputedStyle(e.target)
+
+              const textarea = e.currentTarget as TmTextareaElement
+              const value = textarea.value
+
+              if (e.key === 'Tab') {
+                e.preventDefault()
+
+                let start = textarea.selectionStart
+                const end = textarea.selectionEnd
+
+                if (start !== end) {
+                  while (start > 0 && value[start] !== '\n') {
+                    start--
+                  }
+
+                  const replacement = e.shiftKey
+                    ? // unindent
+                      value.slice(start, end).replace(new RegExp('\n\t', 'g'), '\n')
+                    : // indent
+                      value.slice(start, end).replace(/\n/g, '\n' + '\t')
+
+                  textarea.setRangeText(replacement, start, end, 'select')
+                } else {
+                  if (e.shiftKey) {
+                    let start = textarea.selectionStart
+
+                    while (start > 0 && value[start] !== '\n') {
+                      start--
+                    }
+
+                    // unindent
+                    const replacement = value
+                      .slice(start, end)
+                      .replace(new RegExp('\n\t', 'g'), '\n')
+
+                    textarea.setRangeText(replacement, start, end, 'end')
+                  } else {
+                    // indent
+                    textarea.setRangeText('\t', start, end, 'end')
+                  }
+                }
+
+                // local
+                setValue(e.currentTarget.value)
+              }
+            }}
           />
         </Show>
       </main>

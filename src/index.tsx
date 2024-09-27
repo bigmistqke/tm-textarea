@@ -54,7 +54,9 @@ const TmTextarea = createTmTextarea(Object.fromEntries(classnames.map(name => [n
 const TmTextareaStyleSheet = sheet(css)
 
 @element('tm-textarea')
-export class TmTextareaElement extends Element {
+class TmTextareaElement extends Element {
+  shadowOptions = { mode: 'open' as const, serializable: true }
+
   @booleanAttribute editable = true
   @stringAttribute grammar: Grammar = 'tsx'
   @stringAttribute stylesheet = ''

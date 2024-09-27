@@ -1,7 +1,8 @@
 :host {
   display: contents;
+  tab-size: 4;
 
-  & ._container_1b76z_4 {
+  & ._container_tt4dw_5 {
     all: inherit;
     display: flex;
     position: relative;
@@ -12,7 +13,7 @@
   }
 }
 
-._container_1b76z_4 {
+._container_tt4dw_5 {
   --tm-min-height: calc(var(--tm-line-count) * var(--tm-char-height));
   --tm-min-width: calc(var(--tm-line-size) * 1ch);
   display: flex;
@@ -22,8 +23,9 @@
   overflow: auto;
   color: var(--tm-foreground-color);
   font-size: 13px;
+  tab-size: 4;
 
-  & ._code_1b76z_26 {
+  & ._code_tt4dw_28 {
     display: block;
     position: absolute;
     z-index: 1;
@@ -36,7 +38,7 @@
     font-family: monospace;
     white-space: pre;
 
-    & ._line_1b76z_39 {
+    & ._line_tt4dw_41 {
       position: absolute;
       top: calc(var(--tm-line-number) * var(--tm-char-height));
       margin: 0px;
@@ -48,7 +50,7 @@
     }
   }
 
-  & ._character_1b76z_51 {
+  & ._character_tt4dw_53 {
     position: absolute;
     align-self: start;
     visibility: hidden;
@@ -57,7 +59,7 @@
     line-height: inherit;
   }
 
-  & ._textarea_1b76z_60 {
+  & ._textarea_tt4dw_62 {
     transition: color 0.5s;
     outline: none;
     border: none;
@@ -79,7 +81,7 @@
     white-space: pre;
   }
 
-  & ._textarea_1b76z_60::selection {
+  & ._textarea_tt4dw_62::selection {
     background: var(--tm-selection-color);
   }
 }
@@ -187,14 +189,17 @@ main {
 
 .line-numbers pre::before,
 .line-numbers::part(line)::before {
-  display: inline-block;
+  position: absolute;
   opacity: 0.5;
   counter-reset: variable calc(var(--tm-line-number) + 1);
+  margin-left: calc(var(--line-number-width) * -1);
   min-width: var(--line-number-width);
   content: counter(variable);
   color: var(--tm-foreground-color);
 }
 
+.line-numbers pre,
+.line-numbers::part(line),
 .line-numbers textarea,
 .line-numbers::part(textarea) {
   margin-left: var(--line-number-width);

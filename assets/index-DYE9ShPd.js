@@ -1526,9 +1526,10 @@ function cleanChildren(parent, current, marker, replacement) {
 }
 
 const test = `import test from '.?raw'
-import { createRenderEffect, createSignal, For, Show, type Component } from 'solid-js'
+import { createRenderEffect, createSignal, For, onMount, Show, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
 import 'tm-textarea'
+import { TmTextareaElement } from 'tm-textarea'
 import { setCDN } from 'tm-textarea/cdn'
 import { TmTextarea } from 'tm-textarea/solid'
 import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
@@ -1696,6 +1697,61 @@ const App: Component = () => {
             }}
             class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
             onInput={e => setValue(e.currentTarget.value)}
+            ref={element => {
+              // element.setRangeText('import ', 0, 0)
+              onMount(() => {
+                setTimeout(() => {}, 1000)
+              })
+            }}
+            /* @ts-ignore */
+            on:keydown={e => {
+              const { tabSize } = getComputedStyle(e.target)
+
+              const textarea = e.currentTarget as TmTextareaElement
+              const value = textarea.value
+
+              if (e.key === 'Tab') {
+                e.preventDefault()
+
+                let start = textarea.selectionStart
+                const end = textarea.selectionEnd
+
+                if (start !== end) {
+                  while (start > 0 && value[start] !== '\\n') {
+                    start--
+                  }
+
+                  const replacement = e.shiftKey
+                    ? // unindent
+                      value.slice(start, end).replace(new RegExp('\\n\\t', 'g'), '\\n')
+                    : // indent
+                      value.slice(start, end).replace(/\\n/g, '\\n' + '\\t')
+
+                  textarea.setRangeText(replacement, start, end, 'select')
+                } else {
+                  if (e.shiftKey) {
+                    let start = textarea.selectionStart
+
+                    while (start > 0 && value[start] !== '\\n') {
+                      start--
+                    }
+
+                    // unindent
+                    const replacement = value
+                      .slice(start, end)
+                      .replace(new RegExp('\\n\\t', 'g'), '\\n')
+
+                    textarea.setRangeText(replacement, start, end, 'end')
+                  } else {
+                    // indent
+                    textarea.setRangeText('\\t', start, end, 'end')
+                  }
+                }
+
+                // local
+                setValue(e.currentTarget.value)
+              }
+            }}
           />
         </Show>
       </main>
@@ -1707,6 +1763,484 @@ export default App
 
 render(() => <App />, document.getElementById('root')!)
 `;
+
+/** Like Object.getOwnPropertyDescriptor, but looks up the prototype chain for the descriptor. */
+function getInheritedDescriptor(obj, key) {
+    let currentProto = obj;
+    let descriptor;
+    while (currentProto) {
+        descriptor = Object.getOwnPropertyDescriptor(currentProto, key);
+        if (descriptor) {
+            descriptor.owner = currentProto;
+            return descriptor;
+        }
+        currentProto = currentProto.__proto__;
+    }
+    return void 0;
+}
+
+// FIXME Solid 1.7.9+ requires a TypeScript update, so classy-solid code is made
+// un-typesafe until we update.
+
+
+/**
+ * A single function that with no args passed reads a signal, otherwise sets a
+ * signal just like a Setter does.
+ */
+// FIXME broke in 1.7.9
+
+/**
+ * Create a Solid signal wrapped as a single function that gets the value when
+ * no arguments are passed in, and sets the value when an argument is passed in.
+ * Good for alternative usage patterns, such as when read/write segregation is
+ * not needed.
+ *
+ * ```js
+ * let count = createSignalFunction(0) // create it with default value
+ * count(1) // set the value
+ * count(count() + 1) // increment
+ * let currentValue = count() // read the current value
+ * ```
+ *
+ * This is more convenient for class properties than using `createSignal`. With `createSignal`:
+ *
+ * ```js
+ * class Foo {
+ *   count = createSignal(0)
+ *
+ *   increment() {
+ *     // difficult to read
+ *     this.count[1](this.count[0]() + 1)
+ *
+ *     // also:
+ *     this.count[1](c => c + 1)
+ *   }
+ * }
+ * ```
+ *
+ * With `createSignalFunction`:
+ *
+ * ```js
+ * class Foo {
+ *   count = createSignalFunction(0)
+ *
+ *   increment() {
+ *     // Easier to read
+ *     this.count(this.count() + 1)
+ *
+ *     // also:
+ *     this.count(c => c + 1)
+ *   }
+ * }
+ * ```
+ *
+ * See also `createSignalObject` for another pattern.
+ */
+
+function createSignalFunction(value, options) {
+  const [get, set] = createSignal(value, options);
+  return function (value) {
+    if (arguments.length === 0) return get();
+    return set(
+    // @ts-ignore FIXME its ok, value is defined (even if `undefined`)
+    value);
+  };
+}
+
+/**
+ * Convert properties on an object into Solid signal-backed properties.
+ *
+ * There are two ways to use this: either by defining which properties to
+ * convert to signal-backed properties by providing an array as property names
+ * in the second arg, which is useful on plain objects, or by passing in `this`
+ * and `this.constructor` within the `constructor` of a class that has
+ * properties decorated with `@signal`.
+ *
+ * Example with a class:
+ *
+ * ```js
+ * import {signalify} from 'classy-solid'
+ * import {createEffect} from 'solid-js'
+ *
+ * class Counter {
+ *   count = 0
+ *
+ *   constructor() {
+ *     signalify(this, 'count')
+ *     setInterval(() => this.count++, 1000)
+ *   }
+ * }
+ *
+ * const counter = new Counter
+ *
+ * createEffect(() => {
+ *   console.log('count:', counter.count)
+ * })
+ * ```
+ *
+ * Example with a plain object:
+ *
+ * ```js
+ * import {signalify} from 'classy-solid'
+ * import {createEffect} from 'solid-js'
+ *
+ * const counter = {
+ *   count: 0
+ * }
+ *
+ * signalify(counter, 'count')
+ * setInterval(() => counter.count++, 1000)
+ *
+ * createEffect(() => {
+ *   console.log('count:', counter.count)
+ * })
+ * ```
+ */
+
+function signalify(obj, ...props) {
+  // Special case for Solid proxies: if the object is already a solid proxy,
+  // all properties are already reactive, no need to signalify.
+  // @ts-expect-error special indexed access
+  const proxy = obj[$PROXY];
+  if (proxy) return obj;
+  const _props = props.length ? props : Object.keys(obj).concat(Object.getOwnPropertySymbols(obj));
+
+  // Use `untrack` here to be extra safe the initial value doesn't count as a
+  // dependency and cause a reactivity loop.
+  for (const prop of _props) {
+    const isTuple = Array.isArray(prop);
+    // We cast from PropertyKey to PropKey because keys can't actually be number, only string | symbol.
+    const _prop = isTuple ? prop[0] : prop;
+    const initialValue = isTuple ? prop[1] : untrack(() => obj[_prop]);
+    __createSignalAccessor(obj, _prop, initialValue);
+  }
+  return obj;
+}
+
+// propsSetAtLeastOnce is a Set that tracks which reactive properties have been
+// set at least once.
+const propsSetAtLeastOnce = new WeakMap();
+
+// @lume/element uses this to detect if a reactive prop has been set, and if so
+// will not overwrite the value with any pre-existing value from custom element
+// pre-upgrade.
+function __isPropSetAtLeastOnce(instance, prop) {
+  return !!propsSetAtLeastOnce.get(instance)?.has(prop);
+}
+function __trackPropSetAtLeastOnce(instance, prop) {
+  if (!propsSetAtLeastOnce.has(instance)) propsSetAtLeastOnce.set(instance, new Set());
+  propsSetAtLeastOnce.get(instance).add(prop);
+}
+const isSignalGetter = new WeakSet();
+function __createSignalAccessor(obj, prop, initialVal) {
+  let descriptor = getInheritedDescriptor(obj, prop);
+  let originalGet;
+  let originalSet;
+  const isAccessor = !!(descriptor?.get || descriptor?.set);
+  if (descriptor) {
+    originalGet = descriptor.get;
+    originalSet = descriptor.set;
+    if (originalGet && isSignalGetter.has(originalGet)) return;
+    // reactivity requires both
+    if (isAccessor && !(originalGet && originalSet)) return warnNotReadWrite(prop);
+    if (!isAccessor) {
+      // no need to make a signal that can't be written to
+      if (!descriptor.writable) return warnNotWritable(prop);
+
+      // If there was a value descriptor, trust it as the source of truth
+      // for initialVal. For example, if the user class modifies the value
+      // after the initializer, it will have a different value than what
+      // we tracked from the initializer.
+      initialVal = descriptor.value;
+    }
+  }
+  const signalStorage = new WeakMap();
+  const newDescriptor = {
+    configurable: true,
+    enumerable: descriptor?.enumerable,
+    get: isAccessor ? function () {
+      __getSignal(this, signalStorage, initialVal)();
+      return originalGet.call(this);
+    } : function () {
+      return __getSignal(this, signalStorage, initialVal)();
+    },
+    set: isAccessor ? function (newValue) {
+      originalSet.call(this, newValue);
+      __trackPropSetAtLeastOnce(this, prop);
+      const s = __getSignal(this, signalStorage, initialVal);
+      s(typeof newValue === 'function' ? () => newValue : newValue);
+    } : function (newValue) {
+      __trackPropSetAtLeastOnce(this, prop);
+      const s = __getSignal(this, signalStorage, initialVal);
+      s(typeof newValue === 'function' ? () => newValue : newValue);
+    }
+  };
+  isSignalGetter.add(newDescriptor.get);
+  Object.defineProperty(obj, prop, newDescriptor);
+}
+function __getSignal(obj, storage, initialVal) {
+  let s = storage.get(obj);
+  if (!s) storage.set(obj, s = createSignalFunction(initialVal, {
+    equals: false
+  }));
+  return s;
+}
+function warnNotReadWrite(prop) {
+  console.warn(`Cannot signalify property named "${String(prop)}" which had a getter or a setter, but not both. Reactivity on accessors works only when accessors have both get and set. Skipped.`);
+}
+function warnNotWritable(prop) {
+  console.warn(`The \`@signal\` decorator was used on a property named "${String(prop)}" that is not writable. Reactivity is not enabled for non-writable properties.`);
+}
+
+let __propsToSignalify = new Map();
+function __resetPropsToSignalify() {
+  __propsToSignalify = new Map();
+}
+const Undefined = Symbol();
+/**
+ * @decorator
+ * Decorate properties of a class with `@signal` to back them with Solid
+ * signals, making them reactive. Don't forget that the class in which `@signal`
+ * is used must be decorated with `@reactive`.
+ *
+ * Related: See the Solid.js `createSignal` API for creating signals.
+ *
+ * Example:
+ *
+ * ```js
+ * import {reactive, signal} from 'classy-solid'
+ * import {createEffect} from 'solid-js'
+ *
+ * ⁣@reactive
+ * class Counter {
+ *   ⁣@signal count = 0
+ *
+ *   constructor() {
+ *     setInterval(() => this.count++, 1000)
+ *   }
+ * }
+ *
+ * const counter = new Counter
+ *
+ * createEffect(() => {
+ *   console.log('count:', counter.count)
+ * })
+ * ```
+ */
+function signal(value, context) {
+  const {
+    kind,
+    name,
+    metadata
+  } = context;
+  const props = __propsToSignalify;
+  if (context.static) throw new Error('@signal is not supported on static fields yet.');
+
+  // @prod-prune
+  queueReactiveDecoratorChecker(props);
+  if (kind === 'field') {
+    if (context.private && name !== '#finalize') throw new Error('@signal is not supported on private fields yet.');
+    if (name === '#finalize') __propsToSignalify = new Map(); // reset
+    else props.set(name, {
+      initialValue: undefined,
+      kind
+    });
+    return function (initialValue) {
+      if (name === '#finalize') {
+        // Special case for Solid proxies: if the object is already a solid proxy,
+        // all properties are already reactive, no need to signalify.
+        // @ts-expect-error special indexed access
+        const proxy = this[$PROXY];
+        if (proxy) return this;
+        for (const [prop, propSpec] of props) {
+          let initialValue = propSpec.initialValue;
+
+          // @prod-prune
+          if (!Object.hasOwn(this, prop))
+            // continue
+            throw new PropNotFoundError$1(prop);
+          __createSignalAccessor(this, prop, initialValue);
+          // CONTINUE testing this way of finalizing signal fields
+        }
+        return;
+      }
+      props.get(name).initialValue = initialValue;
+      return initialValue;
+    };
+  } else if (kind === 'accessor') {
+    const {
+      get,
+      set
+    } = value;
+    const signalStorage = new WeakMap();
+    let initialValue = undefined;
+    return {
+      init: function (initialVal) {
+        initialValue = initialVal;
+        return initialVal;
+      },
+      get: function () {
+        __getSignal(this, signalStorage, initialValue)();
+        return get.call(this);
+      },
+      set: function (newValue) {
+        set.call(this, newValue);
+        __trackPropSetAtLeastOnce(this, name); // not needed anymore? test it
+
+        const s = __getSignal(this, signalStorage, initialValue);
+        s(typeof newValue === 'function' ? () => newValue : newValue);
+      }
+    };
+  } else if (kind === 'getter' || kind === 'setter') {
+    const getOrSet = value;
+    const initialValue = Undefined;
+    if (!Object.hasOwn(metadata, 'signalStoragesPerProp')) metadata.signalStoragesPerProp = {};
+    const signalsStorages = metadata.signalStoragesPerProp;
+    let signalStorage = signalsStorages[name];
+    if (!signalStorage) signalsStorages[name] = signalStorage = new WeakMap();
+    if (!Object.hasOwn(metadata, 'getterSetterPairs')) metadata.getterSetterPairs = {};
+    const pairs = metadata.getterSetterPairs;
+
+    // Show a helpful error in case someone forgets to decorate both a getter and setter.
+    queueMicrotask(() => {
+      if (pairs[name] !== 2) throw new MissingDecoratorError(name);
+    });
+    if (kind === 'getter') {
+      pairs[name] ??= 0;
+      pairs[name]++;
+      return function () {
+        __getSignal(this, signalStorage, initialValue)();
+        return getOrSet.call(this);
+      };
+    } else {
+      pairs[name] ??= 0;
+      pairs[name]++;
+      return function (newValue) {
+        getOrSet.call(this, newValue);
+        __trackPropSetAtLeastOnce(this, name);
+        const s = __getSignal(this, signalStorage, initialValue);
+        s(typeof newValue === 'function' ? () => newValue : newValue);
+      };
+    }
+  } else throw new InvalidDecorationError();
+}
+let checkerQueued = false;
+
+/**
+ * This throws an error in some cases of an end dev forgetting to decorate a
+ * class with `@reactive` if they used `@signal` on that class's fields.
+ *
+ * This doesn't work all the time, only when the very last class decorated is
+ * missing @reactive, but something is better than nothing. There's another
+ * similar check performed in the `@reactive` decorator.
+ */
+function queueReactiveDecoratorChecker(props) {
+  if (checkerQueued) return;
+  checkerQueued = true;
+  queueMicrotask(() => {
+    checkerQueued = false;
+
+    // If the refs are still equal, it means @reactive did not run (forgot
+    // to decorate a class that uses @signal with @reactive).
+    if (props === __propsToSignalify) {
+      throw new Error(
+      // Array.from(map.keys()) instead of [...map.keys()] because it breaks in Oculus browser.
+      `Stray @signal-decorated properties detected: ${Array.from(props.keys()).join(', ')}. Did you forget to use the \`@reactive\` decorator on a class that has properties decorated with \`@signal\`?`);
+    }
+  });
+}
+let PropNotFoundError$1 = class PropNotFoundError extends Error {
+  constructor(prop) {
+    super(`Property "${String(prop)}" not found on instance of class decorated with \`@reactive\`. Did you forget to use the \`@reactive\` decorator on one of your classes that has a "${String(prop)}" property decorated with \`@signal\`?`);
+  }
+};
+class MissingDecoratorError extends Error {
+  constructor(prop) {
+    super(`Missing @signal decorator on setter or getter for property "${String(prop)}". The @signal decorator will only work on a getter/setter pair with *both* getter and setter decorated with @signal.`);
+  }
+}
+class InvalidDecorationError extends Error {
+  constructor() {
+    super('The @signal decorator is only for use on fields, getters, setters, and auto accessors.');
+  }
+}
+
+const hasOwnProperty = Object.prototype.hasOwnProperty;
+
+/**
+ * A decorator that makes a class reactive, allowing it have properties
+ * decorated with `@signal` to make those properties reactive Solid signals.
+ *
+ * Example:
+ *
+ * ```js
+ * import {reactive, signal} from 'classy-solid'
+ * import {createEffect} from 'solid-js'
+ *
+ * ⁣@reactive
+ * class Counter {
+ *   ⁣@signal count = 0
+ *
+ *   constructor() {
+ *     setInterval(() => this.count++, 1000)
+ *   }
+ * }
+ *
+ * const counter = new Counter
+ *
+ * createEffect(() => {
+ *   console.log('count:', counter.count)
+ * })
+ * ```
+ */
+function reactive(value, context) {
+  // context may be undefined when unsing reactive() without decorators
+  if (typeof value !== 'function' || context && context.kind !== 'class') throw new TypeError('The @reactive decorator is only for use on classes.');
+  const Class = value;
+
+  // For the current class decorated with @reactive, we reset the map, so that
+  // for the next class decorated with @reactive we track only that next
+  // class's properties that were decorated with @signal. We do this because
+  // field decorators do not have access to the class or its prototype.
+  //
+  // In the future maybe we can use decorator metadata for this
+  // (https://github.com/tc39/proposal-decorator-metadata)?
+  const signalProps = __propsToSignalify; // grab the current value before we reset it.
+  __resetPropsToSignalify();
+  class ReactiveDecorator extends Class {
+    constructor(...args) {
+      let instance;
+
+      // Ensure that if we're in an effect that `new`ing a class does not
+      // track signal reads, otherwise we'll get into an infinite loop. If
+      // someone want to trigger an effect based on properties of the
+      // `new`ed instance, they can explicitly read the properties
+      // themselves in the effect, making their intent clear.
+      if (getListener()) untrack(() => instance = Reflect.construct(Class, args, new.target)); // super()
+      else super(...args), instance = this;
+
+      // Special case for Solid proxies: if the object is already a solid proxy,
+      // all properties are already reactive, no need to signalify.
+      // @ts-expect-error special indexed access
+      const proxy = instance[$PROXY];
+      if (proxy) return instance;
+      for (const [prop, propSpec] of signalProps) {
+        let initialValue = propSpec.initialValue;
+
+        // @prod-prune
+        if (!(hasOwnProperty.call(instance, prop) || hasOwnProperty.call(Class.prototype, prop))) throw new PropNotFoundError(prop);
+        __createSignalAccessor(instance, prop, initialValue);
+      }
+      return instance;
+    }
+  }
+  return ReactiveDecorator;
+}
+class PropNotFoundError extends Error {
+  constructor(prop) {
+    super(`Property "${String(prop)}" not found on instance of class decorated with \`@reactive\`. Did you forget to use the \`@reactive\` decorator on one of your classes that has a "${String(prop)}" property decorated with \`@signal\`?`);
+  }
+}
 
 /**
  * NOTE: Experimental
@@ -1856,413 +2390,16 @@ function Effectful(Base) {
   };
 }
 
-/** Like Object.getOwnPropertyDescriptor, but looks up the prototype chain for the descriptor. */
-function getInheritedDescriptor(obj, key) {
-    let currentProto = obj;
-    let descriptor;
-    while (currentProto) {
-        descriptor = Object.getOwnPropertyDescriptor(currentProto, key);
-        if (descriptor) {
-            descriptor.owner = currentProto;
-            return descriptor;
-        }
-        currentProto = currentProto.__proto__;
-    }
-    return void 0;
-}
-
-const signalifiedProps = new WeakMap();
-
-/**
- * Convert properties on an object into Solid signal-backed properties.
- *
- * There are two ways to use this: either by defining which properties to
- * convert to signal-backed properties by providing an array as property names
- * in the second arg, which is useful on plain objects, or by passing in `this`
- * and `this.constructor` within the `constructor` of a class that has
- * properties decorated with `@signal`.
- *
- * Example with a class:
- *
- * ```js
- * import {signalify} from 'classy-solid'
- * import {createEffect} from 'solid-js'
- *
- * class Counter {
- *   count = 0
- *
- *   constructor() {
- *     signalify(this, 'count')
- *     setInterval(() => this.count++, 1000)
- *   }
- * }
- *
- * const counter = new Counter
- *
- * createEffect(() => {
- *   console.log('count:', counter.count)
- * })
- * ```
- *
- * Example with a plain object:
- *
- * ```js
- * import {signalify} from 'classy-solid'
- * import {createEffect} from 'solid-js'
- *
- * const counter = {
- *   count: 0
- * }
- *
- * signalify(counter, 'count')
- * setInterval(() => counter.count++, 1000)
- *
- * createEffect(() => {
- *   console.log('count:', counter.count)
- * })
- * ```
- */
-
-function signalify(obj, ...props) {
-  // We cast from PropertyKey[] to PropKey[] because numbers can't actually be keys, only string | symbol.
-  const _props = props.length ? props : Object.keys(obj).concat(Object.getOwnPropertySymbols(obj));
-  for (const prop of _props) createSignalAccessor$1(obj, prop);
-  return obj;
-}
-let gotCreateSignalAccessor = false;
-
-/**
- * This ensures that `createSignalAccessor` is kept internal to classy-solid only.
- */
-function getCreateSignalAccessor() {
-  if (gotCreateSignalAccessor) throw new Error('Export "createSignalAccessor" is internal to classy-solid only.');
-  gotCreateSignalAccessor = true;
-  return createSignalAccessor$1;
-}
-
-// propsSetAtLeastOnce is a Set that tracks which reactive properties have been
-// set at least once.
-const propsSetAtLeastOnce = new WeakMap();
-
-// @lume/element uses this to detect if a reactive prop has been set, and if so
-// will not overwrite the value with any pre-existing value from custom element
-// pre-upgrade.
-function __isPropSetAtLeastOnce(instance, prop) {
-  return !!propsSetAtLeastOnce.get(instance)?.has(prop);
-}
-function trackPropSetAtLeastOnce(instance, prop) {
-  if (!propsSetAtLeastOnce.has(instance)) propsSetAtLeastOnce.set(instance, new Set());
-  propsSetAtLeastOnce.get(instance).add(prop);
-}
-const isSignalGetter = new WeakSet();
-function createSignalAccessor$1(obj, prop,
-// Untrack here to be extra safe this doesn't count as a dependency and
-// cause a reactivity loop.
-initialVal = untrack(() => obj[prop]),
-// If an object already has a particular signalified property, override it
-// with a new one anyway (useful for maintaining consistency with class
-// inheritance where class fields always override fields from base classes
-// due to their [[Define]] semantics). False is a good default for signalify()
-// usage where someone is augmenting an existing object, but true is more
-// useful with usage of @signal on class fields.
-//
-// Note that if @signal were to specify this as false, it would cause
-// @signal-decorated subclass fields to override base class
-// @signal-decorated fields with a new value descriptor but without
-// signalifiying the field, effectively disabling reactivity, which is a bug
-// (a field decorated with @signal *must* be reactive). The test named
-// "maintains reactivity in subclass overridden fields" was added to ensure
-// that the subclass use case works.
-override = false) {
-  if (!override && signalifiedProps.get(obj)?.has(prop)) return;
-
-  // Special case for Solid proxies: if the object is already a solid proxy,
-  // all properties are already reactive, no need to signalify.
-  // @ts-expect-error special indexed access
-  const proxy = obj[$PROXY];
-  if (proxy) return;
-  let descriptor = getInheritedDescriptor(obj, prop);
-  let originalGet;
-  let originalSet;
-  if (descriptor) {
-    originalGet = descriptor.get;
-    originalSet = descriptor.set;
-
-    // Even if override is true, if we have a signal accessor, there's no
-    // need to replace it with another signal accessor. We only need to
-    // override when the current descriptor is not a signal accessor.
-    // TODO this needs tests.
-    if (originalGet && isSignalGetter.has(originalGet)) return;
-    if (originalGet || originalSet) {
-      // reactivity requires both
-      if (!originalGet || !originalSet) {
-        console.warn(`The \`@signal\` decorator was used on an accessor named "${prop.toString()}" which had a getter or a setter, but not both. Reactivity on accessors works only when accessors have both get and set. In this case the decorator does not do anything.`);
-        return;
-      }
-      delete descriptor.get;
-      delete descriptor.set;
-    } else {
-      // If there was a value descriptor, trust it as the source of truth
-      // for initialVal. For example, if the user class modifies the value
-      // after the initializer, it will have a different value than what
-      // we tracked from the initializer.
-      initialVal = descriptor.value;
-
-      // if it isn't writable, we don't need to make a reactive variable because
-      // the value won't change
-      if (!descriptor.writable) {
-        console.warn(`The \`@signal\` decorator was used on a property named "${prop.toString()}" that is not writable. Reactivity is not enabled for non-writable properties.`);
-        return;
-      }
-      delete descriptor.value;
-      delete descriptor.writable;
-    }
-  }
-  const s = createSignal(initialVal, {
-    equals: false
-  });
-  descriptor = {
-    configurable: true,
-    enumerable: true,
-    ...descriptor,
-    get: originalGet ? function () {
-      s[0](); // read
-      return originalGet.call(this);
-    } : function () {
-      return s[0](); // read
-    },
-
-    set: originalSet ? function (newValue) {
-      originalSet.call(this, newValue);
-      trackPropSetAtLeastOnce(this, prop);
-
-      // write
-      if (typeof newValue === 'function') s[1](() => newValue);else s[1](newValue);
-    } : function (newValue) {
-      trackPropSetAtLeastOnce(this, prop);
-
-      // write
-      if (typeof newValue === 'function') s[1](() => newValue);else s[1](newValue);
-    }
-  };
-  isSignalGetter.add(descriptor.get);
-  Object.defineProperty(obj, prop, descriptor);
-  if (!signalifiedProps.has(obj)) signalifiedProps.set(obj, new Set());
-  signalifiedProps.get(obj).add(prop);
-}
-
-let propsToSignalify = new Map();
-let accessKey$1 = null;
-
-/**
- * Provides a key for accessing internal APIs. If any other module tries to get
- * this, an error will be thrown, and signal and reactive decorators will not
- * work.
- */
-function getKey() {
-  if (accessKey$1) throw new Error('Attempted use of classy-solid internals.');
-  accessKey$1 = Symbol();
-  return accessKey$1;
-}
-
-/**
- * This function provides propsToSignalify to only one external module
- * (reactive.ts). The purpose of this is to keep the API private for reactive.ts
- * only, otherwise an error will be thrown that breaks signal/reactive
- * functionality.
- */
-function getPropsToSignalify(key) {
-  if (key !== accessKey$1) throw new Error('Attempted use of classy-solid internals.');
-  return propsToSignalify;
-}
-
-/**
- * Only the module that first gets the key can call this function (it should be
- * reactive.ts)
- */
-function resetPropsToSignalify(key) {
-  if (key !== accessKey$1) throw new Error('Attempted use of classy-solid internals.');
-  propsToSignalify = new Map();
-}
-function isMemberDecorator(context) {
-  return !!('private' in context);
-}
-
-/**
- * @decorator
- * Decorate properties of a class with `@signal` to back them with Solid
- * signals, making them reactive. Don't forget that the class in which `@signal`
- * is used must be decorated with `@reactive`.
- *
- * Related: See the Solid.js `createSignal` API for creating signals.
- *
- * Example:
- *
- * ```js
- * import {reactive, signal} from 'classy-solid'
- * import {createEffect} from 'solid-js'
- *
- * ⁣@reactive
- * class Counter {
- *   ⁣@signal count = 0
- *
- *   constructor() {
- *     setInterval(() => this.count++, 1000)
- *   }
- * }
- *
- * const counter = new Counter
- *
- * createEffect(() => {
- *   console.log('count:', counter.count)
- * })
- * ```
- */
-function signal(_, context) {
-  const {
-    kind,
-    name
-  } = context;
-  const props = propsToSignalify;
-  if (isMemberDecorator(context)) {
-    if (context.private) throw new Error('@signal is not supported on private fields yet.');
-    if (context.static) throw new Error('@signal is not supported on static fields yet.');
-  }
-  if (kind === 'field') {
-    props.set(name, {
-      initialValue: undefined
-    });
-    return function (initialValue) {
-      props.get(name).initialValue = initialValue;
-      return initialValue;
-    };
-  } else if (kind === 'getter' || kind === 'setter') {
-    props.set(name, {
-      initialValue: undefined
-    });
-  } else {
-    throw new Error('The @signal decorator is only for use on fields, getters, and setters. Auto accessor support is coming next if there is demand for it.');
-  }
-
-  // @prod-prune
-  queueReactiveDecoratorChecker(props);
-}
-let checkerQueued = false;
-
-/**
- * This throws an error in some cases of an end dev forgetting to decorate a
- * class with `@reactive` if they used `@signal` on that class's fields.
- *
- * This doesn't work all the time, only when the very last class decorated is
- * missing @reactive, but something is better than nothing. There's another
- * similar check performed in the `@reactive` decorator.
- */
-function queueReactiveDecoratorChecker(props) {
-  if (checkerQueued) return;
-  checkerQueued = true;
-  queueMicrotask(() => {
-    checkerQueued = false;
-
-    // If the refs are still equal, it means @reactive did not run (forgot
-    // to decorate a class that uses @signal with @reactive).
-    if (props === propsToSignalify) {
-      throw new Error(
-      // Array.from(map.keys()) instead of [...map.keys()] because it breaks in Oculus browser.
-      `Stray @signal-decorated properties detected: ${Array.from(props.keys()).join(', ')}. Did you forget to use the \`@reactive\` decorator on a class that has properties decorated with \`@signal\`?`);
-    }
-  });
-}
-
-/**
- * Access key for classy-solid private internal APIs.
- */
-const accessKey = getKey();
-const createSignalAccessor = getCreateSignalAccessor();
-const hasOwnProperty = Object.prototype.hasOwnProperty;
-
-/**
- * A decorator that makes a class reactive, allowing it have properties
- * decorated with `@signal` to make those properties reactive Solid signals.
- *
- * Example:
- *
- * ```js
- * import {reactive, signal} from 'classy-solid'
- * import {createEffect} from 'solid-js'
- *
- * ⁣@reactive
- * class Counter {
- *   ⁣@signal count = 0
- *
- *   constructor() {
- *     setInterval(() => this.count++, 1000)
- *   }
- * }
- *
- * const counter = new Counter
- *
- * createEffect(() => {
- *   console.log('count:', counter.count)
- * })
- * ```
- */
-function reactive(value, context) {
-  // context may be undefined when unsing reactive() without decorators
-  if (typeof value !== 'function' || context && context.kind !== 'class') throw new TypeError('The @reactive decorator is only for use on classes.');
-  const Class = value;
-  const signalProps = getPropsToSignalify(accessKey);
-
-  // For the current class decorated with @reactive, we reset the map, so that
-  // for the next class decorated with @reactive we track only that next
-  // class's properties that were decorated with @signal. We do this because
-  // field decorators do not have access to the class or its prototype.
-  //
-  // In the future maybe we can use decorator metadata for this
-  // (https://github.com/tc39/proposal-decorator-metadata)?
-  resetPropsToSignalify(accessKey);
-  class ReactiveDecorator extends Class {
-    constructor(...args) {
-      let instance;
-
-      // Ensure that if we're in an effect that `new`ing a class does not
-      // track signal reads, otherwise we'll get into an infinite loop. If
-      // someone want to trigger an effect based on properties of the
-      // `new`ed instance, they can explicitly read the properties
-      // themselves in the effect, making their intent clear.
-      if (getListener()) untrack(() => instance = Reflect.construct(Class, args, new.target)); // super()
-      else super(...args), instance = this;
-      for (const [prop, {
-        initialValue
-      }] of signalProps) {
-        // @prod-prune
-        if (!(hasOwnProperty.call(instance, prop) || hasOwnProperty.call(Class.prototype, prop))) {
-          throw new Error(`Property "${prop.toString()}" not found on instance of class decorated with \`@reactive\`. Did you forget to use the \`@reactive\` decorator on one of your classes that has a "${prop.toString()}" property decorated with \`@signal\`?`);
-        }
-
-        // For now at least, we always override like class fields with
-        // [[Define]] semantics. Perhaps when @signal is used on a
-        // getter/setter, we should not override in that case, but patch
-        // the prototype getter/setter (that'll be a bit of work to
-        // implement though).
-        const override = true;
-        createSignalAccessor(instance, prop, initialValue, override);
-      }
-      return instance;
-    }
-  }
-  return ReactiveDecorator;
-}
-
 var _a;
 // TODO `templateMode: 'append' | 'replace'`, which allows a subclass to specify
 // if template content replaces the content of `root`, or is appended to `root`.
-let ctor;
 const HTMLElement = globalThis.HTMLElement ??
     class HTMLElement {
         constructor() {
             throw new Error("@lume/element needs a DOM to operate with! If this code is running during server-side rendering, it means your app is trying to instantiate elements when it shouldn't be, and should be refactored to avoid doing that when no DOM is present.");
         }
     };
+const root = Symbol('root');
 // TODO Make LumeElement `abstract`
 class LumeElement extends Effectful(HTMLElement) {
     /**
@@ -2286,34 +2423,63 @@ class LumeElement extends Effectful(HTMLElement) {
      * different subclass of the class this is called on if passing in a custom
      * `name`, otherwise returns the same class this is called on.
      */
-    static defineElement(name, registry = customElements) {
+    static defineElement(name = this.elementName, registry = customElements) {
         if (!name) {
-            name = this.elementName;
-            if (registry.get(name)) {
-                console.warn(`defineElement(): An element class was already defined for tag name ${name}.`);
-                return this;
-            }
-            registry.define(name, this);
+            console.warn(`defineElement(): Element name cannot be empty. This is a no-op.`);
             return this;
         }
-        else {
-            if (registry.get(name)) {
-                console.warn(`defineElement(): An element class was already defined for tag name ${name}.`);
-                return this;
-            }
-            else {
-                // Allow the same element to be defined more than once using
-                // alternative names.
-                const Class = class extends this {
-                };
-                Class.elementName = name;
-                registry.define(name, Class);
-                return Class;
-            }
+        if (registry.get(name)) {
+            console.warn(`defineElement(): An element class was already defined for tag name ${name}. This is a no-op.`);
+            return registry.get(name);
         }
+        // Allow the same element to be defined with multiple names.
+        const alreadyUsed = !!registry.getName(this);
+        const Class = alreadyUsed ? class extends this {
+        } : this;
+        Class.elementName = name;
+        registry.define(name, Class);
+        return Class;
     }
-    /** Non-decorator users can use this to specify attributes, which automatically map to reactive properties. */
+    /**
+     * Non-decorator users can use this to specify a list of attributes, and the
+     * attributes will automatically be mapped to reactive properties. All
+     * attributes in the list will be treated with the equivalent of the
+     * `@attribute` decorator.
+     *
+     * The ability to provide a map of attribute names to attribute handlers
+     * (`Record<string, AttributeHandler>`) has been deprecaated, and instead
+     * that map should be provided via the `static observedAttributeHandlers`
+     * property, while this property is now typed to accept only a string array
+     * as per DOM spec.
+     */
     static observedAttributes;
+    /**
+     * Non-decorator users can use this instead of `observedAttributes` to
+     * specify a map of attribute names to attribute handlers. The named
+     * attributes will automatically be mapped to reactive properties, and each
+     * attribute will be treated with the corresponding attribute handler.
+     *
+     * Example:
+     *
+     * ```js
+     * element('my-el')(
+     *   class MyEl extends LumeElement {
+     *     static observedAttributeHandlers = {
+     *       foo: attribute.string(),
+     *       bar: attribute.number(),
+     *       baz: attribute.boolean(),
+     *     }
+     *
+     *     // The initial values defined here will be the values that these
+     *     // properties revert to when the respective attributes are removed.
+     *     foo = 'hello'
+     *     bar = 123
+     *     baz = false
+     *   }
+     * )
+     * ```
+     */
+    static observedAttributeHandlers;
     #handleInitialPropertyValuesIfAny() {
         // We need to delete initial value-descriptor properties (if they exist)
         // and store the initial values in the storage for our @signal property
@@ -2399,29 +2565,38 @@ class LumeElement extends Effectful(HTMLElement) {
      * selectors converted to tag names.
      */
     hasShadow = true;
-    __root = null;
+    /** Options used for the ShadowRoot, passed to `attachShadow()`. */
+    shadowOptions;
+    [root] = null;
     /**
      * Subclasses can override this to provide an alternate Node to render into
      * (f.e. a subclass can `return this` to render into itself instead of
      * making a root) regardless of the value of `hasShadow`.
      */
-    get root() {
+    get templateRoot() {
         if (!this.hasShadow)
             return this;
-        if (this.__root)
-            return this.__root;
+        if (this[root])
+            return this[root];
         if (this.shadowRoot)
-            return (this.__root = this.shadowRoot);
+            return (this[root] = this.shadowRoot);
         // TODO use `this.attachInternals()` (ElementInternals API) to get the root instead.
-        return (this.__root = this.attachShadow({ mode: 'open' }));
+        return (this[root] = this.attachShadow({ mode: 'open', ...this.shadowOptions }));
     }
-    set root(v) {
+    set templateRoot(v) {
         if (!this.hasShadow)
             throw new Error('Can not set root, element.hasShadow is false.');
         // @prod-prune
-        if (this.__root || this.shadowRoot)
+        if (this[root] || this.shadowRoot)
             throw new Error('Element root can only be set once if there is no ShadowRoot.');
-        this.__root = v;
+        this[root] = v;
+    }
+    /** @deprecated `root` is renamed to `templateRoot`, and `root` will be removed in a future breaking version. */
+    get root() {
+        return this.templateRoot;
+    }
+    set root(val) {
+        this.templateRoot = val;
     }
     /**
      * Define which `Node` to append style sheets to when `hasShadow` is `true`.
@@ -2438,18 +2613,18 @@ class LumeElement extends Effectful(HTMLElement) {
      * somewhere else).
      */
     get styleRoot() {
-        return this.root;
+        return this.templateRoot;
     }
     attachShadow(options) {
-        if (this.__root)
+        if (this[root])
             console.warn('Element already has a root defined.');
-        return (this.__root = super.attachShadow(options));
+        return (this[root] = super.attachShadow(options));
     }
     #disposeTemplate;
     connectedCallback() {
         const template = this.template;
         if (template)
-            this.#disposeTemplate = render(typeof template === 'function' ? template.bind(this) : () => template, this.root);
+            this.#disposeTemplate = render(typeof template === 'function' ? template.bind(this) : () => template, this.templateRoot);
         this.#setStyle();
     }
     disconnectedCallback() {
@@ -2457,16 +2632,16 @@ class LumeElement extends Effectful(HTMLElement) {
         this.#disposeTemplate?.();
         this.#cleanupStyle();
     }
-    static __styleRootNodeRefCountPerTagName = new WeakMap();
+    static #styleRootNodeRefCountPerTagName = new WeakMap();
     #styleRootNode = null;
     #defaultHostStyle = (hostSelector) => /*css*/ `${hostSelector} {
 		display: block;
 	}`;
-    static __elementId = 0;
-    #id = _a.__elementId++;
+    static #elementId = 0;
+    #id = _a.#elementId++;
     #dynamicStyle = null;
     #setStyle() {
-        ctor = this.constructor;
+        const ctor = this.constructor;
         const staticCSS = typeof ctor.css === 'function' ? (ctor.css = ctor.css()) : ctor.css || '';
         const instanceCSS = typeof this.css === 'function' ? this.css() : this.css || '';
         if (this.hasShadow) {
@@ -2492,9 +2667,9 @@ class LumeElement extends Effectful(HTMLElement) {
             // Document, or a ShadowRoot.
             const rootNode = this.getRootNode();
             this.#styleRootNode = rootNode === document ? document.head : rootNode;
-            let refCountPerTagName = _a.__styleRootNodeRefCountPerTagName.get(this.#styleRootNode);
+            let refCountPerTagName = _a.#styleRootNodeRefCountPerTagName.get(this.#styleRootNode);
             if (!refCountPerTagName)
-                _a.__styleRootNodeRefCountPerTagName.set(this.#styleRootNode, (refCountPerTagName = {}));
+                _a.#styleRootNodeRefCountPerTagName.set(this.#styleRootNode, (refCountPerTagName = {}));
             const refCount = refCountPerTagName[this.tagName] || 0;
             refCountPerTagName[this.tagName] = refCount + 1;
             if (refCount === 0) {
@@ -2533,7 +2708,7 @@ class LumeElement extends Effectful(HTMLElement) {
         do {
             if (this.hasShadow)
                 break;
-            const refCountPerTagName = _a.__styleRootNodeRefCountPerTagName.get(this.#styleRootNode);
+            const refCountPerTagName = _a.#styleRootNodeRefCountPerTagName.get(this.#styleRootNode);
             if (!refCountPerTagName)
                 break;
             let refCount = refCountPerTagName[this.tagName];
@@ -2590,32 +2765,6 @@ function defineProp(obj, prop, value) {
         enumerable: true,
     });
 }
-// EXAMPLES
-// type foo0 = JoinToCamelCase<'fooBarBaz'> // Becomes "foobabaz"
-// type foo3 = JoinToCamelCase<'foo-bar-baz'> // Becomes "fooBarBaz"
-// type foo5 = JoinToCamelCase<'foo bar baz', ' '> // Becomes "fooBarBaz"
-// type foo6 = JoinToCamelCase<'foo_bar_baz', '_'> // Becomes "fooBarBaz"
-// type foo14 = JoinToCamelCase<'foo:bar:baz', ':'> // Becomes "fooBarBaz"
-// type foo4 = JoinToCamelCase<'foobarbaz'> // the same
-// type foo7 = SplitCamelCase<'fooBar'> // Becomes "foo-bar"
-// type foo12 = SplitCamelCase<'fooBar', '_'> // Becomes "foo_bar"
-// type foo13 = SplitCamelCase<'fooBar', ' '> // Becomes "foo bar"
-// type foo11 = SplitCamelCase<'foo-bar'> // the same
-// type foo8 = SplitCamelCase<'foo bar'> // the same
-// type foo9 = SplitCamelCase<'foo_bar'> // the same
-// type foo10 = SplitCamelCase<'foobar'> // the same
-// type t = Join<['foo', 'bar'], ':'> // Becomes "foo:bar"
-//
-// interface KebabCased {
-//     "foo-bar": string;
-//     foo: number;
-// }
-// type CamelCased = CamelCasedProps<KebabCased>;
-// Becomes
-// {
-//    fooBar: string;
-//    foo: number;
-// }
 
 const __classFinishers = [];
 function attribute(handlerOrValue, context) {
@@ -2625,7 +2774,6 @@ function attribute(handlerOrValue, context) {
     // otherwise used as a decorator factory, possibly being passed options, like `@attribute({...})`
     const handler = handlerOrValue;
     return (value, context) => handleAttributeDecoration(value, context, handler);
-    // TODO throw an error for cases when @element is not used on a class with @attribute decorations, similar to classy-solid @signal/@reactive.
 }
 function handleAttributeDecoration(value, context, attributeHandler = {}) {
     const { kind, name, private: isPrivate, static: isStatic, metadata } = context;
@@ -2690,14 +2838,13 @@ function __setUpAttribute(ctor, propName, attributeHandler) {
         ctor.observedAttributes.push(attrName);
     mapAttributeToProp(ctor.prototype, attrName, propName, attributeHandler);
 }
-// TODO this stores attributes as an inheritance chain on the constructor. It'd
-// be more fool-proof (not publicly exposed) to store attribute-prop mappings in
-// WeakMaps, but then we'd need to implement our own inheritance
-// (prototype-like) lookup for the attributes.
+const hasAttributeChangedCallback = Symbol('hasAttributeChangedCallback');
+const __attributesToProps = Symbol('attributesToProps');
+// This stores attribute definitions as an inheritance chain on the constructor.
 function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
     // Only define attributeChangedCallback once.
-    if (!prototype.__hasAttributeChangedCallback) {
-        prototype.__hasAttributeChangedCallback = true;
+    if (!prototype[hasAttributeChangedCallback]) {
+        prototype[hasAttributeChangedCallback] = true;
         const originalAttrChanged = prototype.attributeChangedCallback;
         prototype.attributeChangedCallback = function (attr, oldVal, newVal) {
             // If the class already has an attributeChangedCallback, let is run,
@@ -2712,41 +2859,24 @@ function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
                 prototype.__proto__?.attributeChangedCallback?.call(this, attr, oldVal, newVal);
             }
             // map from attribute to property
-            const prop = this.__attributesToProps && this.__attributesToProps[attr];
-            if (prop) {
-                const handler = prop.attributeHandler;
-                // prettier-ignore
-                this[prop.name] = !handler
-                    ? newVal
-                    : newVal === null // attribute removed
-                        ? 'default' in handler
-                            ? handler.default
-                            : null
-                        : handler.from
-                            ? handler.from(newVal)
-                            : newVal;
-            }
+            const prop = this[__attributesToProps]?.[attr];
+            this[prop.name] = newVal;
         };
     }
-    // Extend the current prototype's __attributesToProps object from the super
-    // prototype's __attributesToProps object.
+    // Extend the current prototype's attributesToProps object from the super
+    // prototype's attributesToProps object.
     //
     // We use inheritance here or else all classes would pile their
     // attribute-prop definitions on a shared base class (they can clash,
     // override each other willy nilly and seemingly randomly).
-    if (!prototype.hasOwnProperty('__attributesToProps')) {
-        // using defineProperty so that it is non-writable, non-enumerable, non-configurable
-        Object.defineProperty(prototype, '__attributesToProps', {
-            value: {
-                __proto__: prototype.__attributesToProps || Object.prototype,
-            },
-        });
+    if (!Object.hasOwn(prototype, __attributesToProps)) {
+        prototype[__attributesToProps] = { __proto__: prototype[__attributesToProps] || Object.prototype };
     }
-    prototype.__attributesToProps[attr] = { name: prop, attributeHandler };
+    prototype[__attributesToProps][attr] = { name: prop, attributeHandler };
 }
 const toString = (str) => str;
 /**
- * An attribute type for use in the object form of `static observedAttributes`
+ * An attribute type for use in the `static observedAttributeHandlers` map
  * when not using decorators.
  *
  * Example usage without decorators:
@@ -2754,7 +2884,7 @@ const toString = (str) => str;
  * ```js
  * element('my-el')(
  *   class MyEl extends LumeElement {
- *     static observedAttributes = {
+ *     static observedAttributeHandlers = {
  *       name: attribute.string()
  *     }
  *
@@ -2808,7 +2938,7 @@ function stringAttribute(value, context) {
 }
 const toNumber = (str) => +str;
 /**
- * An attribute type for use in the object form of `static observedAttributes`
+ * An attribute type for use in the `static observedAttributeHandlers` map
  * when not using decorators.
  *
  * Example usage without decorators:
@@ -2816,7 +2946,7 @@ const toNumber = (str) => +str;
  * ```js
  * element('my-el')(
  *   class MyEl extends LumeElement {
- *     static observedAttributes = {
+ *     static observedAttributeHandlers = {
  *       money: attribute.number()
  *     }
  *
@@ -2828,7 +2958,7 @@ const toNumber = (str) => +str;
 attribute.number = (() => ({ from: toNumber }));
 const toBoolean = (str) => str !== 'false';
 /**
- * An attribute type for use in the object form of `static observedAttributes`
+ * An attribute type for use in the `static observedAttributeHandlers` map
  * when not using decorators.
  *
  * Example usage without decorators:
@@ -2836,7 +2966,7 @@ const toBoolean = (str) => str !== 'false';
  * ```js
  * element('my-el')(
  *   class MyEl extends LumeElement {
- *     static observedAttributes = {
+ *     static observedAttributeHandlers = {
  *       hasCash: attribute.boolean()
  *     }
  *
@@ -2892,6 +3022,7 @@ function booleanAttribute(value, context) {
     return attribute(attribute.boolean())(value, context);
 }
 
+const isAttributeHandler = Symbol('isAttributeHandler');
 function element(tagNameOrClass, autoDefineOrContext) {
     let tagName = '';
     let autoDefine = !!(true);
@@ -2923,11 +3054,19 @@ function applyElementDecoration(Class, context, tagName, autoDefine) {
         // track the types, and convert observedAttributes to an array so
         // the browser will understand it like usual.
         // Delete it, so that it will be re-created as an array by the
-        // following _setUpAttribute calls.
+        // following __setUpAttribute calls.
         Ctor.observedAttributes = undefined;
-        for (const prop in attrs)
+        const stack = new Error().stack;
+        console.warn('Defining the static observedAttributes property as a map of attribute names to attribute handlers is now deprecated, please use the static observedAttributeHandlers property to define the map instead.\n' +
+            stack);
+        const _attrs = attrs;
+        for (const prop in _attrs)
             __setUpAttribute(Ctor, prop, attrs[prop]);
     }
+    const handlers = Object.hasOwn(Ctor, 'observedAttributeHandlers') ? Ctor.observedAttributeHandlers : undefined;
+    if (handlers)
+        for (const prop of Object.keys(handlers))
+            __setUpAttribute(Ctor, prop, handlers[prop]);
     // We need to compose with @reactive so that it will signalify any @signal properties.
     Ctor = reactive(Ctor, context);
     class ElementDecorator extends Ctor {
@@ -2938,24 +3077,15 @@ function applyElementDecoration(Class, context, tagName, autoDefine) {
             // objects (super() is already untracked by the reactive decorator).
             untrack(() => {
                 handlePreUpgradeValues(this);
-                const propsToSignalify = [];
-                const attrsToProps = 
-                // @ts-expect-error private access
-                ElementDecorator.prototype.__attributesToProps ?? {};
-                for (const propSpec of Object.values(attrsToProps)) {
-                    const prop = propSpec.name;
-                    const useSignal = !noSignal?.has(prop);
-                    if (useSignal)
-                        propsToSignalify.push(prop);
-                    const handler = propSpec.attributeHandler;
-                    // Default values for fields are handled in their initializer,
-                    // and this catches default values for getters/setters.
-                    if (handler && !('default' in handler))
-                        handler.default = this[prop];
-                }
+                const attrsToProps = ElementDecorator.prototype[__attributesToProps] ?? {};
+                // We're using Object.values here for *own* properties so
+                // we handle properties of the current decorated class (not
+                // of the super classes).
+                const propSpecs = Object.values(attrsToProps);
                 // This is signalifying any attribute props that may have been
-                // defined in `static observedAttribute` rather than with @attribute
-                // decorator (which composes @signal), so that we also cover
+                // defined in `static observedAttributes` or `static
+                // observedAttributeHandlers` rather than with an attribute
+                // decorator (which composes `@signal`), so that we also cover
                 // non-decorator usage until native decorators are out.
                 //
                 // Note, `signalify()` returns early if a property was already
@@ -2971,8 +3101,99 @@ function applyElementDecoration(Class, context, tagName, autoDefine) {
                 // Having to duplicate keys in observedAttributes as well as class
                 // fields is more room for human error, so it'll be nice to remove
                 // non-decorator usage.
-                if (propsToSignalify.length)
-                    signalify(this, ...propsToSignalify);
+                for (const propSpec of propSpecs) {
+                    const prop = propSpec.name;
+                    const useSignal = !noSignal?.has(prop);
+                    if (!useSignal)
+                        continue;
+                    let isField = false;
+                    const fieldDesc = Object.getOwnPropertyDescriptor(this, prop);
+                    const protoDesc = Object.getOwnPropertyDescriptor(Class.prototype, prop);
+                    // The decorated property is either on the instance (field), or the decorated class's prototype (getter/setter).
+                    let descriptor = fieldDesc;
+                    if (descriptor)
+                        isField = true; // not on prototype
+                    if (!descriptor)
+                        descriptor = protoDesc;
+                    if (!descriptor)
+                        descriptorError(prop);
+                    const { get, set } = descriptor;
+                    const isAccessor = !!(descriptor && (get || set));
+                    const initialValue = isAccessor && get ? get.call(this) : this[prop];
+                    signalify(isField ? this : Class.prototype, [
+                        prop,
+                        initialValue,
+                    ]);
+                }
+                // Intercept JS values to run attribute handlers.
+                for (const propSpec of propSpecs) {
+                    const prop = propSpec.name;
+                    const handler = propSpec.attributeHandler;
+                    if (!handler)
+                        continue;
+                    // Default values for fields are handled in their initializer,
+                    // and this catches default values for getters/setters.
+                    if (!('default' in handler))
+                        handler.default = this[prop];
+                    let isField = false;
+                    const fieldDesc = Object.getOwnPropertyDescriptor(this, prop);
+                    const protoDesc = Object.getOwnPropertyDescriptor(Class.prototype, prop);
+                    // The decorated property is either on the instance (field), or the decorated class's prototype (getter/setter).
+                    let descriptor = fieldDesc;
+                    if (descriptor)
+                        isField = true; // not on prototype
+                    if (!descriptor)
+                        descriptor = protoDesc;
+                    if (!descriptor)
+                        descriptorError(prop);
+                    const { get, set, writable } = descriptor;
+                    const isAccessor = !!(get || set);
+                    if (!isAccessor && !isField)
+                        throw new Error(`Cannot map attribute to prototype value property "${String(prop)}". Only prototype getters/setters are supported. Either make the property a class field, or make two separate properties: one for the attribute as a class field, one for the prototype value property.`);
+                    if ((isAccessor && !set) || (!isAccessor && !writable))
+                        throw new Error(`An attribute decorator cannot be used on readonly property "${String(prop)}".`);
+                    let storage;
+                    // We check if we have an accessor, because sometimes we
+                    // don't if the property is not signalified (f.e. if
+                    // `@attribute @noSignal` was used, then we have a regular
+                    // field.)
+                    if (isAccessor) {
+                        if (set?.[isAttributeHandler])
+                            continue;
+                    }
+                    else {
+                        // We must be patching a field
+                        storage = Symbol('attributeHandlerStorage:' + String(prop));
+                        // @ts-expect-error indexed access with symbol
+                        this[storage] = this[prop];
+                    }
+                    const location = isField ? this : Class.prototype;
+                    const newGetter = isAccessor
+                        ? get
+                        : // @ts-expect-error indexed access with symbol
+                            (() => this[storage]);
+                    const newSetter = isAccessor
+                        ? // function because it will be on the prototype, needs dynamic `this`
+                            function (value) {
+                                if (typeof value === 'string' || value === null)
+                                    value = __handleAttributeValue(value, handler);
+                                set.call(this, value);
+                            }
+                        : ((value) => {
+                            if (typeof value === 'string' || value === null)
+                                value = __handleAttributeValue(value, handler);
+                            // @ts-expect-error indexed access with symbol
+                            this[storage] = value;
+                        });
+                    newGetter && (newGetter[isAttributeHandler] = true);
+                    newSetter[isAttributeHandler] = true;
+                    Object.defineProperty(location, prop, {
+                        enumerable: descriptor.enumerable,
+                        configurable: descriptor.configurable,
+                        get: newGetter,
+                        set: newSetter,
+                    });
+                }
             });
         }
     }
@@ -3025,10 +3246,25 @@ function handlePreUpgradeValues(self) {
             delete self[key];
         }
         // Set the pre-upgrade value (allowing any inherited
-        // accessor to operate on it).
+        // or own accessor to operate on it).
         // @ts-expect-error dynamic decorator stuff, has no impact on user types.
         self[key] = value;
     }
+}
+function __handleAttributeValue(value, handler) {
+    // prettier-ignore
+    return !handler
+        ? value
+        : value === null // attribute removed
+            ? 'default' in handler
+                ? handler.default
+                : null
+            : handler.from
+                ? handler.from(value)
+                : value;
+}
+function descriptorError(prop) {
+    throw new TypeError(`Missing descriptor for property "${String(prop)}" while mapping attributes to properties. Make sure the @element decorator is the first decorator on your element class, and if you're using 'static observedAttributes' or 'static observedAttributeHandlers' make sure you also define the respective class fields for the initial values. If a pre-existing class is already decoratored with other decorators, extend from it, then use @element directly on the subclass.`);
 }
 
 var EQUALS_FALSE_OPTIONS = { equals: false };
@@ -5322,7 +5558,7 @@ class Stack {
   }
 }
 
-const _css = ":host {\n  display: contents;\n\n  & .container {\n    all: inherit;\n    display: flex;\n    position: relative;\n    box-sizing: border-box;\n    background: var(--tm-background-color, inherit);\n    overflow: auto;\n    color: var(--tm-foreground-color, inherit);\n  }\n}\n\n.container {\n  --tm-min-height: calc(var(--tm-line-count) * var(--tm-char-height));\n  --tm-min-width: calc(var(--tm-line-size) * 1ch);\n  display: flex;\n  position: relative;\n  box-sizing: border-box;\n  background-color: var(--tm-background-color);\n  overflow: auto;\n  color: var(--tm-foreground-color);\n  font-size: 13px;\n\n  & .code {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: layout;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .line {\n      position: absolute;\n      top: calc(var(--tm-line-number) * var(--tm-char-height));\n      margin: 0px;\n\n      & span {\n        margin: 0px;\n        background: transparent !important;\n      }\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: var(--tm-min-width);\n    height: 100%;\n    min-height: var(--tm-min-height);\n    overflow: hidden;\n    overflow-anchor: none;\n    resize: none;\n    color: transparent;\n    caret-color: var(--tm-foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n    white-space: pre;\n  }\n\n  & .textarea::selection {\n    background: var(--tm-selection-color);\n  }\n}\n";
+const _css = ":host {\n  display: contents;\n  tab-size: 4;\n\n  & .container {\n    all: inherit;\n    display: flex;\n    position: relative;\n    box-sizing: border-box;\n    background: var(--tm-background-color, inherit);\n    overflow: auto;\n    color: var(--tm-foreground-color, inherit);\n  }\n}\n\n.container {\n  --tm-min-height: calc(var(--tm-line-count) * var(--tm-char-height));\n  --tm-min-width: calc(var(--tm-line-size) * 1ch);\n  display: flex;\n  position: relative;\n  box-sizing: border-box;\n  background-color: var(--tm-background-color);\n  overflow: auto;\n  color: var(--tm-foreground-color);\n  font-size: 13px;\n  tab-size: 4;\n\n  & .code {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: layout;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .line {\n      position: absolute;\n      top: calc(var(--tm-line-number) * var(--tm-char-height));\n      margin: 0px;\n\n      & span {\n        margin: 0px;\n        background: transparent !important;\n      }\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: var(--tm-min-width);\n    height: 100%;\n    min-height: var(--tm-min-height);\n    overflow: hidden;\n    overflow-anchor: none;\n    resize: none;\n    color: transparent;\n    caret-color: var(--tm-foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n    white-space: pre;\n  }\n\n  & .textarea::selection {\n    background: var(--tm-selection-color);\n  }\n}\n";
 
 const css = _css;
 
@@ -5648,7 +5884,7 @@ function sheet(text) {
   return cache.get(text);
 }
 
-let _initClass, _classDecs, _init_editable, _init_grammar, _init_stylesheet, _init_theme, _init_value;
+let _initClass, _classDecs, _init_editable, _init_grammar, _init_stylesheet, _init_theme, _init_value, _init_textarea, _init_jsx, _init_finalize;
 function _applyDecs(e, t, r, n, o, a) {
   function i(e2, t2, r2) {
     return function(n2, o2) {
@@ -5787,48 +6023,84 @@ let _TmTextareaElement;
 class TmTextareaElement extends LumeElement {
   static {
     ({
-      e: [_init_editable, _init_grammar, _init_stylesheet, _init_theme, _init_value],
+      e: [_init_editable, _init_grammar, _init_stylesheet, _init_theme, _init_value, _init_textarea, _init_jsx, _init_finalize],
       c: [_TmTextareaElement, _initClass]
-    } = _applyDecs(this, [[booleanAttribute, 0, "editable"], [stringAttribute, 0, "grammar"], [stringAttribute, 0, "stylesheet"], [stringAttribute, 0, "theme"], [stringAttribute, 0, "value"]], _classDecs, 0, void 0, LumeElement));
+    } = _applyDecs(this, [[booleanAttribute, 0, "editable"], [stringAttribute, 0, "grammar"], [stringAttribute, 0, "stylesheet"], [stringAttribute, 0, "theme"], [stringAttribute, 0, "value"], [signal, 0, "textarea"], [signal, 0, "jsx"], [signal, 0, "finalize", (o) => o.#finalize, (o, v) => o.#finalize = v]], _classDecs, 0, (_) => #finalize in _, LumeElement));
   }
+  shadowOptions = {
+    mode: "open",
+    serializable: true
+  };
   editable = _init_editable(this, true);
   grammar = _init_grammar(this, "tsx");
   stylesheet = _init_stylesheet(this, "");
   theme = _init_theme(this, "dark-plus");
   value = _init_value(this, "");
+  textarea = _init_textarea(this, null);
+  jsx = _init_jsx(this);
+  #finalize = _init_finalize(this);
+  constructor() {
+    super();
+    const self = this;
+    this.jsx = createComponent(TmTextarea$1, {
+      textareaRef: (element2) => {
+        self.textarea = element2;
+      },
+      get grammar() {
+        return self.grammar;
+      },
+      get theme() {
+        return self.theme;
+      },
+      get value() {
+        return self.value;
+      },
+      get editable() {
+        return self.editable;
+      },
+      onInput: (e) => self.value = e.currentTarget.value
+    });
+  }
   template = () => {
-    const _self$ = this;
     const adoptedStyleSheets = this.shadowRoot.adoptedStyleSheets;
     adoptedStyleSheets.push(TmTextareaStyleSheet);
     if (this.stylesheet) {
       adoptedStyleSheets.push(sheet(this.stylesheet));
     }
-    return createComponent(TmTextarea$1, {
-      get grammar() {
-        return _self$.grammar;
-      },
-      get theme() {
-        return _self$.theme;
-      },
-      get value() {
-        return _self$.value;
-      },
-      get editable() {
-        return _self$.editable;
-      },
-      onInput: (e) => _self$.value = e.currentTarget.value
-    });
+    return this.jsx;
   };
+  get selectionStart() {
+    return this.textarea.selectionStart;
+  }
+  set selectionStart(start) {
+    this.textarea.selectionStart = start;
+  }
+  get selectionEnd() {
+    return this.textarea.selectionEnd;
+  }
+  set selectionEnd(end) {
+    this.textarea.selectionEnd = end;
+  }
+  setRangeText(replacement, start, end, selectMode) {
+    this.textarea.setRangeText(replacement, start, end, selectMode);
+    this.value = this.textarea.value;
+  }
+  setSelectionRange(selectionStart, selectionEnd, selectionDirection) {
+    this.textarea.setSelectionRange(selectionStart, selectionEnd, selectionDirection);
+  }
+  select() {
+    this.textarea.select();
+  }
   static {
     _initClass();
   }
 }
 
-const container = "_container_1b76z_4";
-const code = "_code_1b76z_26";
-const line = "_line_1b76z_39";
-const character = "_character_1b76z_51";
-const textarea = "_textarea_1b76z_60";
+const container = "_container_tt4dw_5";
+const code = "_code_tt4dw_28";
+const line = "_line_tt4dw_41";
+const character = "_character_tt4dw_53";
+const textarea = "_textarea_tt4dw_62";
 const styles = {
 	container: container,
 	code: code,
@@ -6230,7 +6502,48 @@ const App = () => {
       },
       get children() {
         var _el$32 = _tmpl$();
+        use((element) => {
+          onMount(() => {
+            setTimeout(() => {
+            }, 1e3);
+          });
+        }, _el$32);
         _el$32.$$input = (e) => setValue(e.currentTarget.value);
+        _el$32.addEventListener("keydown", (e) => {
+          getComputedStyle(e.target);
+          const textarea = e.currentTarget;
+          const value2 = textarea.value;
+          if (e.key === "Tab") {
+            e.preventDefault();
+            let start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            if (start !== end) {
+              while (start > 0 && value2[start] !== "\n") {
+                start--;
+              }
+              const replacement = e.shiftKey ? (
+                // unindent
+                value2.slice(start, end).replace(new RegExp("\n	", "g"), "\n")
+              ) : (
+                // indent
+                value2.slice(start, end).replace(/\n/g, "\n	")
+              );
+              textarea.setRangeText(replacement, start, end, "select");
+            } else {
+              if (e.shiftKey) {
+                let start2 = textarea.selectionStart;
+                while (start2 > 0 && value2[start2] !== "\n") {
+                  start2--;
+                }
+                const replacement = value2.slice(start2, end).replace(new RegExp("\n	", "g"), "\n");
+                textarea.setRangeText(replacement, start2, end, "end");
+              } else {
+                textarea.setRangeText("	", start, end, "end");
+              }
+            }
+            setValue(e.currentTarget.value);
+          }
+        });
         _el$32._$owner = getOwner();
         createRenderEffect((_p$) => {
           var _v$ = grammar(), _v$2 = theme(), _v$3 = editable(), _v$4 = `${padding()}px`, _v$5 = lineNumbers() ? "line-numbers tm-textarea" : "tm-textarea";

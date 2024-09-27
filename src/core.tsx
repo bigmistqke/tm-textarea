@@ -492,10 +492,53 @@ export function createTmTextarea(styles: Record<string, string>) {
               e.preventDefault()
               e.stopPropagation()
             }}
+            /* @ts-ignore */
+            on:keydown={e => {
+              const area = e.currentTarget
+              const value = area.value
 
+              if (e.key === 'Tab') {
+                e.preventDefault()
+
+                // fix me: it changes tabs for spaces
+                let { tabSize } = getComputedStyle(area)
+
+                let start = area.selectionStart
+                const end = area.selectionEnd
+
+                if (start !== end) {
+                  // something is selected
+                  // move "start" to previous `\n`
+                  while (start > 0 && value[start] !== '\n') {
+                    start--
+                  }
+
+                  let replacement
+
+                  if (e.shiftKey) {
+                    // unindent
+                    replacement = value
+                      .slice(start, end)
+                      .replace(new RegExp('\n' + ' '.repeat(+tabSize), 'g'), '\n')
+                  } else {
+                    // indent
+                    replacement = value
+                      .slice(start, end)
+                      .replace(/\n/g, '\n' + ' '.repeat(+tabSize))
+                  }
+                  area.setRangeText(replacement, start, end, 'select')
+                } else {
+                  area.setRangeText(' '.repeat(+tabSize), start, end, 'end')
+                }
+
+                // local
+                setSource(area.value)
+              }
+            }}
             /* @ts-ignore */
             on:input={e => {
               const target = e.currentTarget
+
               const value = target.value
 
               // local

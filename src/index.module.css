@@ -9,6 +9,7 @@
     background: var(--tm-background-color, inherit);
     overflow: auto;
     color: var(--tm-foreground-color, inherit);
+    tab-size: var(--tm-tab-size, 2);
   }
 }
 
@@ -22,6 +23,7 @@
   overflow: auto;
   color: var(--tm-foreground-color);
   font-size: 13px;
+  tab-size: var(--tm-tab-size, 2);
 
   & .code {
     display: block;
@@ -44,6 +46,7 @@
       & span {
         margin: 0px;
         background: transparent !important;
+        white-space: pre;
       }
     }
   }

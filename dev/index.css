@@ -102,14 +102,17 @@ main {
 
 .line-numbers pre::before,
 .line-numbers::part(line)::before {
-  display: inline-block;
+  position: absolute;
   opacity: 0.5;
   counter-reset: variable calc(var(--tm-line-number) + 1);
+  margin-left: calc(var(--line-number-width) * -1);
   min-width: var(--line-number-width);
   content: counter(variable);
   color: var(--tm-foreground-color);
 }
 
+.line-numbers pre,
+.line-numbers::part(line),
 .line-numbers textarea,
 .line-numbers::part(textarea) {
   margin-left: var(--line-number-width);

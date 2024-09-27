@@ -1,5 +1,6 @@
 :host {
   display: contents;
+  tab-size: 4;
 
   & .container {
     all: inherit;
@@ -9,7 +10,6 @@
     background: var(--tm-background-color, inherit);
     overflow: auto;
     color: var(--tm-foreground-color, inherit);
-    tab-size: 3;
   }
 }
 

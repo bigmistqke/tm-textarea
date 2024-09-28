@@ -22,6 +22,8 @@ https://github.com/user-attachments/assets/6e785c75-75ae-4274-a904-5e1004153b76
   - [Usage](#usage-1)
 - [CDN (`tm-textarea/cdn`)](#cdn-tm-textareacdn)
 - [Themes & Grammars (`tm-textarea/tm`)](#themes--grammars-tm-textareatm)
+- [Bindings](#themes--grammars-tm-textareatm)
+    - [Tab Indentation (`tm-textarea/bindings/tab-indentation`)](#tabindentation-tm-textareabindingstab-indentation)
 
 ## Installation
 
@@ -222,4 +224,62 @@ These are used internally and maintained by [`shiki`](https://github.com/shikijs
 ```tsx
 import type { Theme, Grammar } from 'tm-textarea/tm'
 import { themes, grammars } from 'tm-textarea/tm'
+```
+
+## Bindings
+
+In addition to the core functionality, `tm-textarea` provides bindings that enhance the text editing experience by introducing keyboard shortcuts and behaviors that are common in code editors.
+
+### TabIndentation (`tm-textarea/bindings/tab-indentation`)
+
+The `TabIndentation` binding enables tab and shift-tab indentation for a native `textarea` of `tm-textarea`. It allows users to easily increase or decrease the indentation level of lines or selected blocks of text.
+
+<details>
+<summary>Type Definitions for TabIndentation</summary>
+
+```ts
+import { TmTextareaElement } from 'src'
+
+interface TabIndentation {
+  /** Adds event listeners to the passed element for handling 'keydown' and 'input' events specific to indentation. */
+  binding: (element: HTMLTextAreaElement | TmTextareaElement) => () => void;
+  /** Dispatches `formatIndent` and `formatOutdent` event-types when pressing tab */
+  onKeyDown: (event: KeyboardEvent & { currentTarget: TmTextareaElement | HTMLTextAreaElement }) => void;
+  /** Add indentation on `formatIndent` and `formatOutdent` event-type.*/
+  onInput: (event: InputEvent & { currentTarget: TmTextareaElement | HTMLTextAreaElement }) => void;
+  /** Format leading whitespace of given string according to given tab-size. */
+  format: (source: string, tabSize: number) => string;
+  /** Utilities */
+  getLeadingWhitespace: (source: string) => string;
+  getLineStart: (value: string, position: number) => number;
+  getIndentationSegments: (leadingWhitespace: string, tabSize: number) => string[];
+```
+
+</details>
+
+#### Features
+
+- **Indentation and Outdentation:** Automatically adjusts the indentation level based on the tab size.
+- **Multi-Line Selection:** Supports indenting and outdenting multiple lines at once.
+- **Customizable:** Works with any specified tab size and can be customized further if needed.
+
+#### Importing and Usage
+
+```javascript
+import { TmTextarea } from 'tm-textarea/solid'
+import { TabIndentation } from 'tm-textarea/bindings/tab-indentation'
+import source from "./source"
+
+const App = () => {
+  return (
+    <TmTextarea
+      ref={TabIndentation.binding}
+      value={TabIndentation.format(source)}
+      grammar="tsx"
+      theme="andromeeda"
+    />
+  )
+}
+
+export default App
 ```

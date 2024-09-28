@@ -1529,7 +1529,7 @@ const test = `import test from '.?raw'
 import { createRenderEffect, createSignal, For, onMount, Show, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
 import 'tm-textarea'
-import { TmTextareaElement } from 'tm-textarea'
+import { tabBindings } from 'tm-textarea/bindings/tab-indentation'
 import { setCDN } from 'tm-textarea/cdn'
 import { TmTextarea } from 'tm-textarea/solid'
 import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
@@ -1694,6 +1694,7 @@ const App: Component = () => {
             editable={editable()}
             style={{
               padding: \`\${padding()}px\`,
+              'tab-size': 3,
             }}
             class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
             onInput={e => setValue(e.currentTarget.value)}
@@ -1705,52 +1706,9 @@ const App: Component = () => {
             }}
             /* @ts-ignore */
             on:keydown={e => {
-              const { tabSize } = getComputedStyle(e.target)
-
-              const textarea = e.currentTarget as TmTextareaElement
-              const value = textarea.value
-
-              if (e.key === 'Tab') {
-                e.preventDefault()
-
-                let start = textarea.selectionStart
-                const end = textarea.selectionEnd
-
-                if (start !== end) {
-                  while (start > 0 && value[start] !== '\\n') {
-                    start--
-                  }
-
-                  const replacement = e.shiftKey
-                    ? // unindent
-                      value.slice(start, end).replace(new RegExp('\\n\\t', 'g'), '\\n')
-                    : // indent
-                      value.slice(start, end).replace(/\\n/g, '\\n' + '\\t')
-
-                  textarea.setRangeText(replacement, start, end, 'select')
-                } else {
-                  if (e.shiftKey) {
-                    let start = textarea.selectionStart
-
-                    while (start > 0 && value[start] !== '\\n') {
-                      start--
-                    }
-
-                    // unindent
-                    const replacement = value
-                      .slice(start, end)
-                      .replace(new RegExp('\\n\\t', 'g'), '\\n')
-
-                    textarea.setRangeText(replacement, start, end, 'end')
-                  } else {
-                    // indent
-                    textarea.setRangeText('\\t', start, end, 'end')
-                  }
-                }
-
-                // local
-                setValue(e.currentTarget.value)
-              }
+              tabBindings(e)
+              // local
+              setValue(e.currentTarget.value)
             }}
           />
         </Show>
@@ -6096,6 +6054,101 @@ class TmTextareaElement extends LumeElement {
   }
 }
 
+function tabBindings(e) {
+  if (e.key !== "Tab") {
+    return;
+  }
+  e.preventDefault();
+  const textarea = e.currentTarget;
+  const { selectionStart, selectionEnd, value } = textarea;
+  const tabSize = +getComputedStyle(textarea).tabSize;
+  if (selectionStart !== selectionEnd) {
+    const start = getLineStart(value, selectionStart);
+    let newSelectionStart = selectionStart;
+    let newSelectionEnd = selectionEnd;
+    let result = value.slice(start === 0 ? 0 : start + 1, selectionEnd).split("\n").map((line, index) => {
+      const initialLength = line.length;
+      const modifiedLine = e.shiftKey ? unindent(line, tabSize) : indent(line, tabSize);
+      const lengthChange = modifiedLine.length - initialLength;
+      if (index === 0) {
+        newSelectionStart += lengthChange;
+      }
+      newSelectionEnd += lengthChange;
+      return modifiedLine;
+    }).join("\n");
+    result = start === 0 ? result : `
+${result}`;
+    textarea.setRangeText(result, start, selectionEnd);
+    textarea.setSelectionRange(newSelectionStart, newSelectionEnd);
+  } else {
+    if (!e.shiftKey) {
+      textarea.setRangeText("	", selectionStart, selectionStart, "end");
+    } else {
+      const isNewLine = value[selectionStart] === "\n";
+      const start = getLineStart(
+        value,
+        // Skip the leading newline.
+        isNewLine ? Math.max(0, selectionStart - 1) : selectionStart
+      );
+      let result = unindent(value.slice(start, selectionEnd), tabSize);
+      result = start === 0 ? result : `
+${result}`;
+      textarea.setRangeText(result, start, selectionEnd, "end");
+    }
+  }
+}
+function unindent(source, tabSize) {
+  const leadingWhitespace = getLeadingWhitespace(source);
+  if (leadingWhitespace.length === 0)
+    return source;
+  const segments = getWhitespaceSegments(leadingWhitespace, tabSize);
+  return source.replace(leadingWhitespace, segments.slice(0, -1).join(""));
+}
+function indent(source, tabSize) {
+  const leadingWhitespace = getLeadingWhitespace(source);
+  const lastCharacter = leadingWhitespace[leadingWhitespace.length - 1];
+  if (lastCharacter === " ") {
+    const segments = getWhitespaceSegments(leadingWhitespace, tabSize);
+    const lastSegment = segments[segments.length - 1];
+    if (lastSegment && lastSegment.length < tabSize) {
+      segments[segments.length - 1] = `${lastSegment}	`;
+    } else {
+      segments.push("	");
+    }
+    return source.replace(leadingWhitespace, segments.join(""));
+  }
+  return `	${source}`;
+}
+function getWhitespaceSegments(leadingWhitespace, tabSize) {
+  const segments = (leadingWhitespace.match(/(\t| +)/g) || []).flatMap(
+    (segment) => segment === "	" ? [segment] : Array.from(
+      { length: Math.ceil(segment.length / tabSize) },
+      (_, i) => segment.substr(i * tabSize, tabSize)
+    )
+  );
+  const result = [];
+  for (let i = 0; i < segments.length; i++) {
+    const current = segments[i];
+    const next = segments[i + 1];
+    if (current === "	" || current.length >= tabSize || i === segments.length - 1) {
+      result.push(current);
+      continue;
+    }
+    result.push(current + next);
+    i++;
+  }
+  return result;
+}
+function getLeadingWhitespace(source) {
+  return source.match(/^\s*/)?.[0] || "";
+}
+function getLineStart(value, position) {
+  while (position > 0 && value[position] !== "\n") {
+    position--;
+  }
+  return position;
+}
+
 const container = "_container_tt4dw_5";
 const code = "_code_tt4dw_28";
 const line = "_line_tt4dw_41";
@@ -6509,40 +6562,10 @@ const App = () => {
           });
         }, _el$32);
         _el$32.$$input = (e) => setValue(e.currentTarget.value);
+        _el$32.style.setProperty("tab-size", "3");
         _el$32.addEventListener("keydown", (e) => {
-          getComputedStyle(e.target);
-          const textarea = e.currentTarget;
-          const value2 = textarea.value;
-          if (e.key === "Tab") {
-            e.preventDefault();
-            let start = textarea.selectionStart;
-            const end = textarea.selectionEnd;
-            if (start !== end) {
-              while (start > 0 && value2[start] !== "\n") {
-                start--;
-              }
-              const replacement = e.shiftKey ? (
-                // unindent
-                value2.slice(start, end).replace(new RegExp("\n	", "g"), "\n")
-              ) : (
-                // indent
-                value2.slice(start, end).replace(/\n/g, "\n	")
-              );
-              textarea.setRangeText(replacement, start, end, "select");
-            } else {
-              if (e.shiftKey) {
-                let start2 = textarea.selectionStart;
-                while (start2 > 0 && value2[start2] !== "\n") {
-                  start2--;
-                }
-                const replacement = value2.slice(start2, end).replace(new RegExp("\n	", "g"), "\n");
-                textarea.setRangeText(replacement, start2, end, "end");
-              } else {
-                textarea.setRangeText("	", start, end, "end");
-              }
-            }
-            setValue(e.currentTarget.value);
-          }
+          tabBindings(e);
+          setValue(e.currentTarget.value);
         });
         _el$32._$owner = getOwner();
         createRenderEffect((_p$) => {

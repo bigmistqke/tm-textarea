@@ -139,4 +139,10 @@ export class TabIndentation {
 
     return segments
   }
+
+  static format(source: string) {
+    const whitespace = TabIndentation.getLeadingWhitespace(source)
+    const segments = TabIndentation.getIndentationSegments(whitespace, 2)
+    return source.replace(whitespace, '\t'.repeat(segments.length))
+  }
 }

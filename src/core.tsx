@@ -9,6 +9,7 @@ import {
   createRoot,
   createSelector,
   createSignal,
+  For,
   Index,
   type JSX,
   mergeProps,
@@ -325,20 +326,20 @@ export function createTmTextarea(styles: Record<string, string>) {
 
     return (
       <Show when={context.isSegmentVisible(props.index * SEGMENT_SIZE)}>
-        <Index each={Array.from({ length: SEGMENT_SIZE })}>
-          {(_, index) => (
-            <Show when={context.isVisible(props.index * SEGMENT_SIZE + index)}>
+        <For each={html()}>
+          {(line, index) => (
+            <Show when={context.isVisible(props.index * SEGMENT_SIZE + index())}>
               <pre
                 class={styles.line}
                 part="line"
-                innerHTML={html()?.[index]}
+                innerHTML={line}
                 style={{
-                  '--tm-line-number': props.index * SEGMENT_SIZE + index,
+                  '--tm-line-number': props.index * SEGMENT_SIZE + index(),
                 }}
               />
             </Show>
           )}
-        </Index>
+        </For>
       </Show>
     )
   }

@@ -1529,7 +1529,7 @@ const test = `import test from '.?raw'
 import { createRenderEffect, createSignal, For, onMount, Show, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
 import 'tm-textarea'
-import { tabBindings } from 'tm-textarea/bindings/tab-indentation'
+import { tabIndentation } from 'tm-textarea/bindings/tab-indentation'
 import { setCDN } from 'tm-textarea/cdn'
 import { TmTextarea } from 'tm-textarea/solid'
 import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
@@ -1706,7 +1706,7 @@ const App: Component = () => {
             }}
             /* @ts-ignore */
             on:keydown={e => {
-              tabBindings(e)
+              tabIndentation(e)
               // local
               setValue(e.currentTarget.value)
             }}
@@ -6054,7 +6054,7 @@ class TmTextareaElement extends LumeElement {
   }
 }
 
-function tabBindings(e) {
+function tabIndentation(e) {
   if (e.key !== "Tab") {
     return;
   }
@@ -6564,7 +6564,7 @@ const App = () => {
         _el$32.$$input = (e) => setValue(e.currentTarget.value);
         _el$32.style.setProperty("tab-size", "3");
         _el$32.addEventListener("keydown", (e) => {
-          tabBindings(e);
+          tabIndentation(e);
           setValue(e.currentTarget.value);
         });
         _el$32._$owner = getOwner();

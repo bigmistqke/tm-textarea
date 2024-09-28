@@ -1534,7 +1534,7 @@ const self$1 = `import self from '.?raw'
 import { createRenderEffect, createSignal, For, Show, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
 import 'tm-textarea'
-import { TabIndentation } from 'tm-textarea/bindings/tab-indentation'
+import { tabIndentation } from 'tm-textarea/bindings/tab-indentation'
 import { setCDN } from 'tm-textarea/cdn'
 import { TmTextarea } from 'tm-textarea/solid'
 import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
@@ -1565,7 +1565,7 @@ const App: Component = () => {
 
   const [LOC, setLOC] = createSignal(10_000)
   const [value, setValue] = createSignal<string>(null!)
-  const formattedSelf = TabIndentation.format(self, 2)
+  const formattedSelf = tabIndentation.format(self, 2)
 
   createRenderEffect(() => {
     setValue(loopLines(formattedSelf, LOC()))
@@ -1690,6 +1690,7 @@ const App: Component = () => {
           when={mode() === 'custom-element'}
           fallback={
             <TmTextarea
+              ref={element => tabIndentation(element)}
               value={value()}
               grammar={grammar()}
               theme={theme()}
@@ -1700,15 +1701,11 @@ const App: Component = () => {
               }}
               class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
               onInput={e => setValue(e.currentTarget.value)}
-              onKeyDown={e => {
-                TabIndentation.handleEvent(e)
-                // local
-                setValue(e.currentTarget.value)
-              }}
             />
           }
         >
           <tm-textarea
+            ref={element => tabIndentation(element)}
             value={value()}
             grammar={grammar()}
             theme={theme()}
@@ -1719,12 +1716,6 @@ const App: Component = () => {
             }}
             class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
             onInput={e => setValue(e.currentTarget.value)}
-            /* @ts-ignore */
-            on:keydown={e => {
-              TabIndentation.handleEvent(e)
-              // local
-              setValue(e.currentTarget.value)
-            }}
           />
         </Show>
       </main>
@@ -6074,113 +6065,118 @@ class TmTextareaElement extends LumeElement {
   }
 }
 
-class TabIndentation {
-  constructor() {
+function tabIndentation(element) {
+  element.addEventListener("keydown", tabIndentation.onKeyDown);
+  element.addEventListener("input", tabIndentation.onInput);
+  return function dispose() {
+    element.removeEventListener("keydown", tabIndentation.onKeyDown);
+    element.addEventListener("input", tabIndentation.onInput);
+  };
+}
+tabIndentation.onKeyDown = (event) => {
+  if (event.key === "Tab") {
+    event.preventDefault();
+    const inputEvent = new InputEvent("input", {
+      inputType: event.shiftKey ? "formatOutdent" : "formatIndent",
+      bubbles: true,
+      cancelable: true
+    });
+    event.currentTarget.dispatchEvent(inputEvent);
   }
-  static handleEvent(e) {
-    if (e.key !== "Tab") {
-      return;
-    }
-    e.preventDefault();
-    const textarea = e.currentTarget;
-    const { selectionStart, selectionEnd, value } = textarea;
-    const tabSize = +getComputedStyle(textarea).tabSize;
-    if (selectionStart !== selectionEnd) {
-      const start = this.getLineStart(value, selectionStart);
-      let newSelectionStart = selectionStart;
-      let newSelectionEnd = selectionEnd;
-      let result = value.slice(start === 0 ? 0 : start + 1, selectionEnd).split("\n").map((line, index) => {
-        const initialLength = line.length;
-        const modifiedLine = e.shiftKey ? this.unindent(line, tabSize) : this.indent(line);
-        const lengthChange = modifiedLine.length - initialLength;
-        if (index === 0) {
-          newSelectionStart += lengthChange;
-        }
-        newSelectionEnd += lengthChange;
-        return modifiedLine;
-      }).join("\n");
+};
+tabIndentation.onInput = (event) => {
+  if (event.inputType !== "formatIndent" && event.inputType !== "formatOutdent") {
+    return;
+  }
+  event.preventDefault();
+  const textarea = event.currentTarget;
+  const { selectionStart, selectionEnd, value } = textarea;
+  const tabSize = +getComputedStyle(textarea).tabSize;
+  if (selectionStart !== selectionEnd) {
+    const start = tabIndentation.getLineStart(value, selectionStart);
+    let newSelectionStart = selectionStart;
+    let newSelectionEnd = selectionEnd;
+    let result = value.slice(start === 0 ? 0 : start + 1, selectionEnd).split("\n").map((line, index) => {
+      const initialLength = line.length;
+      const modifiedLine = event.inputType === "formatOutdent" ? tabIndentation.outdent(line, tabSize) : tabIndentation.indent(line);
+      const lengthChange = modifiedLine.length - initialLength;
+      if (index === 0) {
+        newSelectionStart += lengthChange;
+      }
+      newSelectionEnd += lengthChange;
+      return modifiedLine;
+    }).join("\n");
+    result = start === 0 ? result : `
+${result}`;
+    textarea.setRangeText(result, start, selectionEnd);
+    textarea.setSelectionRange(newSelectionStart, newSelectionEnd);
+  } else {
+    if (event.inputType === "formatIndent") {
+      textarea.setRangeText("	", selectionStart, selectionStart, "end");
+    } else {
+      const isNewLine = value[selectionStart] === "\n";
+      const start = tabIndentation.getLineStart(
+        value,
+        // Skip the leading newline.
+        isNewLine ? Math.max(0, selectionStart - 1) : selectionStart
+      );
+      let result = tabIndentation.outdent(value.slice(start, selectionEnd), tabSize);
       result = start === 0 ? result : `
 ${result}`;
-      textarea.setRangeText(result, start, selectionEnd);
-      textarea.setSelectionRange(newSelectionStart, newSelectionEnd);
-    } else {
-      if (!e.shiftKey) {
-        textarea.setRangeText("	", selectionStart, selectionStart, "end");
-      } else {
-        const isNewLine = value[selectionStart] === "\n";
-        const start = this.getLineStart(
-          value,
-          // Skip the leading newline.
-          isNewLine ? Math.max(0, selectionStart - 1) : selectionStart
-        );
-        let result = this.unindent(value.slice(start, selectionEnd), tabSize);
-        result = start === 0 ? result : `
-${result}`;
-        textarea.setRangeText(result, start, selectionEnd, "end");
-      }
+      textarea.setRangeText(result, start, selectionEnd, "end");
     }
   }
-  static unindent(source, tabSize) {
-    const leadingWhitespace = this.getLeadingWhitespace(source);
-    if (leadingWhitespace.length === 0)
-      return source;
-    const segments = this.getIndentationSegments(leadingWhitespace, tabSize);
-    return source.replace(leadingWhitespace, segments.slice(0, -1).join(""));
+};
+tabIndentation.outdent = (source, tabSize) => {
+  const leadingWhitespace = tabIndentation.getLeadingWhitespace(source);
+  if (leadingWhitespace.length === 0)
+    return source;
+  const segments = tabIndentation.getIndentationSegments(leadingWhitespace, tabSize);
+  return source.replace(leadingWhitespace, segments.slice(0, -1).join(""));
+};
+tabIndentation.indent = (source) => {
+  const leadingWhitespace = tabIndentation.getLeadingWhitespace(source);
+  return source.replace(leadingWhitespace, leadingWhitespace + "	");
+};
+tabIndentation.getLeadingWhitespace = (source) => {
+  return source.match(/^\s*/)?.[0] || "";
+};
+tabIndentation.getLineStart = (value, position) => {
+  while (position > 0 && value[position] !== "\n") {
+    position--;
   }
-  static indent(source) {
-    const leadingWhitespace = this.getLeadingWhitespace(source);
-    return source.replace(leadingWhitespace, leadingWhitespace + "	");
-  }
-  static getLeadingWhitespace(source) {
-    return source.match(/^\s*/)?.[0] || "";
-  }
-  static getLineStart(value, position) {
-    while (position > 0 && value[position] !== "\n") {
-      position--;
+  return position;
+};
+tabIndentation.getIndentationSegments = (leadingWhitespace, tabSize) => {
+  const unmergedSegments = (leadingWhitespace.match(/(\t| +)/g) || []).flatMap((segment) => {
+    if (segment === "	") {
+      return [segment];
     }
-    return position;
-  }
-  /**
-   * Calculates the whitespace segments for a string of leading whitespace, merging certain segments for consistency.
-   *
-   * This function is designed to normalize the leading whitespace into consistent tab or space segments. It ensures that partial
-   * tab-sized segments of spaces are merged into single tabs or combined to fit the defined tab size, aiding in consistent indentation handling.
-   *
-   * @param leadingWhitespace - The string of leading whitespace from a line of text.
-   * @param tabSize - The number of spaces that constitute a tab segment.
-   * @returns {string[]} - An array of strings, each representing a coherent segment of indentation.
-   */
-  static getIndentationSegments(leadingWhitespace, tabSize) {
-    const unmergedSegments = (leadingWhitespace.match(/(\t| +)/g) || []).flatMap((segment) => {
-      if (segment === "	") {
-        return [segment];
-      }
-      return Array.from(
-        { length: Math.ceil(segment.length / tabSize) },
-        (_, i) => segment.substr(i * tabSize, tabSize)
-      );
-    });
-    const segments = [];
-    for (let i = 0; i < unmergedSegments.length; i++) {
-      const current = unmergedSegments[i];
-      const next = unmergedSegments[i + 1];
-      if (current === "	" || current.length >= tabSize || i === unmergedSegments.length - 1) {
-        segments.push(current);
-        continue;
-      }
-      segments.push(current + next);
-      i++;
+    return Array.from(
+      { length: Math.ceil(segment.length / tabSize) },
+      (_, i) => segment.substr(i * tabSize, tabSize)
+    );
+  });
+  const segments = [];
+  for (let i = 0; i < unmergedSegments.length; i++) {
+    const current = unmergedSegments[i];
+    const next = unmergedSegments[i + 1];
+    if (current === "	" || current.length >= tabSize || i === unmergedSegments.length - 1) {
+      segments.push(current);
+      continue;
     }
-    return segments;
+    segments.push(current + next);
+    i++;
   }
-  static format(source, tabSize) {
-    return source.split("\n").map((line) => {
-      const whitespace = TabIndentation.getLeadingWhitespace(line);
-      const segments = TabIndentation.getIndentationSegments(whitespace, tabSize);
-      return line.replace(whitespace, "	".repeat(segments.length));
-    }).join("\n");
-  }
-}
+  return segments;
+};
+tabIndentation.format = (source, tabSize) => {
+  return source.split("\n").map((line) => {
+    const whitespace = tabIndentation.getLeadingWhitespace(line);
+    const segments = tabIndentation.getIndentationSegments(whitespace, tabSize);
+    return line.replace(whitespace, "	".repeat(segments.length));
+  }).join("\n");
+};
 
 const container = "_container_io2pm_5";
 const code = "_code_io2pm_28";
@@ -6507,7 +6503,7 @@ const App = () => {
   const [lineNumbers, setLineNumbers] = createSignal(true);
   const [LOC, setLOC] = createSignal(1e4);
   const [value, setValue] = createSignal(null);
-  const formattedSelf = TabIndentation.format(self$1, 2);
+  const formattedSelf = tabIndentation.format(self$1, 2);
   createRenderEffect(() => {
     setValue(loopLines(formattedSelf, LOC()));
   });
@@ -6566,6 +6562,7 @@ const App = () => {
       },
       get fallback() {
         return createComponent(TmTextarea, {
+          ref: (element) => tabIndentation(element),
           get value() {
             return value();
           },
@@ -6587,20 +6584,13 @@ const App = () => {
           get ["class"]() {
             return lineNumbers() ? "line-numbers tm-textarea" : "tm-textarea";
           },
-          onInput: (e) => setValue(e.currentTarget.value),
-          onKeyDown: (e) => {
-            TabIndentation.handleEvent(e);
-            setValue(e.currentTarget.value);
-          }
+          onInput: (e) => setValue(e.currentTarget.value)
         });
       },
       get children() {
         var _el$35 = _tmpl$();
         _el$35.$$input = (e) => setValue(e.currentTarget.value);
-        _el$35.addEventListener("keydown", (e) => {
-          TabIndentation.handleEvent(e);
-          setValue(e.currentTarget.value);
-        });
+        use((element) => tabIndentation(element), _el$35);
         _el$35._$owner = getOwner();
         createRenderEffect((_p$) => {
           var _v$ = grammar(), _v$2 = theme(), _v$3 = editable(), _v$4 = `${padding()}px`, _v$5 = tabSize(), _v$6 = lineNumbers() ? "line-numbers tm-textarea" : "tm-textarea";

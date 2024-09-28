@@ -2,7 +2,7 @@
   display: contents;
   tab-size: 4;
 
-  & ._container_tt4dw_5 {
+  & ._container_io2pm_5 {
     all: inherit;
     display: flex;
     position: relative;
@@ -13,7 +13,7 @@
   }
 }
 
-._container_tt4dw_5 {
+._container_io2pm_5 {
   --tm-min-height: calc(var(--tm-line-count) * var(--tm-char-height));
   --tm-min-width: calc(var(--tm-line-size) * 1ch);
   display: flex;
@@ -25,7 +25,7 @@
   font-size: 13px;
   tab-size: 4;
 
-  & ._code_tt4dw_28 {
+  & ._code_io2pm_28 {
     display: block;
     position: absolute;
     z-index: 1;
@@ -38,9 +38,10 @@
     font-family: monospace;
     white-space: pre;
 
-    & ._line_tt4dw_41 {
+    & ._line_io2pm_41 {
       position: absolute;
       top: calc(var(--tm-line-number) * var(--tm-char-height));
+      contain: layout;
       margin: 0px;
 
       & span {
@@ -50,7 +51,7 @@
     }
   }
 
-  & ._character_tt4dw_53 {
+  & ._character_io2pm_54 {
     position: absolute;
     align-self: start;
     visibility: hidden;
@@ -59,7 +60,7 @@
     line-height: inherit;
   }
 
-  & ._textarea_tt4dw_62 {
+  & ._textarea_io2pm_63 {
     transition: color 0.5s;
     outline: none;
     border: none;
@@ -81,7 +82,7 @@
     white-space: pre;
   }
 
-  & ._textarea_tt4dw_62::selection {
+  & ._textarea_io2pm_63::selection {
     background: var(--tm-selection-color);
   }
 }
@@ -202,5 +203,5 @@ main {
 .line-numbers::part(line),
 .line-numbers textarea,
 .line-numbers::part(textarea) {
-  margin-left: var(--line-number-width) !important;
+  transform: translateX(var(--line-number-width));
 }

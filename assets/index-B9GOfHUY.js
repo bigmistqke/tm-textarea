@@ -1530,11 +1530,11 @@ function cleanChildren(parent, current, marker, replacement) {
   return [node];
 }
 
-const test = `import test from '.?raw'
+const self$1 = `import self from '.?raw'
 import { createRenderEffect, createSignal, For, Show, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
 import 'tm-textarea'
-import { tabIndentation } from 'tm-textarea/bindings/tab-indentation'
+import { TabIndentation } from 'tm-textarea/bindings/tab-indentation'
 import { setCDN } from 'tm-textarea/cdn'
 import { TmTextarea } from 'tm-textarea/solid'
 import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
@@ -1559,14 +1559,16 @@ const App: Component = () => {
 
   const [fontSize, setFontSize] = createSignal(10)
   const [padding, setPadding] = createSignal(20)
+  const [tabSize, setTabSize] = createSignal(4)
   const [editable, setEditable] = createSignal(true)
   const [lineNumbers, setLineNumbers] = createSignal(true)
 
   const [LOC, setLOC] = createSignal(10_000)
   const [value, setValue] = createSignal<string>(null!)
+  const formattedSelf = TabIndentation.format(self)
 
   createRenderEffect(() => {
-    setValue(loopLines(test, LOC()))
+    setValue(loopLines(formattedSelf, LOC()))
   })
 
   function loopLines(input: string, lineCount: number): string {
@@ -1632,7 +1634,15 @@ const App: Component = () => {
               onInput={e => setLOC(+e.currentTarget.value)}
             />
           </div>
-
+          <div>
+            <label for="tab-size">tab-size</label>
+            <input
+              id="tab-size"
+              type="number"
+              onInput={e => setTabSize(+e.currentTarget.value)}
+              value={tabSize()}
+            />
+          </div>
           <div>
             <label for="padding">padding</label>
             <input
@@ -1686,11 +1696,12 @@ const App: Component = () => {
               editable={editable()}
               style={{
                 padding: \`\${padding()}px\`,
+                'tab-size': tabSize(),
               }}
               class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
               onInput={e => setValue(e.currentTarget.value)}
               onKeyDown={e => {
-                tabIndentation(e)
+                TabIndentation.handleEvent(e)
                 // local
                 setValue(e.currentTarget.value)
               }}
@@ -1704,12 +1715,13 @@ const App: Component = () => {
             editable={editable()}
             style={{
               padding: \`\${padding()}px\`,
+              'tab-size': tabSize(),
             }}
             class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
             onInput={e => setValue(e.currentTarget.value)}
             /* @ts-ignore */
             on:keydown={e => {
-              tabIndentation(e)
+              TabIndentation.handleEvent(e)
               // local
               setValue(e.currentTarget.value)
             }}
@@ -5519,7 +5531,7 @@ class Stack {
   }
 }
 
-const _css = ":host {\n  display: contents;\n  tab-size: 4;\n\n  & .container {\n    all: inherit;\n    display: flex;\n    position: relative;\n    box-sizing: border-box;\n    background: var(--tm-background-color, inherit);\n    overflow: auto;\n    color: var(--tm-foreground-color, inherit);\n  }\n}\n\n.container {\n  --tm-min-height: calc(var(--tm-line-count) * var(--tm-char-height));\n  --tm-min-width: calc(var(--tm-line-size) * 1ch);\n  display: flex;\n  position: relative;\n  box-sizing: border-box;\n  background-color: var(--tm-background-color);\n  overflow: auto;\n  color: var(--tm-foreground-color);\n  font-size: 13px;\n  tab-size: 4;\n\n  & .code {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: layout;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .line {\n      position: absolute;\n      top: calc(var(--tm-line-number) * var(--tm-char-height));\n      margin: 0px;\n\n      & span {\n        margin: 0px;\n        background: transparent !important;\n      }\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: var(--tm-min-width);\n    height: 100%;\n    min-height: var(--tm-min-height);\n    overflow: hidden;\n    overflow-anchor: none;\n    resize: none;\n    color: transparent;\n    caret-color: var(--tm-foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n    white-space: pre;\n  }\n\n  & .textarea::selection {\n    background: var(--tm-selection-color);\n  }\n}\n";
+const _css = ":host {\n  display: contents;\n  tab-size: 4;\n\n  & .container {\n    all: inherit;\n    display: flex;\n    position: relative;\n    box-sizing: border-box;\n    background: var(--tm-background-color, inherit);\n    overflow: auto;\n    color: var(--tm-foreground-color, inherit);\n  }\n}\n\n.container {\n  --tm-min-height: calc(var(--tm-line-count) * var(--tm-char-height));\n  --tm-min-width: calc(var(--tm-line-size) * 1ch);\n  display: flex;\n  position: relative;\n  box-sizing: border-box;\n  background-color: var(--tm-background-color);\n  overflow: auto;\n  color: var(--tm-foreground-color);\n  font-size: 13px;\n  tab-size: 4;\n\n  & .code {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: layout;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .line {\n      position: absolute;\n      top: calc(var(--tm-line-number) * var(--tm-char-height));\n      contain: layout;\n      margin: 0px;\n\n      & span {\n        margin: 0px;\n        background: transparent !important;\n      }\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: var(--tm-min-width);\n    height: 100%;\n    min-height: var(--tm-min-height);\n    overflow: hidden;\n    overflow-anchor: none;\n    resize: none;\n    color: transparent;\n    caret-color: var(--tm-foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n    white-space: pre;\n  }\n\n  & .textarea::selection {\n    background: var(--tm-selection-color);\n  }\n}\n";
 
 const css = _css;
 
@@ -5652,28 +5664,25 @@ function createTmTextarea(styles) {
         return context.isSegmentVisible(props.index * SEGMENT_SIZE);
       },
       get children() {
-        return createComponent(Index, {
+        return createComponent(For, {
           get each() {
-            return Array.from({
-              length: SEGMENT_SIZE
-            });
+            return html();
           },
-          children: (_, index) => createComponent(Show, {
+          children: (line, index) => createComponent(Show, {
             get when() {
-              return context.isVisible(props.index * SEGMENT_SIZE + index);
+              return context.isVisible(props.index * SEGMENT_SIZE + index());
             },
             get children() {
               var _el$ = _tmpl$$1();
+              _el$.innerHTML = line;
               createRenderEffect((_p$) => {
-                var _v$ = styles.line, _v$2 = html()?.[index], _v$3 = props.index * SEGMENT_SIZE + index;
+                var _v$ = styles.line, _v$2 = props.index * SEGMENT_SIZE + index();
                 _v$ !== _p$.e && className(_el$, _p$.e = _v$);
-                _v$2 !== _p$.t && (_el$.innerHTML = _p$.t = _v$2);
-                _v$3 !== _p$.a && ((_p$.a = _v$3) != null ? _el$.style.setProperty("--tm-line-number", _v$3) : _el$.style.removeProperty("--tm-line-number"));
+                _v$2 !== _p$.t && ((_p$.t = _v$2) != null ? _el$.style.setProperty("--tm-line-number", _v$2) : _el$.style.removeProperty("--tm-line-number"));
                 return _p$;
               }, {
                 e: void 0,
-                t: void 0,
-                a: void 0
+                t: void 0
               });
               return _el$;
             }
@@ -5824,9 +5833,9 @@ function createTmTextarea(styles) {
           }).observe(element);
         }, _el$5);
         createRenderEffect((_p$) => {
-          var _v$4 = styles.code, _v$5 = styles.character;
-          _v$4 !== _p$.e && className(_el$3, _p$.e = _v$4);
-          _v$5 !== _p$.t && className(_el$5, _p$.t = _v$5);
+          var _v$3 = styles.code, _v$4 = styles.character;
+          _v$3 !== _p$.e && className(_el$3, _p$.e = _v$3);
+          _v$4 !== _p$.t && className(_el$5, _p$.t = _v$4);
           return _p$;
         }, {
           e: void 0,
@@ -6065,98 +6074,117 @@ class TmTextareaElement extends LumeElement {
   }
 }
 
-function tabIndentation(e) {
-  if (e.key !== "Tab") {
-    return;
+class TabIndentation {
+  constructor() {
   }
-  e.preventDefault();
-  const textarea = e.currentTarget;
-  const { selectionStart, selectionEnd, value } = textarea;
-  const tabSize = +getComputedStyle(textarea).tabSize;
-  if (selectionStart !== selectionEnd) {
-    const start = getLineStart(value, selectionStart);
-    let newSelectionStart = selectionStart;
-    let newSelectionEnd = selectionEnd;
-    let result = value.slice(start === 0 ? 0 : start + 1, selectionEnd).split("\n").map((line, index) => {
-      const initialLength = line.length;
-      const modifiedLine = e.shiftKey ? unindent(line, tabSize) : indent(line);
-      const lengthChange = modifiedLine.length - initialLength;
-      if (index === 0) {
-        newSelectionStart += lengthChange;
-      }
-      newSelectionEnd += lengthChange;
-      return modifiedLine;
-    }).join("\n");
-    result = start === 0 ? result : `
-${result}`;
-    textarea.setRangeText(result, start, selectionEnd);
-    textarea.setSelectionRange(newSelectionStart, newSelectionEnd);
-  } else {
-    if (!e.shiftKey) {
-      textarea.setRangeText("	", selectionStart, selectionStart, "end");
-    } else {
-      const isNewLine = value[selectionStart] === "\n";
-      const start = getLineStart(
-        value,
-        // Skip the leading newline.
-        isNewLine ? Math.max(0, selectionStart - 1) : selectionStart
-      );
-      let result = unindent(value.slice(start, selectionEnd), tabSize);
+  static handleEvent(e) {
+    if (e.key !== "Tab") {
+      return;
+    }
+    e.preventDefault();
+    const textarea = e.currentTarget;
+    const { selectionStart, selectionEnd, value } = textarea;
+    const tabSize = +getComputedStyle(textarea).tabSize;
+    if (selectionStart !== selectionEnd) {
+      const start = this.getLineStart(value, selectionStart);
+      let newSelectionStart = selectionStart;
+      let newSelectionEnd = selectionEnd;
+      let result = value.slice(start === 0 ? 0 : start + 1, selectionEnd).split("\n").map((line, index) => {
+        const initialLength = line.length;
+        const modifiedLine = e.shiftKey ? this.unindent(line, tabSize) : this.indent(line);
+        const lengthChange = modifiedLine.length - initialLength;
+        if (index === 0) {
+          newSelectionStart += lengthChange;
+        }
+        newSelectionEnd += lengthChange;
+        return modifiedLine;
+      }).join("\n");
       result = start === 0 ? result : `
 ${result}`;
-      textarea.setRangeText(result, start, selectionEnd, "end");
+      textarea.setRangeText(result, start, selectionEnd);
+      textarea.setSelectionRange(newSelectionStart, newSelectionEnd);
+    } else {
+      if (!e.shiftKey) {
+        textarea.setRangeText("	", selectionStart, selectionStart, "end");
+      } else {
+        const isNewLine = value[selectionStart] === "\n";
+        const start = this.getLineStart(
+          value,
+          // Skip the leading newline.
+          isNewLine ? Math.max(0, selectionStart - 1) : selectionStart
+        );
+        let result = this.unindent(value.slice(start, selectionEnd), tabSize);
+        result = start === 0 ? result : `
+${result}`;
+        textarea.setRangeText(result, start, selectionEnd, "end");
+      }
     }
   }
-}
-function unindent(source, tabSize) {
-  const leadingWhitespace = getLeadingWhitespace(source);
-  if (leadingWhitespace.length === 0)
-    return source;
-  const segments = getIndentationSegments(leadingWhitespace, tabSize);
-  return source.replace(leadingWhitespace, segments.slice(0, -1).join(""));
-}
-function indent(source) {
-  const leadingWhitespace = getLeadingWhitespace(source);
-  return source.replace(leadingWhitespace, leadingWhitespace + "	");
-}
-function getLeadingWhitespace(source) {
-  return source.match(/^\s*/)?.[0] || "";
-}
-function getLineStart(value, position) {
-  while (position > 0 && value[position] !== "\n") {
-    position--;
+  static unindent(source, tabSize) {
+    const leadingWhitespace = this.getLeadingWhitespace(source);
+    if (leadingWhitespace.length === 0)
+      return source;
+    const segments = this.getIndentationSegments(leadingWhitespace, tabSize);
+    return source.replace(leadingWhitespace, segments.slice(0, -1).join(""));
   }
-  return position;
-}
-function getIndentationSegments(leadingWhitespace, tabSize) {
-  const unmergedSegments = (leadingWhitespace.match(/(\t| +)/g) || []).flatMap((segment) => {
-    if (segment === "	") {
-      return [segment];
-    }
-    return Array.from(
-      { length: Math.ceil(segment.length / tabSize) },
-      (_, i) => segment.substr(i * tabSize, tabSize)
-    );
-  });
-  const segments = [];
-  for (let i = 0; i < unmergedSegments.length; i++) {
-    const current = unmergedSegments[i];
-    const next = unmergedSegments[i + 1];
-    if (current === "	" || current.length >= tabSize || i === unmergedSegments.length - 1) {
-      segments.push(current);
-      continue;
-    }
-    segments.push(current + next);
-    i++;
+  static indent(source) {
+    const leadingWhitespace = this.getLeadingWhitespace(source);
+    return source.replace(leadingWhitespace, leadingWhitespace + "	");
   }
-  return segments;
+  static getLeadingWhitespace(source) {
+    return source.match(/^\s*/)?.[0] || "";
+  }
+  static getLineStart(value, position) {
+    while (position > 0 && value[position] !== "\n") {
+      position--;
+    }
+    return position;
+  }
+  /**
+   * Calculates the whitespace segments for a string of leading whitespace, merging certain segments for consistency.
+   *
+   * This function is designed to normalize the leading whitespace into consistent tab or space segments. It ensures that partial
+   * tab-sized segments of spaces are merged into single tabs or combined to fit the defined tab size, aiding in consistent indentation handling.
+   *
+   * @param leadingWhitespace - The string of leading whitespace from a line of text.
+   * @param tabSize - The number of spaces that constitute a tab segment.
+   * @returns {string[]} - An array of strings, each representing a coherent segment of indentation.
+   */
+  static getIndentationSegments(leadingWhitespace, tabSize) {
+    const unmergedSegments = (leadingWhitespace.match(/(\t| +)/g) || []).flatMap((segment) => {
+      if (segment === "	") {
+        return [segment];
+      }
+      return Array.from(
+        { length: Math.ceil(segment.length / tabSize) },
+        (_, i) => segment.substr(i * tabSize, tabSize)
+      );
+    });
+    const segments = [];
+    for (let i = 0; i < unmergedSegments.length; i++) {
+      const current = unmergedSegments[i];
+      const next = unmergedSegments[i + 1];
+      if (current === "	" || current.length >= tabSize || i === unmergedSegments.length - 1) {
+        segments.push(current);
+        continue;
+      }
+      segments.push(current + next);
+      i++;
+    }
+    return segments;
+  }
+  static format(source) {
+    const whitespace = TabIndentation.getLeadingWhitespace(source);
+    const segments = TabIndentation.getIndentationSegments(whitespace, 2);
+    return source.replace(whitespace, "	".repeat(segments.length));
+  }
 }
 
-const container = "_container_tt4dw_5";
-const code = "_code_tt4dw_28";
-const line = "_line_tt4dw_41";
-const character = "_character_tt4dw_53";
-const textarea = "_textarea_tt4dw_62";
+const container = "_container_io2pm_5";
+const code = "_code_io2pm_28";
+const line = "_line_io2pm_41";
+const character = "_character_io2pm_54";
+const textarea = "_textarea_io2pm_63";
 const styles = {
 	container: container,
 	code: code,
@@ -6455,7 +6483,7 @@ const themes = [
 
 const tsx = ""+new URL('tsx-Da1Z4H1i.json', import.meta.url).href+"";
 
-var _tmpl$ = /* @__PURE__ */ template(`<tm-textarea>`, true, false), _tmpl$2 = /* @__PURE__ */ template(`<div class=app><div class=side-panel><h1>Tm Textarea</h1><footer><div><label for=mode>mode</label><button id=mode></button></div><br><div><label for=theme>themes</label><select id=theme></select></div><div><label for=lang>languages</label><select id=lang></select></div><br><div><label for=LOC>LOC</label><input id=LOC type=number></div><div><label for=padding>padding</label><input id=padding type=number></div><div><label for=font-size>font-size</label><input id=font-size type=number></div><div><label for=line-numbers>Line Numbers</label><button id=line-numbers></button></div><div><label for=editable>editable</label><button id=editable></button></div></footer></div><main>`), _tmpl$3 = /* @__PURE__ */ template(`<option>`);
+var _tmpl$ = /* @__PURE__ */ template(`<tm-textarea>`, true, false), _tmpl$2 = /* @__PURE__ */ template(`<div class=app><div class=side-panel><h1>Tm Textarea</h1><footer><div><label for=mode>mode</label><button id=mode></button></div><br><div><label for=theme>themes</label><select id=theme></select></div><div><label for=lang>languages</label><select id=lang></select></div><br><div><label for=LOC>LOC</label><input id=LOC type=number></div><div><label for=tab-size>tab-size</label><input id=tab-size type=number></div><div><label for=padding>padding</label><input id=padding type=number></div><div><label for=font-size>font-size</label><input id=font-size type=number></div><div><label for=line-numbers>Line Numbers</label><button id=line-numbers></button></div><div><label for=editable>editable</label><button id=editable></button></div></footer></div><main>`), _tmpl$3 = /* @__PURE__ */ template(`<option>`);
 setCDN((type, id) => {
   switch (type) {
     case "theme":
@@ -6472,12 +6500,14 @@ const App = () => {
   const [grammar, setCurrentLanguageName] = createSignal("tsx");
   const [fontSize, setFontSize] = createSignal(10);
   const [padding, setPadding] = createSignal(20);
+  const [tabSize, setTabSize] = createSignal(4);
   const [editable, setEditable] = createSignal(true);
   const [lineNumbers, setLineNumbers] = createSignal(true);
   const [LOC, setLOC] = createSignal(1e4);
   const [value, setValue] = createSignal(null);
+  const formattedSelf = TabIndentation.format(self$1);
   createRenderEffect(() => {
-    setValue(loopLines(test, LOC()));
+    setValue(loopLines(formattedSelf, LOC()));
   });
   function loopLines(input, lineCount) {
     const lines = input.split("\n");
@@ -6493,7 +6523,7 @@ const App = () => {
     return result;
   }
   return (() => {
-    var _el$ = _tmpl$2(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild, _el$4 = _el$3.nextSibling, _el$5 = _el$4.firstChild, _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling, _el$8 = _el$5.nextSibling, _el$9 = _el$8.nextSibling, _el$10 = _el$9.firstChild, _el$11 = _el$10.nextSibling, _el$12 = _el$9.nextSibling, _el$13 = _el$12.firstChild, _el$14 = _el$13.nextSibling, _el$15 = _el$12.nextSibling, _el$16 = _el$15.nextSibling, _el$17 = _el$16.firstChild, _el$18 = _el$17.nextSibling, _el$19 = _el$16.nextSibling, _el$20 = _el$19.firstChild, _el$21 = _el$20.nextSibling, _el$22 = _el$19.nextSibling, _el$23 = _el$22.firstChild, _el$24 = _el$23.nextSibling, _el$25 = _el$22.nextSibling, _el$26 = _el$25.firstChild, _el$27 = _el$26.nextSibling, _el$28 = _el$25.nextSibling, _el$29 = _el$28.firstChild, _el$30 = _el$29.nextSibling, _el$31 = _el$2.nextSibling;
+    var _el$ = _tmpl$2(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild, _el$4 = _el$3.nextSibling, _el$5 = _el$4.firstChild, _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling, _el$8 = _el$5.nextSibling, _el$9 = _el$8.nextSibling, _el$10 = _el$9.firstChild, _el$11 = _el$10.nextSibling, _el$12 = _el$9.nextSibling, _el$13 = _el$12.firstChild, _el$14 = _el$13.nextSibling, _el$15 = _el$12.nextSibling, _el$16 = _el$15.nextSibling, _el$17 = _el$16.firstChild, _el$18 = _el$17.nextSibling, _el$19 = _el$16.nextSibling, _el$20 = _el$19.firstChild, _el$21 = _el$20.nextSibling, _el$22 = _el$19.nextSibling, _el$23 = _el$22.firstChild, _el$24 = _el$23.nextSibling, _el$25 = _el$22.nextSibling, _el$26 = _el$25.firstChild, _el$27 = _el$26.nextSibling, _el$28 = _el$25.nextSibling, _el$29 = _el$28.firstChild, _el$30 = _el$29.nextSibling, _el$31 = _el$28.nextSibling, _el$32 = _el$31.firstChild, _el$33 = _el$32.nextSibling, _el$34 = _el$2.nextSibling;
     _el$7.$$click = (e) => {
       setMode((mode2) => mode2 === "custom-element" ? "solid" : "custom-element");
     };
@@ -6502,32 +6532,33 @@ const App = () => {
     insert(_el$11, createComponent(For, {
       each: themes,
       children: (theme2) => (() => {
-        var _el$33 = _tmpl$3();
-        insert(_el$33, theme2);
-        return _el$33;
+        var _el$36 = _tmpl$3();
+        insert(_el$36, theme2);
+        return _el$36;
       })()
     }));
     _el$14.$$input = (e) => setCurrentLanguageName(e.currentTarget.value);
     insert(_el$14, createComponent(For, {
       each: grammars,
       children: (grammar2) => (() => {
-        var _el$34 = _tmpl$3();
-        insert(_el$34, grammar2);
-        return _el$34;
+        var _el$37 = _tmpl$3();
+        insert(_el$37, grammar2);
+        return _el$37;
       })()
     }));
     _el$18.$$input = (e) => setLOC(+e.currentTarget.value);
-    _el$21.$$input = (e) => setPadding(+e.currentTarget.value);
-    _el$24.$$input = (e) => setFontSize(+e.currentTarget.value);
-    _el$27.$$click = (e) => {
+    _el$21.$$input = (e) => setTabSize(+e.currentTarget.value);
+    _el$24.$$input = (e) => setPadding(+e.currentTarget.value);
+    _el$27.$$input = (e) => setFontSize(+e.currentTarget.value);
+    _el$30.$$click = (e) => {
       setLineNumbers((bool) => !bool);
     };
-    insert(_el$27, () => lineNumbers() ? "enabled" : "disabled");
-    _el$30.$$click = (e) => {
+    insert(_el$30, () => lineNumbers() ? "enabled" : "disabled");
+    _el$33.$$click = (e) => {
       setEditable((bool) => !bool);
     };
-    insert(_el$30, () => editable() ? "enabled" : "disabled");
-    insert(_el$31, createComponent(Show, {
+    insert(_el$33, () => editable() ? "enabled" : "disabled");
+    insert(_el$34, createComponent(Show, {
       get when() {
         return mode() === "custom-element";
       },
@@ -6547,7 +6578,8 @@ const App = () => {
           },
           get style() {
             return {
-              padding: `${padding()}px`
+              padding: `${padding()}px`,
+              "tab-size": tabSize()
             };
           },
           get ["class"]() {
@@ -6555,43 +6587,46 @@ const App = () => {
           },
           onInput: (e) => setValue(e.currentTarget.value),
           onKeyDown: (e) => {
-            tabIndentation(e);
+            TabIndentation.handleEvent(e);
             setValue(e.currentTarget.value);
           }
         });
       },
       get children() {
-        var _el$32 = _tmpl$();
-        _el$32.$$input = (e) => setValue(e.currentTarget.value);
-        _el$32.addEventListener("keydown", (e) => {
-          tabIndentation(e);
+        var _el$35 = _tmpl$();
+        _el$35.$$input = (e) => setValue(e.currentTarget.value);
+        _el$35.addEventListener("keydown", (e) => {
+          TabIndentation.handleEvent(e);
           setValue(e.currentTarget.value);
         });
-        _el$32._$owner = getOwner();
+        _el$35._$owner = getOwner();
         createRenderEffect((_p$) => {
-          var _v$ = grammar(), _v$2 = theme(), _v$3 = editable(), _v$4 = `${padding()}px`, _v$5 = lineNumbers() ? "line-numbers tm-textarea" : "tm-textarea";
-          _v$ !== _p$.e && (_el$32.grammar = _p$.e = _v$);
-          _v$2 !== _p$.t && (_el$32.theme = _p$.t = _v$2);
-          _v$3 !== _p$.a && (_el$32.editable = _p$.a = _v$3);
-          _v$4 !== _p$.o && ((_p$.o = _v$4) != null ? _el$32.style.setProperty("padding", _v$4) : _el$32.style.removeProperty("padding"));
-          _v$5 !== _p$.i && className(_el$32, _p$.i = _v$5);
+          var _v$ = grammar(), _v$2 = theme(), _v$3 = editable(), _v$4 = `${padding()}px`, _v$5 = tabSize(), _v$6 = lineNumbers() ? "line-numbers tm-textarea" : "tm-textarea";
+          _v$ !== _p$.e && (_el$35.grammar = _p$.e = _v$);
+          _v$2 !== _p$.t && (_el$35.theme = _p$.t = _v$2);
+          _v$3 !== _p$.a && (_el$35.editable = _p$.a = _v$3);
+          _v$4 !== _p$.o && ((_p$.o = _v$4) != null ? _el$35.style.setProperty("padding", _v$4) : _el$35.style.removeProperty("padding"));
+          _v$5 !== _p$.i && ((_p$.i = _v$5) != null ? _el$35.style.setProperty("tab-size", _v$5) : _el$35.style.removeProperty("tab-size"));
+          _v$6 !== _p$.n && className(_el$35, _p$.n = _v$6);
           return _p$;
         }, {
           e: void 0,
           t: void 0,
           a: void 0,
           o: void 0,
-          i: void 0
+          i: void 0,
+          n: void 0
         });
-        createRenderEffect(() => _el$32.value = value());
-        return _el$32;
+        createRenderEffect(() => _el$35.value = value());
+        return _el$35;
       }
     }));
     createRenderEffect(() => _el$11.value = theme());
     createRenderEffect(() => _el$14.value = grammar());
     createRenderEffect(() => _el$18.value = LOC());
-    createRenderEffect(() => _el$21.value = padding());
-    createRenderEffect(() => _el$24.value = fontSize());
+    createRenderEffect(() => _el$21.value = tabSize());
+    createRenderEffect(() => _el$24.value = padding());
+    createRenderEffect(() => _el$27.value = fontSize());
     return _el$;
   })();
 };

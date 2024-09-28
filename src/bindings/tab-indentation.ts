@@ -11,7 +11,7 @@ import { TmTextareaElement } from 'src'
  *
  * return <tm-textarea onInput={tabIndentation} />
  */
-export function tabBindings(e: KeyboardEvent & { currentTarget: TmTextareaElement }) {
+export function tabIndentation(e: KeyboardEvent & { currentTarget: TmTextareaElement }) {
   if (e.key !== 'Tab') {
     return
   }

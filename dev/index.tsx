@@ -2,7 +2,7 @@ import test from '.?raw'
 import { createRenderEffect, createSignal, For, onMount, Show, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
 import 'tm-textarea'
-import { tabBindings } from 'tm-textarea/bindings/tab-indentation'
+import { tabIndentation } from 'tm-textarea/bindings/tab-indentation'
 import { setCDN } from 'tm-textarea/cdn'
 import { TmTextarea } from 'tm-textarea/solid'
 import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
@@ -179,7 +179,7 @@ const App: Component = () => {
             }}
             /* @ts-ignore */
             on:keydown={e => {
-              tabBindings(e)
+              tabIndentation(e)
               // local
               setValue(e.currentTarget.value)
             }}

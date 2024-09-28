@@ -6119,6 +6119,15 @@ function indent(source) {
   const leadingWhitespace = getLeadingWhitespace(source);
   return source.replace(leadingWhitespace, leadingWhitespace + "	");
 }
+function getLeadingWhitespace(source) {
+  return source.match(/^\s*/)?.[0] || "";
+}
+function getLineStart(value, position) {
+  while (position > 0 && value[position] !== "\n") {
+    position--;
+  }
+  return position;
+}
 function getIndentationSegments(leadingWhitespace, tabSize) {
   const unmergedSegments = (leadingWhitespace.match(/(\t| +)/g) || []).flatMap((segment) => {
     if (segment === "	") {
@@ -6141,15 +6150,6 @@ function getIndentationSegments(leadingWhitespace, tabSize) {
     i++;
   }
   return segments;
-}
-function getLeadingWhitespace(source) {
-  return source.match(/^\s*/)?.[0] || "";
-}
-function getLineStart(value, position) {
-  while (position > 0 && value[position] !== "\n") {
-    position--;
-  }
-  return position;
 }
 
 const container = "_container_tt4dw_5";

@@ -169,7 +169,7 @@ const App: Component = () => {
               class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
               onInput={e => setValue(e.currentTarget.value)}
               onKeyDown={e => {
-                TabIndentation.handleEvent(e)
+                TabIndentation.onInput(e)
                 // local
                 setValue(e.currentTarget.value)
               }}
@@ -177,6 +177,7 @@ const App: Component = () => {
           }
         >
           <tm-textarea
+            ref={TabIndentation}
             value={value()}
             grammar={grammar()}
             theme={theme()}
@@ -189,7 +190,6 @@ const App: Component = () => {
             onInput={e => setValue(e.currentTarget.value)}
             /* @ts-ignore */
             on:keydown={e => {
-              TabIndentation.handleEvent(e)
               // local
               setValue(e.currentTarget.value)
             }}

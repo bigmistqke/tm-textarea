@@ -23,7 +23,7 @@ https://github.com/user-attachments/assets/6e785c75-75ae-4274-a904-5e1004153b76
 - [Themes & Grammars (`tm-textarea/tm`)](#themes--grammars-tm-textareatm)
 - [Bindings](#themes--grammars-tm-textareatm)
     - [Tab Indentation (`tm-textarea/bindings/tab-indentation`)](#tabindentation-tm-textareabindingstab-indentation)
-
+- [Line Numbers](#line-numbers)
 ## Installation
 
 ```bash
@@ -275,4 +275,68 @@ const App = () => {
 }
 
 export default App
+```
+
+## Line Numbers
+
+To keep the implementation of `tm-textarea` as generic as possible, we do not provide specific props/attributes to render line-numbers. Instead css-variables are set to assist with the rendering of css line-numbers:
+- `--tm-line-number`: the line number of a single line. This variable is set on `tm-textarea::part(line)` ([custom element](#custom-element-tm-textarea)) and `.tm-textarea pre` ([solid component](#solid-component-tm-textareasolid)). 
+- `--tm-line-digits`: the amount of digits of the current line-count, useful for preventing overflowing line-numbers.
+
+It can get a bit involved to account for all the possible edge cases, so we do provide the following css-snippets that you can use as a base:
+
+
+### Custom Element CSS Snippet
+ 
+```css
+.line-numbers::part(root) {
+  /* Calculate the offset from the digits of the current line-count and an additional ch for left-padding. */
+  --offset: calc(var(--tm-line-digits) * 1ch + 1ch);
+}
+
+/* Render a pseudo before-element in each line. */
+.line-numbers::part(line)::before {
+  /* Position absolute to not offset the line's content. */
+  position: absolute;
+  /* Counter line's offset with the reversed offset. */
+  transform: translateX(calc(var(--offset) * -1));
+  /* Sets a counter line-number with the css-variable --tm-line-number + 1. */
+  counter-reset: line-number calc(var(--tm-line-number) + 1);
+  /* Adds the counter to the pseudo-element's content. */
+  content: counter(line-number);
+}
+
+/* Offset the textarea and the lines. */
+.line-numbers::part(line),
+.line-numbers::part(textarea) {
+  /* Offset should not be done with margin/padding to prevent conflict with inlined tab-calculations. */
+  transform: translateX(var(--offset));
+}
+```
+### Solid Component CSS Snippet
+ 
+```css
+.line-numbers {
+  /* Calculate the offset from the digits of the current line-count and an additional ch for left-padding. */
+  --width: calc(var(--tm-line-digits) * 1ch + 1ch);
+}
+
+/* Render a pseudo before-element in each line. */
+.line-numbers pre::before {
+    /* Position absolute to not offset the line's content. */
+  position: absolute;
+  /* Counter line's offset with the reversed offset. */
+  transform: translateX(calc(var(--offset) * -1));
+  /* Sets a counter line-number with the css-variable --tm-line-number + 1. */
+  counter-reset: line-number calc(var(--tm-line-number) + 1);
+  /* Adds the counter to the pseudo-element's content. */
+  content: counter(line-number);
+}
+
+/* Offset the textarea and the lines. */
+.line-numbers pre,
+.line-numbers textarea {
+  /* Offset should not be done with margin/padding to prevent conflict with inlined tab-calculations. */
+  transform: translateX(var(--line-number-width));
+}
 ```

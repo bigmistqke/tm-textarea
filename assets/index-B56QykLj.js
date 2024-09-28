@@ -6079,7 +6079,7 @@ function tabIndentation(e) {
     let newSelectionEnd = selectionEnd;
     let result = value.slice(start === 0 ? 0 : start + 1, selectionEnd).split("\n").map((line, index) => {
       const initialLength = line.length;
-      const modifiedLine = e.shiftKey ? unindent(line, tabSize) : indent(line, tabSize);
+      const modifiedLine = e.shiftKey ? unindent(line, tabSize) : indent(line);
       const lengthChange = modifiedLine.length - initialLength;
       if (index === 0) {
         newSelectionStart += lengthChange;
@@ -6112,43 +6112,35 @@ function unindent(source, tabSize) {
   const leadingWhitespace = getLeadingWhitespace(source);
   if (leadingWhitespace.length === 0)
     return source;
-  const segments = getWhitespaceSegments(leadingWhitespace, tabSize);
+  const segments = getIndentationSegments(leadingWhitespace, tabSize);
   return source.replace(leadingWhitespace, segments.slice(0, -1).join(""));
 }
-function indent(source, tabSize) {
+function indent(source) {
   const leadingWhitespace = getLeadingWhitespace(source);
-  const lastCharacter = leadingWhitespace[leadingWhitespace.length - 1];
-  if (lastCharacter === " ") {
-    const segments = getWhitespaceSegments(leadingWhitespace, tabSize);
-    const lastSegment = segments[segments.length - 1];
-    if (lastSegment && lastSegment.length < tabSize) {
-      segments[segments.length - 1] = `${lastSegment}	`;
-    } else {
-      segments.push("	");
-    }
-    return source.replace(leadingWhitespace, segments.join(""));
-  }
-  return `	${source}`;
+  return source.replace(leadingWhitespace, leadingWhitespace + "	");
 }
-function getWhitespaceSegments(leadingWhitespace, tabSize) {
-  const segments = (leadingWhitespace.match(/(\t| +)/g) || []).flatMap(
-    (segment) => segment === "	" ? [segment] : Array.from(
+function getIndentationSegments(leadingWhitespace, tabSize) {
+  const unmergedSegments = (leadingWhitespace.match(/(\t| +)/g) || []).flatMap((segment) => {
+    if (segment === "	") {
+      return [segment];
+    }
+    return Array.from(
       { length: Math.ceil(segment.length / tabSize) },
       (_, i) => segment.substr(i * tabSize, tabSize)
-    )
-  );
-  const result = [];
-  for (let i = 0; i < segments.length; i++) {
-    const current = segments[i];
-    const next = segments[i + 1];
-    if (current === "	" || current.length >= tabSize || i === segments.length - 1) {
-      result.push(current);
+    );
+  });
+  const segments = [];
+  for (let i = 0; i < unmergedSegments.length; i++) {
+    const current = unmergedSegments[i];
+    const next = unmergedSegments[i + 1];
+    if (current === "	" || current.length >= tabSize || i === unmergedSegments.length - 1) {
+      segments.push(current);
       continue;
     }
-    result.push(current + next);
+    segments.push(current + next);
     i++;
   }
-  return result;
+  return segments;
 }
 function getLeadingWhitespace(source) {
   return source.match(/^\s*/)?.[0] || "";

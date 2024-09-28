@@ -1565,7 +1565,7 @@ const App: Component = () => {
 
   const [LOC, setLOC] = createSignal(10_000)
   const [value, setValue] = createSignal<string>(null!)
-  const formattedSelf = TabIndentation.format(self)
+  const formattedSelf = TabIndentation.format(self, 2)
 
   createRenderEffect(() => {
     setValue(loopLines(formattedSelf, LOC()))
@@ -6173,10 +6173,12 @@ ${result}`;
     }
     return segments;
   }
-  static format(source) {
-    const whitespace = TabIndentation.getLeadingWhitespace(source);
-    const segments = TabIndentation.getIndentationSegments(whitespace, 2);
-    return source.replace(whitespace, "	".repeat(segments.length));
+  static format(source, tabSize) {
+    return source.split("\n").map((line) => {
+      const whitespace = TabIndentation.getLeadingWhitespace(line);
+      const segments = TabIndentation.getIndentationSegments(whitespace, 2);
+      return line.replace(whitespace, "	".repeat(segments.length));
+    }).join("\n");
   }
 }
 
@@ -6505,7 +6507,7 @@ const App = () => {
   const [lineNumbers, setLineNumbers] = createSignal(true);
   const [LOC, setLOC] = createSignal(1e4);
   const [value, setValue] = createSignal(null);
-  const formattedSelf = TabIndentation.format(self$1);
+  const formattedSelf = TabIndentation.format(self$1, 2);
   createRenderEffect(() => {
     setValue(loopLines(formattedSelf, LOC()));
   });

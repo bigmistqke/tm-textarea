@@ -6176,7 +6176,7 @@ ${result}`;
   static format(source, tabSize) {
     return source.split("\n").map((line) => {
       const whitespace = TabIndentation.getLeadingWhitespace(line);
-      const segments = TabIndentation.getIndentationSegments(whitespace, 2);
+      const segments = TabIndentation.getIndentationSegments(whitespace, tabSize);
       return line.replace(whitespace, "	".repeat(segments.length));
     }).join("\n");
   }

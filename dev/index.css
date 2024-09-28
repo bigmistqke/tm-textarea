@@ -115,5 +115,5 @@ main {
 .line-numbers::part(line),
 .line-numbers textarea,
 .line-numbers::part(textarea) {
-  margin-left: var(--line-number-width) !important;
+  transform: translateX(var(--line-number-width));
 }

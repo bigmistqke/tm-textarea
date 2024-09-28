@@ -24,27 +24,31 @@
   "browser": {},
   "exports": {
     ".": "./dist/index.js",
-    "./solid": "./dist/solid.js",
+    "./core": "./dist/core.js",
     "./cdn": "./dist/cdn.js",
+    "./solid": "./dist/solid.js",
     "./tm": "./dist/tm/index.js",
-    "./core": "./dist/core.js"
+    "./bindings/tab-indentation": "./dist/bindings/tab-indentation.js"
   },
   "typesVersions": {
     "*": {
       "*": [
         "dist/index.d.ts"
       ],
-      "solid": [
-        "dist/solid.d.ts"
+      "core": [
+        "dist/core.d.ts"
       ],
       "cdn": [
         "dist/cdn.d.ts"
       ],
-      "core": [
-        "dist/core.d.ts"
+      "solid": [
+        "dist/solid.d.ts"
       ],
       "tm": [
         "dist/tm/index.d.ts"
+      ],
+      "bindings/tab-indentation": [
+        "dist/bindings/tab-indentation.d.ts"
       ]
     }
   },

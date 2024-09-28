@@ -1,15 +1,9 @@
-import path from 'node:path'
 import { defineConfig } from 'vite'
 import cssModuleClassnames from 'vite-plugin-css-classnames'
 import solidPlugin from 'vite-plugin-solid'
 import tsconfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig({
-  resolve: {
-    alias: {
-      'solid-tm-textarea': path.resolve(__dirname, '../src'),
-    },
-  },
   base: './',
   plugins: [
     cssModuleClassnames(),

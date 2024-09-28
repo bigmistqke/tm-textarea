@@ -27,6 +27,9 @@ export default defineConfig({
         'tm/index': normalizePath(path.resolve(__dirname, 'src/tm/index.ts')),
         cdn: normalizePath(path.resolve(__dirname, 'src/cdn.ts')),
         core: normalizePath(path.resolve(__dirname, 'src/core.tsx')),
+        'bindings/tab-indentation': normalizePath(
+          path.resolve(__dirname, 'src/bindings/tab-indentation.ts'),
+        ),
       },
       name: 'solid-tm-textarea',
       formats: ['es'],

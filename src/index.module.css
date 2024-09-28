@@ -41,6 +41,7 @@
     & .line {
       position: absolute;
       top: calc(var(--tm-line-number) * var(--tm-char-height));
+      contain: layout;
       margin: 0px;
 
       & span {

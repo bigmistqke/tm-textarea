@@ -1305,6 +1305,11 @@ function style(node, value, prev) {
 }
 function spread(node, props = {}, isSVG, skipChildren) {
   const prevProps = {};
+  if (!skipChildren) {
+    createRenderEffect(
+      () => (prevProps.children = insertExpression(node, props.children, prevProps.children))
+    );
+  }
   createRenderEffect(() =>
     typeof props.ref === "function" ? use(props.ref, node) : (props.ref = node)
   );
@@ -1526,7 +1531,7 @@ function cleanChildren(parent, current, marker, replacement) {
 }
 
 const test = `import test from '.?raw'
-import { createRenderEffect, createSignal, For, onMount, Show, type Component } from 'solid-js'
+import { createRenderEffect, createSignal, For, Show, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
 import 'tm-textarea'
 import { tabIndentation } from 'tm-textarea/bindings/tab-indentation'
@@ -1684,6 +1689,11 @@ const App: Component = () => {
               }}
               class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
               onInput={e => setValue(e.currentTarget.value)}
+              onKeyDown={e => {
+                tabIndentation(e)
+                // local
+                setValue(e.currentTarget.value)
+              }}
             />
           }
         >
@@ -1694,16 +1704,9 @@ const App: Component = () => {
             editable={editable()}
             style={{
               padding: \`\${padding()}px\`,
-              'tab-size': 3,
             }}
             class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
             onInput={e => setValue(e.currentTarget.value)}
-            ref={element => {
-              // element.setRangeText('import ', 0, 0)
-              onMount(() => {
-                setTimeout(() => {}, 1000)
-              })
-            }}
             /* @ts-ignore */
             on:keydown={e => {
               tabIndentation(e)
@@ -5683,6 +5686,7 @@ function createTmTextarea(styles) {
     const [config, rest] = splitProps(mergeProps({
       editable: true
     }, props), ["class", "grammar", "onInput", "value", "style", "theme", "editable", "onScroll", "textareaRef"]);
+    const [textareaProps, containerProps] = splitProps(rest, ["onKeyDown", "onKeyPress", "onKeyUp", "onChange"]);
     let container;
     const [character, setCharacter] = createSignal();
     const [viewport, setViewport] = createSignal();
@@ -5769,7 +5773,7 @@ function createTmTextarea(styles) {
               ...style()
             };
           }
-        }, rest), false);
+        }, containerProps), false, true);
         insert(_el$3, createComponent(Index, {
           get each() {
             return Array.from({
@@ -5793,6 +5797,20 @@ function createTmTextarea(styles) {
           setSource(value);
           config.onInput?.(e);
         });
+        spread(_el$4, mergeProps({
+          get ["class"]() {
+            return styles.textarea;
+          },
+          get disabled() {
+            return !config.editable;
+          },
+          get value() {
+            return config.value;
+          },
+          get rows() {
+            return lines().length;
+          }
+        }, textareaProps), false, false);
         use((element) => {
           new ResizeObserver(([entry]) => {
             const {
@@ -5806,21 +5824,14 @@ function createTmTextarea(styles) {
           }).observe(element);
         }, _el$5);
         createRenderEffect((_p$) => {
-          var _v$4 = styles.code, _v$5 = styles.textarea, _v$6 = !config.editable, _v$7 = lines().length, _v$8 = styles.character;
+          var _v$4 = styles.code, _v$5 = styles.character;
           _v$4 !== _p$.e && className(_el$3, _p$.e = _v$4);
-          _v$5 !== _p$.t && className(_el$4, _p$.t = _v$5);
-          _v$6 !== _p$.a && (_el$4.disabled = _p$.a = _v$6);
-          _v$7 !== _p$.o && setAttribute(_el$4, "rows", _p$.o = _v$7);
-          _v$8 !== _p$.i && className(_el$5, _p$.i = _v$8);
+          _v$5 !== _p$.t && className(_el$5, _p$.t = _v$5);
           return _p$;
         }, {
           e: void 0,
-          t: void 0,
-          a: void 0,
-          o: void 0,
-          i: void 0
+          t: void 0
         });
-        createRenderEffect(() => _el$4.value = config.value);
         return _el$2;
       }
     });
@@ -6550,19 +6561,16 @@ const App = () => {
           get ["class"]() {
             return lineNumbers() ? "line-numbers tm-textarea" : "tm-textarea";
           },
-          onInput: (e) => setValue(e.currentTarget.value)
+          onInput: (e) => setValue(e.currentTarget.value),
+          onKeyDown: (e) => {
+            tabIndentation(e);
+            setValue(e.currentTarget.value);
+          }
         });
       },
       get children() {
         var _el$32 = _tmpl$();
-        use((element) => {
-          onMount(() => {
-            setTimeout(() => {
-            }, 1e3);
-          });
-        }, _el$32);
         _el$32.$$input = (e) => setValue(e.currentTarget.value);
-        _el$32.style.setProperty("tab-size", "3");
         _el$32.addEventListener("keydown", (e) => {
           tabIndentation(e);
           setValue(e.currentTarget.value);

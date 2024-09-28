@@ -2,7 +2,7 @@ import self from '.?raw'
 import { createRenderEffect, createSignal, For, Show, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
 import 'tm-textarea'
-import { tabIndentation } from 'tm-textarea/bindings/tab-indentation'
+import { TabIndentation } from 'tm-textarea/bindings/tab-indentation'
 import { setCDN } from 'tm-textarea/cdn'
 import { TmTextarea } from 'tm-textarea/solid'
 import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
@@ -33,7 +33,7 @@ const App: Component = () => {
 
   const [LOC, setLOC] = createSignal(10_000)
   const [value, setValue] = createSignal<string>(null!)
-  const formattedSelf = tabIndentation.format(self, 2)
+  const formattedSelf = TabIndentation.format(self, 2)
 
   createRenderEffect(() => {
     setValue(loopLines(formattedSelf, LOC()))
@@ -158,7 +158,7 @@ const App: Component = () => {
           when={mode() === 'custom-element'}
           fallback={
             <TmTextarea
-              ref={element => tabIndentation(element)}
+              ref={TabIndentation.binding}
               value={value()}
               grammar={grammar()}
               theme={theme()}
@@ -173,7 +173,7 @@ const App: Component = () => {
           }
         >
           <tm-textarea
-            ref={element => tabIndentation(element)}
+            ref={TabIndentation.binding}
             value={value()}
             grammar={grammar()}
             theme={theme()}

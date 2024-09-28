@@ -140,9 +140,14 @@ export class TabIndentation {
     return segments
   }
 
-  static format(source: string) {
-    const whitespace = TabIndentation.getLeadingWhitespace(source)
-    const segments = TabIndentation.getIndentationSegments(whitespace, 2)
-    return source.replace(whitespace, '\t'.repeat(segments.length))
+  static format(source: string, tabSize: number) {
+    return source
+      .split('\n')
+      .map(line => {
+        const whitespace = TabIndentation.getLeadingWhitespace(line)
+        const segments = TabIndentation.getIndentationSegments(whitespace, tabSize)
+        return line.replace(whitespace, '\t'.repeat(segments.length))
+      })
+      .join('\n')
   }
 }

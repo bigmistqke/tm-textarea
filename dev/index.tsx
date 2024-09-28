@@ -33,7 +33,7 @@ const App: Component = () => {
 
   const [LOC, setLOC] = createSignal(10_000)
   const [value, setValue] = createSignal<string>(null!)
-  const formattedSelf = TabIndentation.format(self)
+  const formattedSelf = TabIndentation.format(self, 2)
 
   createRenderEffect(() => {
     setValue(loopLines(formattedSelf, LOC()))

@@ -1,8 +1,8 @@
-import test from '.?raw'
+import self from '.?raw'
 import { createRenderEffect, createSignal, For, Show, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
 import 'tm-textarea'
-import { tabIndentation } from 'tm-textarea/bindings/tab-indentation'
+import { TabIndentation } from 'tm-textarea/bindings/tab-indentation'
 import { setCDN } from 'tm-textarea/cdn'
 import { TmTextarea } from 'tm-textarea/solid'
 import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
@@ -27,14 +27,16 @@ const App: Component = () => {
 
   const [fontSize, setFontSize] = createSignal(10)
   const [padding, setPadding] = createSignal(20)
+  const [tabSize, setTabSize] = createSignal(4)
   const [editable, setEditable] = createSignal(true)
   const [lineNumbers, setLineNumbers] = createSignal(true)
 
   const [LOC, setLOC] = createSignal(10_000)
   const [value, setValue] = createSignal<string>(null!)
+  const formattedSelf = TabIndentation.format(self)
 
   createRenderEffect(() => {
-    setValue(loopLines(test, LOC()))
+    setValue(loopLines(formattedSelf, LOC()))
   })
 
   function loopLines(input: string, lineCount: number): string {
@@ -100,7 +102,15 @@ const App: Component = () => {
               onInput={e => setLOC(+e.currentTarget.value)}
             />
           </div>
-
+          <div>
+            <label for="tab-size">tab-size</label>
+            <input
+              id="tab-size"
+              type="number"
+              onInput={e => setTabSize(+e.currentTarget.value)}
+              value={tabSize()}
+            />
+          </div>
           <div>
             <label for="padding">padding</label>
             <input
@@ -154,11 +164,12 @@ const App: Component = () => {
               editable={editable()}
               style={{
                 padding: `${padding()}px`,
+                'tab-size': tabSize(),
               }}
               class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
               onInput={e => setValue(e.currentTarget.value)}
               onKeyDown={e => {
-                tabIndentation(e)
+                TabIndentation.handleEvent(e)
                 // local
                 setValue(e.currentTarget.value)
               }}
@@ -172,12 +183,13 @@ const App: Component = () => {
             editable={editable()}
             style={{
               padding: `${padding()}px`,
+              'tab-size': tabSize(),
             }}
             class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
             onInput={e => setValue(e.currentTarget.value)}
             /* @ts-ignore */
             on:keydown={e => {
-              tabIndentation(e)
+              TabIndentation.handleEvent(e)
               // local
               setValue(e.currentTarget.value)
             }}

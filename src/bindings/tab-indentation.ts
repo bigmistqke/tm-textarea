@@ -11,14 +11,16 @@ import { TmTextareaElement } from 'src'
  *
  * return <tm-textarea onInput={tabIndentation} />
  */
-export function tabIndentation(e: KeyboardEvent & { currentTarget: TmTextareaElement }) {
+export function tabIndentation(
+  e: KeyboardEvent & { currentTarget: TmTextareaElement | HTMLTextAreaElement },
+) {
   if (e.key !== 'Tab') {
     return
   }
 
   e.preventDefault()
 
-  const textarea = e.currentTarget as TmTextareaElement
+  const textarea = e.currentTarget
   const { selectionStart, selectionEnd, value } = textarea
   const tabSize = +getComputedStyle(textarea).tabSize
 
@@ -34,7 +36,7 @@ export function tabIndentation(e: KeyboardEvent & { currentTarget: TmTextareaEle
       .split('\n')
       .map((line, index) => {
         const initialLength = line.length
-        const modifiedLine = e.shiftKey ? unindent(line, tabSize) : indent(line, tabSize)
+        const modifiedLine = e.shiftKey ? unindent(line, tabSize) : indent(line)
         const lengthChange = modifiedLine.length - initialLength
 
         if (index === 0) {
@@ -75,44 +77,30 @@ export function tabIndentation(e: KeyboardEvent & { currentTarget: TmTextareaEle
   }
 }
 
-/**
- * Removes one level of indentation from the given source string.
- *
- * @param source - The text to be unindented.
- * @param tabSize - The size of a tab in number of spaces (used for space-based indentation).
- * @returns - The unindented text.
- */
 function unindent(source: string, tabSize: number) {
   const leadingWhitespace = getLeadingWhitespace(source)
   if (leadingWhitespace.length === 0) return source
-  const segments = getWhitespaceSegments(leadingWhitespace, tabSize)
+  const segments = getIndentationSegments(leadingWhitespace, tabSize)
   return source.replace(leadingWhitespace, segments.slice(0, -1).join(''))
 }
 
-/**
- * Adds one level of indentation to the given source string.
- *
- * @param source - The text to be indented.
- * @param tabSize - The size of a tab in number of spaces (used for space-based indentation).
- * @returns - The indented text.
- */
-function indent(source: string, tabSize: number) {
+function indent(source: string) {
   const leadingWhitespace = getLeadingWhitespace(source)
-  const lastCharacter = leadingWhitespace[leadingWhitespace.length - 1]
-
-  if (lastCharacter === ' ') {
-    const segments = getWhitespaceSegments(leadingWhitespace, tabSize)
-    const lastSegment = segments[segments.length - 1]
-    if (lastSegment && lastSegment.length < tabSize) {
-      segments[segments.length - 1] = `${lastSegment}\t`
-    } else {
-      segments.push('\t')
-    }
-    return source.replace(leadingWhitespace, segments.join(''))
-  }
-
-  return `\t${source}`
+  return source.replace(leadingWhitespace, leadingWhitespace + '\t')
 }
+
+function getLeadingWhitespace(source: string) {
+  return source.match(/^\s*/)?.[0] || ''
+}
+
+function getLineStart(value: string, position: number) {
+  // Move start to start document or first newline.
+  while (position > 0 && value[position] !== '\n') {
+    position--
+  }
+  return position
+}
+
 /**
  * Calculates the whitespace segments for a string of leading whitespace, merging certain segments for consistency.
  *
@@ -123,52 +111,29 @@ function indent(source: string, tabSize: number) {
  * @param tabSize - The number of spaces that constitute a tab segment.
  * @returns {string[]} - An array of strings, each representing a coherent segment of indentation.
  */
-function getWhitespaceSegments(leadingWhitespace: string, tabSize: number) {
-  const segments = (leadingWhitespace.match(/(\t| +)/g) || []).flatMap(segment =>
-    segment === '\t'
-      ? [segment]
-      : Array.from({ length: Math.ceil(segment.length / tabSize) }, (_, i) =>
-          segment.substr(i * tabSize, tabSize),
-        ),
-  )
+function getIndentationSegments(leadingWhitespace: string, tabSize: number) {
+  const unmergedSegments = (leadingWhitespace.match(/(\t| +)/g) || []).flatMap(segment => {
+    if (segment === '\t') {
+      return [segment]
+    }
+    return Array.from({ length: Math.ceil(segment.length / tabSize) }, (_, i) =>
+      segment.substr(i * tabSize, tabSize),
+    )
+  })
 
-  const result: string[] = []
+  const segments: string[] = []
 
-  for (let i = 0; i < segments.length; i++) {
-    const current = segments[i]!
-    const next = segments[i + 1]
-    if (current === '\t' || current.length >= tabSize || i === segments.length - 1) {
-      result.push(current)
+  for (let i = 0; i < unmergedSegments.length; i++) {
+    const current = unmergedSegments[i]!
+    const next = unmergedSegments[i + 1]
+    if (current === '\t' || current.length >= tabSize || i === unmergedSegments.length - 1) {
+      segments.push(current)
       continue
     }
-    result.push(current + next)
+    // Merge current segment with next.
+    segments.push(current + next)
     i++
   }
 
-  return result
-}
-
-/**
- * Extracts the leading whitespace from the given string.
- *
- * @param value - The text from which to extract leading whitespace.
- * @returns - The leading whitespace of the text.
- */
-function getLeadingWhitespace(source: string) {
-  return source.match(/^\s*/)?.[0] || ''
-}
-
-/**
- * Finds the start position of the line for a given index in the text.
- *
- * @param value - The complete text of the textarea.
- * @param position - The current cursor position or the start of the selection.
- * @returns - The index of the start of the line.
- */
-function getLineStart(value: string, position: number) {
-  // Move start to start document or first newline.
-  while (position > 0 && value[position] !== '\n') {
-    position--
-  }
-  return position
+  return segments
 }

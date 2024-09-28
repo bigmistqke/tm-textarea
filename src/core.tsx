@@ -248,8 +248,13 @@ function useTmTextarea() {
 /*                                                                                */
 /**********************************************************************************/
 
-export interface TmTextareaProps
-  extends Omit<ComponentProps<'div'>, 'style' | 'onInput' | 'onScroll'> {
+type TmTextareaPropsBase = Omit<
+  ComponentProps<'div'>,
+  'style' | 'onInput' | 'onScroll' | 'onKeyDown'
+> &
+  Pick<ComponentProps<'textarea'>, 'onKeyDown' | 'onKeyPress' | 'onKeyUp' | 'onChange'>
+
+export interface TmTextareaProps extends TmTextareaPropsBase {
   /** If textarea is editable or not. */
   editable?: boolean
   /** The grammar of the source code for syntax highlighting. */
@@ -262,10 +267,8 @@ export interface TmTextareaProps
   theme: Theme
   /** The source code to be displayed and edited. */
   value: string
-  /** Callback function to handle input-event. */
-  onInput?: (event: InputEvent & { currentTarget: HTMLTextAreaElement }) => void
-  /** Callback function to handle scroll-event. */
   onScroll?: (event: Event & { currentTarget: HTMLDivElement }) => void
+  onInput?: (event: InputEvent & { currentTarget: HTMLTextAreaElement }) => void
 }
 
 export function createTmTextarea(styles: Record<string, string>) {
@@ -351,6 +354,13 @@ export function createTmTextarea(styles: Record<string, string>) {
       'editable',
       'onScroll',
       'textareaRef',
+    ])
+
+    const [textareaProps, containerProps] = splitProps(rest, [
+      'onKeyDown',
+      'onKeyPress',
+      'onKeyUp',
+      'onChange',
     ])
 
     let container: HTMLDivElement
@@ -471,7 +481,7 @@ export function createTmTextarea(styles: Record<string, string>) {
             '--tm-line-digits': countDigits(lines().length),
             ...style(),
           }}
-          {...rest}
+          {...containerProps}
         >
           <code part="code" class={styles.code}>
             <Index each={Array.from({ length: Math.ceil(lines().length / SEGMENT_SIZE) })}>
@@ -503,6 +513,7 @@ export function createTmTextarea(styles: Record<string, string>) {
               // user provided callback
               config.onInput?.(e)
             }}
+            {...textareaProps}
           />
           <code
             ref={element => {

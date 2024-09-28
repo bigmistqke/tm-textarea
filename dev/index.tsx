@@ -1,5 +1,5 @@
 import test from '.?raw'
-import { createRenderEffect, createSignal, For, onMount, Show, type Component } from 'solid-js'
+import { createRenderEffect, createSignal, For, Show, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
 import 'tm-textarea'
 import { tabIndentation } from 'tm-textarea/bindings/tab-indentation'
@@ -157,6 +157,11 @@ const App: Component = () => {
               }}
               class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
               onInput={e => setValue(e.currentTarget.value)}
+              onKeyDown={e => {
+                tabIndentation(e)
+                // local
+                setValue(e.currentTarget.value)
+              }}
             />
           }
         >
@@ -167,16 +172,9 @@ const App: Component = () => {
             editable={editable()}
             style={{
               padding: `${padding()}px`,
-              'tab-size': 3,
             }}
             class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
             onInput={e => setValue(e.currentTarget.value)}
-            ref={element => {
-              // element.setRangeText('import ', 0, 0)
-              onMount(() => {
-                setTimeout(() => {}, 1000)
-              })
-            }}
             /* @ts-ignore */
             on:keydown={e => {
               tabIndentation(e)

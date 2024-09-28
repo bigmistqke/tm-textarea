@@ -2,7 +2,7 @@ import self from '.?raw'
 import { createRenderEffect, createSignal, For, Show, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
 import 'tm-textarea'
-import { TabIndentation } from 'tm-textarea/bindings/tab-indentation'
+import { tabIndentation } from 'tm-textarea/bindings/tab-indentation'
 import { setCDN } from 'tm-textarea/cdn'
 import { TmTextarea } from 'tm-textarea/solid'
 import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
@@ -33,7 +33,7 @@ const App: Component = () => {
 
   const [LOC, setLOC] = createSignal(10_000)
   const [value, setValue] = createSignal<string>(null!)
-  const formattedSelf = TabIndentation.format(self, 2)
+  const formattedSelf = tabIndentation.format(self, 2)
 
   createRenderEffect(() => {
     setValue(loopLines(formattedSelf, LOC()))
@@ -158,6 +158,7 @@ const App: Component = () => {
           when={mode() === 'custom-element'}
           fallback={
             <TmTextarea
+              ref={element => tabIndentation(element)}
               value={value()}
               grammar={grammar()}
               theme={theme()}
@@ -168,16 +169,11 @@ const App: Component = () => {
               }}
               class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
               onInput={e => setValue(e.currentTarget.value)}
-              onKeyDown={e => {
-                TabIndentation.onInput(e)
-                // local
-                setValue(e.currentTarget.value)
-              }}
             />
           }
         >
           <tm-textarea
-            ref={TabIndentation}
+            ref={element => tabIndentation(element)}
             value={value()}
             grammar={grammar()}
             theme={theme()}
@@ -188,11 +184,6 @@ const App: Component = () => {
             }}
             class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
             onInput={e => setValue(e.currentTarget.value)}
-            /* @ts-ignore */
-            on:keydown={e => {
-              // local
-              setValue(e.currentTarget.value)
-            }}
           />
         </Show>
       </main>

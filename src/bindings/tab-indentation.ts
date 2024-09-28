@@ -11,13 +11,13 @@ import { TmTextareaElement } from 'src'
  *
  * return <tm-textarea ref={TabIndentation} />
  */
-export function TabIndentation(element: HTMLTextAreaElement | TmTextareaElement) {
-  element.addEventListener('keydown', TabIndentation.onKeyDown as any)
-  element.addEventListener('input', TabIndentation.onInput as any)
+export function tabIndentation(element: HTMLTextAreaElement | TmTextareaElement) {
+  element.addEventListener('keydown', tabIndentation.onKeyDown as any)
+  element.addEventListener('input', tabIndentation.onInput as any)
 
   return function dispose() {
-    element.removeEventListener('keydown', TabIndentation.onKeyDown as any)
-    element.addEventListener('input', TabIndentation.onInput as any)
+    element.removeEventListener('keydown', tabIndentation.onKeyDown as any)
+    element.addEventListener('input', tabIndentation.onInput as any)
   }
 }
 
@@ -28,7 +28,7 @@ export function TabIndentation(element: HTMLTextAreaElement | TmTextareaElement)
  *
  * @param event - The keyboard event triggered when a key is pressed.
  */
-TabIndentation.onKeyDown = (
+tabIndentation.onKeyDown = (
   event: KeyboardEvent & { currentTarget: TmTextareaElement | HTMLTextAreaElement },
 ) => {
   if (event.key === 'Tab') {
@@ -48,7 +48,7 @@ TabIndentation.onKeyDown = (
  *
  * @param e - The input event that was dispatched during indentation handling.
  */
-TabIndentation.onInput = (
+tabIndentation.onInput = (
   event: InputEvent & { currentTarget: TmTextareaElement | HTMLTextAreaElement },
 ) => {
   if (event.inputType !== 'formatIndent' && event.inputType !== 'formatOutdent') {
@@ -62,7 +62,7 @@ TabIndentation.onInput = (
   const tabSize = +getComputedStyle(textarea).tabSize
 
   if (selectionStart !== selectionEnd) {
-    const start = TabIndentation.getLineStart(value, selectionStart)
+    const start = tabIndentation.getLineStart(value, selectionStart)
 
     let newSelectionStart = selectionStart
     let newSelectionEnd = selectionEnd
@@ -75,8 +75,8 @@ TabIndentation.onInput = (
         const initialLength = line.length
         const modifiedLine =
           event.inputType === 'formatOutdent'
-            ? TabIndentation.outdent(line, tabSize)
-            : TabIndentation.indent(line)
+            ? tabIndentation.outdent(line, tabSize)
+            : tabIndentation.indent(line)
         const lengthChange = modifiedLine.length - initialLength
 
         if (index === 0) {
@@ -100,13 +100,13 @@ TabIndentation.onInput = (
     } else {
       const isNewLine = value[selectionStart] === '\n'
 
-      const start = TabIndentation.getLineStart(
+      const start = tabIndentation.getLineStart(
         value,
         // Skip the leading newline.
         isNewLine ? Math.max(0, selectionStart - 1) : selectionStart,
       )
 
-      let result = TabIndentation.outdent(value.slice(start, selectionEnd), tabSize)
+      let result = tabIndentation.outdent(value.slice(start, selectionEnd), tabSize)
 
       // Add the leading newline back.
       result = start === 0 ? result : `\n${result}`
@@ -117,23 +117,23 @@ TabIndentation.onInput = (
   }
 }
 
-TabIndentation.outdent = (source: string, tabSize: number) => {
-  const leadingWhitespace = TabIndentation.getLeadingWhitespace(source)
+tabIndentation.outdent = (source: string, tabSize: number) => {
+  const leadingWhitespace = tabIndentation.getLeadingWhitespace(source)
   if (leadingWhitespace.length === 0) return source
-  const segments = TabIndentation.getIndentationSegments(leadingWhitespace, tabSize)
+  const segments = tabIndentation.getIndentationSegments(leadingWhitespace, tabSize)
   return source.replace(leadingWhitespace, segments.slice(0, -1).join(''))
 }
 
-TabIndentation.indent = (source: string) => {
-  const leadingWhitespace = TabIndentation.getLeadingWhitespace(source)
+tabIndentation.indent = (source: string) => {
+  const leadingWhitespace = tabIndentation.getLeadingWhitespace(source)
   return source.replace(leadingWhitespace, leadingWhitespace + '\t')
 }
 
-TabIndentation.getLeadingWhitespace = (source: string) => {
+tabIndentation.getLeadingWhitespace = (source: string) => {
   return source.match(/^\s*/)?.[0] || ''
 }
 
-TabIndentation.getLineStart = (value: string, position: number) => {
+tabIndentation.getLineStart = (value: string, position: number) => {
   // Move start to start document or first newline.
   while (position > 0 && value[position] !== '\n') {
     position--
@@ -151,7 +151,7 @@ TabIndentation.getLineStart = (value: string, position: number) => {
  * @param tabSize - The number of spaces that constitute a tab segment.
  * @returns {string[]} - An array of strings, each representing a coherent segment of indentation.
  */
-TabIndentation.getIndentationSegments = (leadingWhitespace: string, tabSize: number) => {
+tabIndentation.getIndentationSegments = (leadingWhitespace: string, tabSize: number) => {
   const unmergedSegments = (leadingWhitespace.match(/(\t| +)/g) || []).flatMap(segment => {
     if (segment === '\t') {
       return [segment]
@@ -186,12 +186,12 @@ TabIndentation.getIndentationSegments = (leadingWhitespace: string, tabSize: num
  * @param tabSize - The number of spaces that represent a single tabulation in the context of the source text.
  * @returns The source text with spaces replaced by tabs as per the calculated indentation levels.
  */
-TabIndentation.format = (source: string, tabSize: number) => {
+tabIndentation.format = (source: string, tabSize: number) => {
   return source
     .split('\n')
     .map(line => {
-      const whitespace = TabIndentation.getLeadingWhitespace(line)
-      const segments = TabIndentation.getIndentationSegments(whitespace, tabSize)
+      const whitespace = tabIndentation.getLeadingWhitespace(line)
+      const segments = tabIndentation.getIndentationSegments(whitespace, tabSize)
       return line.replace(whitespace, '\t'.repeat(segments.length))
     })
     .join('\n')

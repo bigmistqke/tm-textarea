@@ -191,11 +191,10 @@ main {
 .line-numbers pre::before,
 .line-numbers::part(line)::before {
   position: absolute;
+  transform: translateX(calc(var(--line-number-width) * -1));
   opacity: 0.5;
-  counter-reset: variable calc(var(--tm-line-number) + 1);
-  margin-left: calc(var(--line-number-width) * -1);
-  min-width: var(--line-number-width);
-  content: counter(variable);
+  counter-reset: line-number calc(var(--tm-line-number) + 1);
+  content: counter(line-number);
   color: var(--tm-foreground-color);
 }
 

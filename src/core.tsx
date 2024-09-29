@@ -408,7 +408,7 @@ export function createTmTextarea(styles: Record<string, string>) {
     //        Sync local source signal with config.source
     createRenderEffect(() => setSource(props.value))
 
-    createRenderEffect(() => console.log(theme()?.getForegroundColor()))
+    // createRenderEffect(() => console.log(theme()?.getForegroundColor()))
 
     return (
       <TmTextareaContext.Provider

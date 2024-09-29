@@ -404,10 +404,6 @@ export function createTmTextarea(styles: Record<string, string>) {
       style => splitProps(style, ['width', 'height'])[1],
     )
 
-    onMount(() =>
-      new ResizeObserver(([entry]) => setViewport(entry?.contentRect)).observe(container),
-    )
-
     // NOTE:  Update to projection once this lands in solid 2.0
     //        Sync local source signal with config.source
     createRenderEffect(() => setSource(props.value))
@@ -463,6 +459,8 @@ export function createTmTextarea(styles: Record<string, string>) {
           part="root"
           ref={element => {
             container = element
+            new ResizeObserver(([entry]) => setViewport(entry?.contentRect)).observe(container)
+
             applyStyle(element, props, 'width')
             applyStyle(element, props, 'height')
           }}

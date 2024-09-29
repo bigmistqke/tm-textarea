@@ -109,18 +109,6 @@ tm-textarea::part(root) {
 tm-textarea::part(textarea)::selection {
   background: deepskyblue;
 }
-
-/* add line-numbers */
-tm-textarea::part(line)::before {
-  display: inline-block;
-  counter-reset: variable calc(var(--line-number) + 1);
-  min-width: 7ch;
-  content: counter(variable);
-}
-
-tm-textarea::part(textarea) {
-  margin-left: 7ch;
-}
 ```
 
 The attribute `stylesheet` could be used as a last resort to customize the theme. In the following
@@ -280,14 +268,14 @@ export default App
 ## Line Numbers
 
 To keep the implementation of `tm-textarea` as generic as possible, we do not provide specific props/attributes to render line-numbers. Instead css-variables are set to assist with the rendering of css line-numbers:
-- `--tm-line-number`: the line number of a single line. This variable is set on `tm-textarea::part(line)` ([custom element](#custom-element-tm-textarea)) and `.tm-textarea pre` ([solid component](#solid-component-tm-textareasolid)). 
+- `--tm-line-number`: the line number of a single line. This variable is set on `tm-textarea::part(line)` ([custom element](#custom-element-tm-textarea)) and `.tm-textarea pre` ([solid component](#solid-component-tm-textareasolid)).
 - `--tm-line-digits`: the amount of digits of the current line-count, useful for preventing overflowing line-numbers.
 
 It can get a bit involved to account for all the possible edge cases, so we do provide the following css-snippets that you can use as a base:
 
 
 ### Custom Element CSS Snippet
- 
+
 ```css
 .line-numbers::part(root) {
   /* Calculate the offset from the digits of the current line-count and an additional ch for left-padding. */
@@ -314,7 +302,7 @@ It can get a bit involved to account for all the possible edge cases, so we do p
 }
 ```
 ### Solid Component CSS Snippet
- 
+
 ```css
 .line-numbers {
   /* Calculate the offset from the digits of the current line-count and an additional ch for left-padding. */

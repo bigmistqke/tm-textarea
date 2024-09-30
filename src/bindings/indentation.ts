@@ -40,13 +40,13 @@ export function Indentation(event: KeyboardEvent & { currentTarget: HTMLElement 
     // Calculate the new start of selection.
     let newStart = start
     {
-      const originalFirstLine = originalLines[0]
+      const originalFirstLine = originalLines[0]!
       const originalLeadingWhitespaceCount =
         Indentation.getLeadingWhitespace(originalFirstLine).length
 
       // We adjust the start of selection if first line has whitespace to be indented
       if (originalLeadingWhitespaceCount > 0) {
-        const processedFirstLine = processed.split('\n')[0]
+        const processedFirstLine = processed.split('\n')[0]!
         const relativeStart = start - lineStart
         const offset = processedFirstLine.length - originalFirstLine.length
 
@@ -146,8 +146,8 @@ Indentation.indentLine = (source: string) => {
   return source.replace(leadingWhitespace, leadingWhitespace + '\t')
 }
 
-Indentation.getLeadingWhitespace = (source: string) => {
-  return source.match(/^\s*/)?.[0] || ''
+Indentation.getLeadingWhitespace = (source?: string) => {
+  return source?.match(/^\s*/)?.[0] || ''
 }
 
 Indentation.getLineStart = (value: string, position: number) => {

@@ -22,13 +22,13 @@ export default defineConfig({
   build: {
     lib: {
       entry: {
-        index: normalizePath(path.resolve(__dirname, 'src/index.tsx')),
+        index: normalizePath(path.resolve(__dirname, 'src/custom-element.tsx')),
         solid: normalizePath(path.resolve(__dirname, 'src/solid.tsx')),
-        'tm/index': normalizePath(path.resolve(__dirname, 'src/tm/index.ts')),
+        tm: normalizePath(path.resolve(__dirname, 'src/tm/index.ts')),
         cdn: normalizePath(path.resolve(__dirname, 'src/cdn.ts')),
         core: normalizePath(path.resolve(__dirname, 'src/core.tsx')),
-        'bindings/tab-indentation': normalizePath(
-          path.resolve(__dirname, 'src/bindings/tab-indentation.ts'),
+        'bindings/indentation': normalizePath(
+          path.resolve(__dirname, 'src/bindings/indentation.ts'),
         ),
       },
       name: 'solid-tm-textarea',

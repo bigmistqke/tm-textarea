@@ -1,1 +1,1 @@
-export const isTabOrSpace = (char: string) => char === ' ' || char === '\t'
+export const isTabOrSpace = (char?: string) => char === ' ' || char === '\t'

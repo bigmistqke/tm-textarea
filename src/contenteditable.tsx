@@ -307,8 +307,8 @@ export function ContentEditable(props: ContentEditableProps) {
       style={config.style}
       contenteditable={config.editable}
       onBeforeInput={onInput}
-      on:keydown={onKeyDown}
-      on:input={onInput}
+      onKeyDown={onKeyDown}
+      onInput={onInput}
       {...rest}
     >
       {value()}

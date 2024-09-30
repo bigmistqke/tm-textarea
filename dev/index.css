@@ -91,7 +91,7 @@ main {
 
 .tm-textarea {
   background: white;
-  max-height: 100%;
+  overflow: auto;
   color: black;
 }
 

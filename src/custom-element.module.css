@@ -1,10 +1,15 @@
 tm-textarea {
   display: contents;
-}
-
-tm-textarea .container {
-  all: inherit;
-  display: block;
-  font-family: monospace;
   white-space: pre-wrap;
+
+  & .container {
+    all: inherit;
+    display: block;
+    font-family: monospace;
+    white-space: inherit;
+
+    & span {
+      display: inline-flex;
+    }
+  }
 }

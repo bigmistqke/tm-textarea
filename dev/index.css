@@ -95,24 +95,13 @@ main {
   color: black;
 }
 
-.line-numbers,
-.line-numbers::part(root) {
+.line-numbers {
   --line-number-width: calc((var(--tm-line-digits) + 1) * 1ch);
 }
 
-.line-numbers pre::before,
-.line-numbers::part(line)::before {
-  position: absolute;
-  transform: translateX(calc(var(--line-number-width) * -1));
+.line-numbers span::before {
   opacity: 0.5;
-  counter-reset: line-number calc(var(--tm-line-number) + 1);
+  counter-reset: line-number calc(var(--line-number) + 1);
+  min-width: 4ch;
   content: counter(line-number);
-  color: var(--tm-foreground-color);
-}
-
-.line-numbers pre,
-.line-numbers::part(line),
-.line-numbers textarea,
-.line-numbers::part(textarea) {
-  transform: translateX(var(--line-number-width));
 }

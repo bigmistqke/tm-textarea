@@ -32,6 +32,7 @@ const App: Component = () => {
   const [tabSize, setTabSize] = createSignal(4)
   const [editable, setEditable] = createSignal(true)
   const [lineNumbers, setLineNumbers] = createSignal(false)
+  const [wordWrap, setWordWrap] = createSignal(false)
 
   const [LOC, setLOC] = createSignal(100)
   const [value, setValue] = createSignal<string>(null!)
@@ -114,6 +115,17 @@ const App: Component = () => {
             />
           </div>
           <div>
+            <label for="word-wrap">word-wrap</label>
+            <button
+              id="word-wrap"
+              onClick={e => {
+                setWordWrap(bool => !bool)
+              }}
+            >
+              {wordWrap() ? 'enabled' : 'disabled'}
+            </button>
+          </div>
+          <div>
             <label for="padding">padding</label>
             <input
               id="padding"
@@ -167,6 +179,7 @@ const App: Component = () => {
               style={{
                 padding: `${padding()}px`,
                 'tab-size': tabSize(),
+                'white-space': wordWrap() ? 'pre-wrap' : 'pre',
               }}
               class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
               onValue={value => setValue(value)}
@@ -184,6 +197,7 @@ const App: Component = () => {
             style={{
               padding: `${padding()}px`,
               'tab-size': tabSize(),
+              'white-space': wordWrap() ? 'pre-wrap' : 'pre',
             }}
             class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
             onValue={({ value }) => setValue(value)}

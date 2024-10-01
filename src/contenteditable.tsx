@@ -1,32 +1,23 @@
-import { createSignal, mergeProps, splitProps, type ComponentProps, type JSX } from 'solid-js'
+import {
+  Accessor,
+  createSignal,
+  JSXElement,
+  mergeProps,
+  splitProps,
+  type ComponentProps,
+  type JSX,
+} from 'solid-js'
 import { createWritable } from './utils/create-writable'
 import { isTabOrSpace } from './utils/is-tab-or-space'
 
-/**********************************************************************************/
-/*                                                                                */
-/*                                  Get Selection                                 */
-/*                                                                                */
-/**********************************************************************************/
-
-export function getSelection(element: HTMLElement): [number, number] {
-  const selection = document.getSelection()
-
-  if (selection && selection.rangeCount > 0) {
-    const range = selection.getRangeAt(0)
-
-    // Create a range that spans from the start of the contenteditable to the selection start
-    const preSelectionRange = document.createRange()
-    preSelectionRange.selectNodeContents(element)
-    preSelectionRange.setEnd(range.startContainer, range.startOffset)
-
-    // The length of the preSelectionRange gives the start offset relative to the whole content
-    const start = preSelectionRange.toString().length
-    const end = start + range.toString().length
-    return [start, end]
-  }
-
-  return [0, 0]
-}
+export type Patch = [
+  action: [
+    range: [start: number, end: number],
+    data?: string,
+    selection?: [start: number, end?: number],
+  ],
+  undo?: [data: string, selection?: [start: number, end?: number]],
+]
 
 /**********************************************************************************/
 /*                                                                                */
@@ -65,97 +56,6 @@ function createHistory() {
 
 /**********************************************************************************/
 /*                                                                                */
-/*                                  Create Patch                                  */
-/*                                                                                */
-/**********************************************************************************/
-
-export type Patch = [
-  action: [
-    range: [start: number, end: number],
-    data?: string,
-    selection?: [start: number, end?: number],
-  ],
-  undo?: [data: string, selection?: [start: number, end?: number]],
-]
-
-function createPatch(e: InputEvent & { currentTarget: HTMLElement }, source: string): Patch {
-  console.log(e.inputType)
-
-  const selection = getSelection(e.currentTarget)
-  let [start, end] = selection
-
-  const defaultUndo: [string, [number, number]] = [source.slice(start, end), selection]
-
-  switch (e.inputType) {
-    case 'insertText': {
-      return [[selection, e.data || ''], defaultUndo]
-    }
-    case 'insertParagraph': {
-      return [[selection, '\n'], defaultUndo]
-    }
-    case 'insertReplacementText':
-    case 'insertFromPaste': {
-      const data = e.dataTransfer?.getData('text')
-      return [[selection, data], defaultUndo]
-    }
-    case 'deleteContentBackward': {
-      const offset = start === end ? Math.max(0, start - 1) : start
-      return [[[offset, end]], [source.slice(offset, end), selection]]
-    }
-    case 'deleteContentForward': {
-      const offset = start === end ? Math.min(source.length - 1, end + 1) : end
-      return [[[start, offset]], [source.slice(start, offset), selection]]
-    }
-    case 'deleteByCut': {
-      return [[selection], defaultUndo]
-    }
-    case 'deleteWordBackward': {
-      if (start === end) {
-        // If we are next to a whitespace, increment to next non-whitespace character
-        if (isTabOrSpace(source[start - 1])) {
-          while (start > 0 && isTabOrSpace(source[start - 1])) {
-            start--
-          }
-        }
-        // Increment until first whitespace-character
-        while (start > 0 && !isTabOrSpace(source[start - 1])) {
-          start--
-        }
-      }
-      return [[[start, end]], [source.slice(start, end), selection]]
-    }
-    case 'deleteWordForward': {
-      if (start === end) {
-        if (isTabOrSpace(source[start])) {
-          while (end < source.length - 1 && isTabOrSpace(source[end])) {
-            end++
-          }
-        }
-        while (end < source.length - 1 && isTabOrSpace(source[end])) {
-          end++
-        }
-      }
-      return [[[start, end]], [source.slice(start, end), selection]]
-    }
-    case 'deleteSoftLineBackward': {
-      if (start === end) {
-        if (source[start - 1] === '\n') {
-          start--
-        } else {
-          while (start > 0 && source[start - 1] !== '\n') {
-            start--
-          }
-        }
-      }
-      return [[[start, end]], [source.slice(start, end), selection]]
-    }
-    default:
-      throw `Unsupported inputType: ${e.inputType}`
-  }
-}
-
-/**********************************************************************************/
-/*                                                                                */
 /*                                Content Editable                                */
 /*                                                                                */
 /**********************************************************************************/
@@ -164,9 +64,20 @@ export interface ContentEditableProps
   extends Omit<ComponentProps<'div'>, 'onInput' | 'children' | 'contenteditable' | 'style'> {
   value: string
   onValue?: (value: string) => void
-  bindings: Record<string, (event: KeyboardEvent & { currentTarget: HTMLElement }) => Patch | null>
+  bindings: Record<
+    string,
+    (
+      event: KeyboardEvent & { currentTarget: HTMLElement },
+      getSelection: (element: HTMLElement) => [start: number, end: number],
+    ) => Patch | null
+  >
   style?: JSX.CSSProperties
   editable?: boolean
+  transform?: {
+    template: (value: Accessor<string>) => JSXElement
+    getOffset: (element: HTMLElement, targetNode: Node, localOffset: number) => number
+    createRange: (element: HTMLElement, start: number, end: number) => Range
+  }
 }
 
 export function ContentEditable(props: ContentEditableProps) {
@@ -176,10 +87,93 @@ export function ContentEditable(props: ContentEditableProps) {
     'bindings',
     'style',
     'editable',
+    'transform',
   ])
   const [element, setElement] = createSignal<HTMLDivElement>()
   const [value, setValue] = createWritable(() => props.value)
   const history = createHistory()
+
+  /**********************************************************************************/
+  /*                                                                                */
+  /*                                  Create Patch                                  */
+  /*                                                                                */
+  /**********************************************************************************/
+
+  function createPatch(e: InputEvent & { currentTarget: HTMLElement }, source: string): Patch {
+    console.log(e.inputType)
+
+    const selection = getSelection(e.currentTarget)
+    let [start, end] = selection
+
+    const defaultUndo: [string, [number, number]] = [source.slice(start, end), selection]
+
+    switch (e.inputType) {
+      case 'insertText': {
+        return [[selection, e.data || ''], defaultUndo]
+      }
+      case 'insertParagraph': {
+        return [[selection, '\n'], defaultUndo]
+      }
+      case 'insertReplacementText':
+      case 'insertFromPaste': {
+        const data = e.dataTransfer?.getData('text')
+        return [[selection, data], defaultUndo]
+      }
+      case 'deleteContentBackward': {
+        const offset = start === end ? Math.max(0, start - 1) : start
+        return [[[offset, end]], [source.slice(offset, end), selection]]
+      }
+      case 'deleteContentForward': {
+        const offset = start === end ? Math.min(source.length - 1, end + 1) : end
+        return [[[start, offset]], [source.slice(start, offset), selection]]
+      }
+      case 'deleteByCut': {
+        return [[selection], defaultUndo]
+      }
+      case 'deleteWordBackward': {
+        if (start === end) {
+          // If we are next to a whitespace, increment to next non-whitespace character
+          if (isTabOrSpace(source[start - 1])) {
+            while (start > 0 && isTabOrSpace(source[start - 1])) {
+              start--
+            }
+          }
+          // Increment until first whitespace-character
+          while (start > 0 && !isTabOrSpace(source[start - 1])) {
+            start--
+          }
+        }
+        return [[[start, end]], [source.slice(start, end), selection]]
+      }
+      case 'deleteWordForward': {
+        if (start === end) {
+          if (isTabOrSpace(source[start])) {
+            while (end < source.length - 1 && isTabOrSpace(source[end])) {
+              end++
+            }
+          }
+          while (end < source.length - 1 && isTabOrSpace(source[end])) {
+            end++
+          }
+        }
+        return [[[start, end]], [source.slice(start, end), selection]]
+      }
+      case 'deleteSoftLineBackward': {
+        if (start === end) {
+          if (source[start - 1] === '\n') {
+            start--
+          } else {
+            while (start > 0 && source[start - 1] !== '\n') {
+              start--
+            }
+          }
+        }
+        return [[[start, end]], [source.slice(start, end), selection]]
+      }
+      default:
+        throw `Unsupported inputType: ${e.inputType}`
+    }
+  }
 
   function applyPatch(patch: Patch) {
     history.push(patch)
@@ -190,23 +184,67 @@ export function ContentEditable(props: ContentEditableProps) {
     props.onValue?.(value())
   }
 
-  function select(start: number, end?: number) {
+  /**********************************************************************************/
+  /*                                                                                */
+  /*                                    Selection                                   */
+  /*                                                                                */
+  /**********************************************************************************/
+
+  function getSelection(element: HTMLElement): [number, number] {
+    const selection = document.getSelection()
+
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+
+      if (config.transform) {
+        const start = config.transform.getOffset(element, range.startContainer, range.startOffset)
+        const end = config.transform.getOffset(element, range.endContainer, range.endOffset)
+
+        return [start, end]
+      } else {
+        // Create a range that spans from the start of the contenteditable to the selection start
+        const preSelectionRange = document.createRange()
+        preSelectionRange.selectNodeContents(element)
+        preSelectionRange.setEnd(range.startContainer, range.startOffset)
+
+        // The length of the preSelectionRange gives the start offset relative to the whole content
+        const start = preSelectionRange.toString().length
+        const end = start + range.toString().length
+        return [start, end]
+      }
+    }
+
+    return [0, 0]
+  }
+
+  function createRange(start: number, end?: number) {
     const node = element()?.firstChild
     if (!(node instanceof Node)) {
       console.error('node is not an instance of Node', node)
-      return
+      return null
     }
 
-    const selection = document.getSelection()!
     const range = document.createRange()
-    selection.removeAllRanges()
-    selection.addRange(range)
+
     range.setStart(node, start)
     if (end) {
       range.setEnd(node, end)
     } else {
       range.setEnd(node, start)
     }
+
+    return range
+  }
+
+  function select(start: number, end?: number) {
+    const range =
+      config.transform?.createRange?.(element()!, start, end ?? start) ?? createRange(start, end)
+    if (!range) {
+      return
+    }
+    const selection = document.getSelection()!
+    selection.removeAllRanges()
+    selection.addRange(range)
   }
 
   function onInput(event: InputEvent & { currentTarget: HTMLDivElement }) {
@@ -260,9 +298,15 @@ export function ContentEditable(props: ContentEditableProps) {
     }
   }
 
+  /**********************************************************************************/
+  /*                                                                                */
+  /*                                 Event Listener                                 */
+  /*                                                                                */
+  /**********************************************************************************/
+
   function onKeyDown(event: KeyboardEvent & { currentTarget: HTMLElement }) {
     if (event.key in props.bindings) {
-      const patch = props.bindings[event.key]!(event)
+      const patch = props.bindings[event.key]!(event, getSelection)
       if (patch) {
         applyPatch(patch)
         const [[range, data, selection]] = patch
@@ -311,7 +355,7 @@ export function ContentEditable(props: ContentEditableProps) {
       onInput={onInput}
       {...rest}
     >
-      {value()}
+      {config.transform?.template(value) ?? value()}
     </div>
   )
 }

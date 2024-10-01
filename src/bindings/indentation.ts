@@ -1,4 +1,4 @@
-import { getSelection, type Patch } from '../contenteditable'
+import { type Patch } from '../contenteditable'
 
 /**
  * Provides bindings for indentation.
@@ -11,7 +11,10 @@ import { getSelection, type Patch } from '../contenteditable'
  * import { Indentation } from "tm-textarea/bindings/indentation"
  * return <ContentEditable bindings={{Tab: Indentation}} />
  */
-export function Indentation(event: KeyboardEvent & { currentTarget: HTMLElement }): Patch | null {
+export function Indentation(
+  event: KeyboardEvent & { currentTarget: HTMLElement },
+  getSelection: (element: HTMLElement) => [start: number, end: number],
+): Patch | null {
   event.preventDefault()
   const outdent = event.shiftKey
 

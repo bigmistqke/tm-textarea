@@ -1,13 +1,15 @@
 import self from '.?raw'
 import { createRenderEffect, createSignal, For, Show, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
-import 'tm-textarea'
-import { TabIndentation } from 'tm-textarea/bindings/tab-indentation'
+import { register } from 'tm-textarea'
+import { Indentation } from 'tm-textarea/bindings/indentation'
 import { setCDN } from 'tm-textarea/cdn'
 import { TmTextarea } from 'tm-textarea/solid'
 import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
 import './index.css'
 import tsx from './tsx.json?url'
+
+register()
 
 setCDN((type, id) => {
   switch (type) {
@@ -29,11 +31,12 @@ const App: Component = () => {
   const [padding, setPadding] = createSignal(20)
   const [tabSize, setTabSize] = createSignal(4)
   const [editable, setEditable] = createSignal(true)
-  const [lineNumbers, setLineNumbers] = createSignal(true)
+  const [lineNumbers, setLineNumbers] = createSignal(false)
+  const [wordWrap, setWordWrap] = createSignal(false)
 
-  const [LOC, setLOC] = createSignal(10_000)
+  const [LOC, setLOC] = createSignal(100)
   const [value, setValue] = createSignal<string>(null!)
-  const formattedSelf = TabIndentation.format(self, 2)
+  const formattedSelf = Indentation.format(self, 2)
 
   createRenderEffect(() => {
     setValue(loopLines(formattedSelf, LOC()))
@@ -112,6 +115,17 @@ const App: Component = () => {
             />
           </div>
           <div>
+            <label for="word-wrap">word-wrap</label>
+            <button
+              id="word-wrap"
+              onClick={e => {
+                setWordWrap(bool => !bool)
+              }}
+            >
+              {wordWrap() ? 'enabled' : 'disabled'}
+            </button>
+          </div>
+          <div>
             <label for="padding">padding</label>
             <input
               id="padding"
@@ -158,7 +172,6 @@ const App: Component = () => {
           when={mode() === 'custom-element'}
           fallback={
             <TmTextarea
-              ref={TabIndentation.binding}
               value={value()}
               grammar={grammar()}
               theme={theme()}
@@ -166,14 +179,17 @@ const App: Component = () => {
               style={{
                 padding: `${padding()}px`,
                 'tab-size': tabSize(),
+                'white-space': wordWrap() ? 'pre-wrap' : 'pre',
               }}
               class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
-              onInput={e => setValue(e.currentTarget.value)}
+              onValue={value => setValue(value)}
+              bindings={{
+                Tab: Indentation,
+              }}
             />
           }
         >
           <tm-textarea
-            ref={TabIndentation.binding}
             value={value()}
             grammar={grammar()}
             theme={theme()}
@@ -181,9 +197,13 @@ const App: Component = () => {
             style={{
               padding: `${padding()}px`,
               'tab-size': tabSize(),
+              'white-space': wordWrap() ? 'pre-wrap' : 'pre',
             }}
             class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
-            onInput={e => setValue(e.currentTarget.value)}
+            onValue={({ value }) => setValue(value)}
+            bindings={{
+              Tab: Indentation,
+            }}
           />
         </Show>
       </main>

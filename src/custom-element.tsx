@@ -68,10 +68,12 @@ export class TmTextareaElement extends Element {
   @stringAttribute stylesheet = ''
   @stringAttribute theme: Theme = 'dark-plus'
   @stringAttribute value = ''
-  // @signal textarea: HTMLTextAreaElement = null!
   @signal bindings: Record<
     string,
-    (event: KeyboardEvent & { currentTarget: HTMLElement }) => Patch | null
+    (
+      event: KeyboardEvent & { currentTarget: HTMLElement },
+      getSelection: (element: HTMLElement) => [start: number, end: number],
+    ) => Patch | null
   > = {}
 
   static css = css

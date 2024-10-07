@@ -1,4 +1,4 @@
-import { createEffect, createResource, createRoot, splitProps, type JSX } from 'solid-js'
+import { createEffect, createResource, createRoot, For, Show, splitProps, type JSX } from 'solid-js'
 import * as oniguruma from 'vscode-oniguruma'
 import * as textmate from 'vscode-textmate'
 import { fetchFromCDN, urlFromCDN } from './cdn'
@@ -51,6 +51,51 @@ interface StateStack extends textmate.StateStack {
   contentNameScopesList: ScopesList
 }
 
+/**********************************************************************************/
+/*                                                                                */
+/*                                     Constants                                    */
+/*                                                                                */
+/**********************************************************************************/
+
+const REGISTRY = new textmate.Registry({
+  // @ts-ignore
+  onigLib: oniguruma,
+  loadGrammar: (grammar: string) =>
+    fetchFromCDN('grammar', grammar).then(response => {
+      response.scopeName = grammar
+      return response
+    }),
+})
+const [WASM_LOADED] = createRoot(() =>
+  createResource(async () =>
+    fetch(urlFromCDN('oniguruma', null!))
+      .then(buffer => buffer.arrayBuffer())
+      .then(buffer => oniguruma.loadWASM(buffer))
+      .then(() => true),
+  ),
+)
+const TOKENIZER_CACHE: Record<string, textmate.IGrammar | null> = {}
+
+const HIGHLIGHTS = new Map<string, Highlight>()
+let HIGHLIGHTER_COUNTER = 0
+function addHighlight(css: string) {
+  const id = `tm-highlight-${HIGHLIGHTER_COUNTER}`
+  const highlight = new Highlight()
+  HIGHLIGHTS.set(css, highlight)
+  CSS.highlights.set(id, highlight)
+  const style = document.createElement('style')
+  style.textContent = `::highlight(${id}) {${css}}`
+  // Have to timeout, mb a solid-playground thingy.
+  setTimeout(() => document.head.appendChild(style), 0)
+  HIGHLIGHTER_COUNTER++
+}
+
+/**********************************************************************************/
+/*                                                                                */
+/*                                  Theme Manager                                 */
+/*                                                                                */
+/**********************************************************************************/
+
 /** Theme class for resolving styles and colors */
 export class ThemeManager {
   private themeData: ThemeData
@@ -100,38 +145,147 @@ export class ThemeManager {
   }
 }
 
-const REGISTRY = new textmate.Registry({
-  // @ts-ignore
-  onigLib: oniguruma,
-  loadGrammar: (grammar: string) =>
-    fetchFromCDN('grammar', grammar).then(response => {
-      response.scopeName = grammar
-      return response
-    }),
-})
-const [WASM_LOADED] = createRoot(() =>
-  createResource(async () =>
-    fetch(urlFromCDN('oniguruma', null!))
-      .then(buffer => buffer.arrayBuffer())
-      .then(buffer => oniguruma.loadWASM(buffer))
-      .then(() => true),
-  ),
-)
-const TOKENIZER_CACHE: Record<string, textmate.IGrammar | null> = {}
+/**********************************************************************************/
+/*                                                                                */
+/*                                 Node Traversal                                 */
+/*                                                                                */
+/**********************************************************************************/
 
-const HIGHLIGHTS = new Map<string, Highlight>()
-let HIGHLIGHTER_COUNTER = 0
-function addHighlight(css: string) {
-  const id = `tm-highlight-${HIGHLIGHTER_COUNTER}`
-  const highlight = new Highlight()
-  HIGHLIGHTS.set(css, highlight)
-  CSS.highlights.set(id, highlight)
-  const style = document.createElement('style')
-  style.textContent = `::highlight(${id}) {${css}}`
-  // Have to timeout, mb a solid-playground thingy.
-  setTimeout(() => document.head.appendChild(style), 0)
-  HIGHLIGHTER_COUNTER++
+/** Helper to traverse nodes in the DOM */
+function traverseNodes(
+  node: Node,
+  callbacks: {
+    onNodeEnter?: (currentNode: Node) => boolean | void
+    onNodeExit?: (currentNode: Node) => boolean | void
+  },
+): void {
+  function recurse(currentNode: Node): boolean {
+    if (callbacks.onNodeEnter) {
+      if (callbacks.onNodeEnter(currentNode)) {
+        return true // Stop recursion if the callback returns true
+      }
+    }
+
+    if (currentNode.nodeType === Node.ELEMENT_NODE) {
+      for (const child of currentNode.childNodes) {
+        if (recurse(child)) return true // Recursively check child nodes
+      }
+    }
+
+    if (callbacks.onNodeExit) {
+      if (callbacks.onNodeExit(currentNode)) {
+        return true // Stop recursion if the callback returns true
+      }
+    }
+
+    return false
+  }
+
+  recurse(node)
 }
+
+/** Helper to flatten text nodes and compute cumulative text lengths */
+function flattenTextNodes(node: Node): { nodes: Text[]; lengths: number[]; totalLength: number } {
+  const nodes: Text[] = []
+  const lengths: number[] = []
+  let totalLength = 0
+
+  traverseNodes(node, {
+    onNodeEnter: (currentNode: Node) => {
+      if (currentNode.nodeType === Node.TEXT_NODE) {
+        nodes.push(currentNode as Text)
+        lengths.push(totalLength)
+        totalLength += currentNode.textContent?.length || 0
+      }
+    },
+    onNodeExit: (currentNode: Node) => {
+      if (currentNode.nodeType === Node.ELEMENT_NODE) {
+        if (isBlockElement(currentNode as HTMLElement) || currentNode.nodeName === 'BR') {
+          totalLength++ // Add one for the newline represented by block elements or line breaks
+        }
+      }
+    },
+  })
+
+  return { nodes, lengths, totalLength }
+}
+
+function isBlockElement(node: HTMLElement): boolean {
+  // prettier-ignore
+  return ['DIV','P','H1','H2','H3','H4','H5','H6','LI','BLOCKQUOTE','HR','TABLE'].includes(node.nodeName)
+}
+
+function findNodeAtPosition(
+  nodes: Text[],
+  lengths: number[],
+  index: number,
+): { node: Text; offset: number } {
+  let nodeIndex = lengths.findIndex(length => index < length)
+  if (nodeIndex === -1) {
+    nodeIndex = nodes.length - 1
+  } else if (nodeIndex > 0) {
+    // Adjust to get the correct node because findIndex gives us the next node
+    nodeIndex--
+  }
+
+  const node = nodes[nodeIndex]!
+  const nodeStart = lengths[nodeIndex]!
+  // Adjust offset not to exceed node length
+  const offset = Math.min(index - nodeStart, node.textContent!.length)
+
+  return { node, offset: offset }
+}
+
+/** Factory-function to create a function that creates a range from indices. */
+function createRangeFactory(container: HTMLElement): (start: number, end: number) => Range {
+  const { nodes, lengths } = flattenTextNodes(container)
+
+  return (start: number, end: number): Range => {
+    const startNode = findNodeAtPosition(nodes, lengths, start)
+    const endNode = findNodeAtPosition(nodes, lengths, end)
+
+    const range = document.createRange()
+    range.setStart(startNode.node, startNode.offset)
+    range.setEnd(endNode.node, endNode.offset)
+    return range
+  }
+}
+
+function createRange(container: HTMLElement, start: number, end: number) {
+  return createRangeFactory(container)(start, end)
+}
+
+function getOffset(parent: HTMLElement, child: Node, localOffset: number): number {
+  let globalOffset = 0
+
+  traverseNodes(parent, {
+    onNodeEnter: (currentNode: Node) => {
+      if (currentNode === child) {
+        globalOffset += localOffset
+        return true // Stop recursion once the target node and offset are found
+      }
+
+      if (currentNode.nodeType === Node.TEXT_NODE) {
+        globalOffset += currentNode.textContent?.length || 0
+      }
+    },
+    onNodeExit: (currentNode: Node) => {
+      if (currentNode.nodeType === Node.ELEMENT_NODE && currentNode.nextSibling) {
+        if (currentNode.nextSibling.nodeName === 'BR') {
+          globalOffset++ // Account for the newline character represented by BR
+        }
+      }
+    },
+  })
+
+  return globalOffset
+}
+
+/**********************************************************************************/
+/*                                                                                */
+/*                                Create Tm Textarea                              */
+/*                                                                                */
+/**********************************************************************************/
 
 export interface TmTextareaProps extends Omit<ContentEditableProps, 'style'> {
   grammar: string
@@ -164,10 +318,10 @@ export function createTmTextarea(styles: Record<string, string>) {
           createEffect(
             when(every(tokenizer, theme), ([tokenizer, theme]) => {
               const lines = value().split('\n')
-
               // Have to wait a frame to ensure that the value has been rendered in the container.
               requestAnimationFrame(() => {
                 const clearedHighlights = new Set()
+                const createRange = createRangeFactory(element)
 
                 let offset = 0
                 let currentStack = textmate.INITIAL
@@ -191,13 +345,7 @@ export function createTmTextarea(styles: Record<string, string>) {
                       clearedHighlights.add(highlight)
                     }
 
-                    const range = new Range()
-                    const firstChild = element.firstChild!
-                    const max = firstChild.textContent?.length || 0
-
-                    range.setStart(firstChild!, Math.min(max, token.startIndex + offset))
-                    range.setEnd(firstChild!, Math.min(max, token.endIndex + offset))
-                    highlight.add(range)
+                    highlight.add(createRange(token.startIndex + offset, token.endIndex + offset))
                   }
 
                   offset += line.length + 1
@@ -206,9 +354,23 @@ export function createTmTextarea(styles: Record<string, string>) {
             }),
           )
         }}
+        class={cn(styles.container, config.class)}
         value={value()}
         onValue={setValue}
-        class={cn(styles.container, config.class)}
+        transform={{
+          getOffset,
+          createRange,
+          template: () => (
+            <For each={value().split('\n')}>
+              {(line, index) => (
+                <>
+                  <span style={{ '--line-number': index() }}>{line}</span>
+                  <Show when={index() !== value().split('\n').length - 1}>{`\n`}</Show>
+                </>
+              )}
+            </For>
+          ),
+        }}
         style={{
           background: theme()?.getBackgroundColor(),
           ...props.style,

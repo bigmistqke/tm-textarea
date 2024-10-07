@@ -1402,7 +1402,6 @@ const App: Component = () => {
   const [tabSize, setTabSize] = createSignal(4)
   const [editable, setEditable] = createSignal(true)
   const [lineNumbers, setLineNumbers] = createSignal(false)
-  const [wordWrap, setWordWrap] = createSignal(false)
 
   const [LOC, setLOC] = createSignal(100)
   const [value, setValue] = createSignal<string>(null!)
@@ -1417,7 +1416,7 @@ const App: Component = () => {
     const totalLines = lines.length
     let result = ''
 
-    for (let i = 0; i < lineCount - 1; i++) {
+    for (let i = 0; i < lineCount; i++) {
       if (i === lineCount - 1) {
         result += lines[i % totalLines]
       } else {
@@ -1485,17 +1484,6 @@ const App: Component = () => {
             />
           </div>
           <div>
-            <label for="word-wrap">word-wrap</label>
-            <button
-              id="word-wrap"
-              onClick={e => {
-                setWordWrap(bool => !bool)
-              }}
-            >
-              {wordWrap() ? 'enabled' : 'disabled'}
-            </button>
-          </div>
-          <div>
             <label for="padding">padding</label>
             <input
               id="padding"
@@ -1549,7 +1537,6 @@ const App: Component = () => {
               style={{
                 padding: \`\${padding()}px\`,
                 'tab-size': tabSize(),
-                'white-space': wordWrap() ? 'pre-wrap' : 'pre',
               }}
               class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
               onValue={value => setValue(value)}
@@ -1567,7 +1554,6 @@ const App: Component = () => {
             style={{
               padding: \`\${padding()}px\`,
               'tab-size': tabSize(),
-              'white-space': wordWrap() ? 'pre-wrap' : 'pre',
             }}
             class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
             onValue={({ value }) => setValue(value)}
@@ -5290,7 +5276,20 @@ function createWritable(value) {
 
 const isTabOrSpace = (char) => char === " " || char === "	";
 
-var _tmpl$$2 = /* @__PURE__ */ template(`<div>`);
+var _tmpl$$1 = /* @__PURE__ */ template(`<div>`);
+function getSelection(element) {
+  const selection = document.getSelection();
+  if (selection && selection.rangeCount > 0) {
+    const range = selection.getRangeAt(0);
+    const preSelectionRange = document.createRange();
+    preSelectionRange.selectNodeContents(element);
+    preSelectionRange.setEnd(range.startContainer, range.startOffset);
+    const start = preSelectionRange.toString().length;
+    const end = start + range.toString().length;
+    return [start, end];
+  }
+  return [0, 0];
+}
 function createHistory() {
   const [past, setPast] = createSignal([]);
   const [future, setFuture] = createSignal([]);
@@ -5319,132 +5318,106 @@ function createHistory() {
     pop
   };
 }
-function ContentEditable(props) {
-  const [config, rest] = splitProps(mergeProps({
-    spellcheck: false,
-    editable: true
-  }, props), ["onValue", "value", "bindings", "style", "editable", "transform"]);
-  const [element, setElement] = createSignal();
-  const [value, setValue] = createWritable(() => props.value);
-  const history = createHistory();
-  function createPatch(e, source) {
-    console.log(e.inputType);
-    const selection = getSelection(e.currentTarget);
-    let [start, end] = selection;
-    const defaultUndo = [source.slice(start, end), selection];
-    switch (e.inputType) {
-      case "insertText": {
-        return [[selection, e.data || ""], defaultUndo];
-      }
-      case "insertParagraph": {
-        return [[selection, "\n"], defaultUndo];
-      }
-      case "insertReplacementText":
-      case "insertFromPaste": {
-        const data = e.dataTransfer?.getData("text");
-        return [[selection, data], defaultUndo];
-      }
-      case "deleteContentBackward": {
-        const offset = start === end ? Math.max(0, start - 1) : start;
-        return [[[offset, end]], [source.slice(offset, end), selection]];
-      }
-      case "deleteContentForward": {
-        const offset = start === end ? Math.min(source.length - 1, end + 1) : end;
-        return [[[start, offset]], [source.slice(start, offset), selection]];
-      }
-      case "deleteByCut": {
-        return [[selection], defaultUndo];
-      }
-      case "deleteWordBackward": {
-        if (start === end) {
-          if (isTabOrSpace(source[start - 1])) {
-            while (start > 0 && isTabOrSpace(source[start - 1])) {
-              start--;
-            }
-          }
-          while (start > 0 && !isTabOrSpace(source[start - 1])) {
+function createPatch(e, source) {
+  console.log(e.inputType);
+  const selection = getSelection(e.currentTarget);
+  let [start, end] = selection;
+  const defaultUndo = [source.slice(start, end), selection];
+  switch (e.inputType) {
+    case "insertText": {
+      return [[selection, e.data || ""], defaultUndo];
+    }
+    case "insertParagraph": {
+      return [[selection, "\n"], defaultUndo];
+    }
+    case "insertReplacementText":
+    case "insertFromPaste": {
+      const data = e.dataTransfer?.getData("text");
+      return [[selection, data], defaultUndo];
+    }
+    case "deleteContentBackward": {
+      const offset = start === end ? Math.max(0, start - 1) : start;
+      return [[[offset, end]], [source.slice(offset, end), selection]];
+    }
+    case "deleteContentForward": {
+      const offset = start === end ? Math.min(source.length - 1, end + 1) : end;
+      return [[[start, offset]], [source.slice(start, offset), selection]];
+    }
+    case "deleteByCut": {
+      return [[selection], defaultUndo];
+    }
+    case "deleteWordBackward": {
+      if (start === end) {
+        if (isTabOrSpace(source[start - 1])) {
+          while (start > 0 && isTabOrSpace(source[start - 1])) {
             start--;
           }
         }
-        return [[[start, end]], [source.slice(start, end), selection]];
+        while (start > 0 && !isTabOrSpace(source[start - 1])) {
+          start--;
+        }
       }
-      case "deleteWordForward": {
-        if (start === end) {
-          if (isTabOrSpace(source[start])) {
-            while (end < source.length - 1 && isTabOrSpace(source[end])) {
-              end++;
-            }
-          }
+      return [[[start, end]], [source.slice(start, end), selection]];
+    }
+    case "deleteWordForward": {
+      if (start === end) {
+        if (isTabOrSpace(source[start])) {
           while (end < source.length - 1 && isTabOrSpace(source[end])) {
             end++;
           }
         }
-        return [[[start, end]], [source.slice(start, end), selection]];
+        while (end < source.length - 1 && isTabOrSpace(source[end])) {
+          end++;
+        }
       }
-      case "deleteSoftLineBackward": {
-        if (start === end) {
-          if (source[start - 1] === "\n") {
+      return [[[start, end]], [source.slice(start, end), selection]];
+    }
+    case "deleteSoftLineBackward": {
+      if (start === end) {
+        if (source[start - 1] === "\n") {
+          start--;
+        } else {
+          while (start > 0 && source[start - 1] !== "\n") {
             start--;
-          } else {
-            while (start > 0 && source[start - 1] !== "\n") {
-              start--;
-            }
           }
         }
-        return [[[start, end]], [source.slice(start, end), selection]];
       }
-      default:
-        throw `Unsupported inputType: ${e.inputType}`;
+      return [[[start, end]], [source.slice(start, end), selection]];
     }
+    default:
+      throw `Unsupported inputType: ${e.inputType}`;
   }
+}
+function ContentEditable(props) {
+  const [config, rest] = splitProps(mergeProps({
+    spellcheck: false,
+    editable: true
+  }, props), ["onValue", "value", "bindings", "style", "editable"]);
+  const [element, setElement] = createSignal();
+  const [value, setValue] = createWritable(() => props.value);
+  const history = createHistory();
   function applyPatch(patch) {
     history.push(patch);
     const [[[start, end], data]] = patch;
     setValue((value2) => `${value2.slice(0, start)}${data || ""}${value2.slice(end)}`);
     props.onValue?.(value());
   }
-  function getSelection(element2) {
-    const selection = document.getSelection();
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      if (config.transform) {
-        const start = config.transform.getOffset(element2, range.startContainer, range.startOffset);
-        const end = config.transform.getOffset(element2, range.endContainer, range.endOffset);
-        return [start, end];
-      } else {
-        const preSelectionRange = document.createRange();
-        preSelectionRange.selectNodeContents(element2);
-        preSelectionRange.setEnd(range.startContainer, range.startOffset);
-        const start = preSelectionRange.toString().length;
-        const end = start + range.toString().length;
-        return [start, end];
-      }
-    }
-    return [0, 0];
-  }
-  function createRange(start, end) {
+  function select(start, end) {
     const node = element()?.firstChild;
     if (!(node instanceof Node)) {
       console.error("node is not an instance of Node", node);
-      return null;
+      return;
     }
+    const selection = document.getSelection();
     const range = document.createRange();
+    selection.removeAllRanges();
+    selection.addRange(range);
     range.setStart(node, start);
     if (end) {
       range.setEnd(node, end);
     } else {
       range.setEnd(node, start);
     }
-    return range;
-  }
-  function select(start, end) {
-    const range = config.transform?.createRange?.(element(), start, end ?? start) ?? createRange(start, end);
-    if (!range) {
-      return;
-    }
-    const selection = document.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(range);
   }
   function onInput(event) {
     event.preventDefault();
@@ -5494,7 +5467,7 @@ function ContentEditable(props) {
   }
   function onKeyDown(event) {
     if (event.key in props.bindings) {
-      const patch = props.bindings[event.key](event, getSelection);
+      const patch = props.bindings[event.key](event);
       if (patch) {
         applyPatch(patch);
         const [[range, data, selection]] = patch;
@@ -5526,7 +5499,7 @@ function ContentEditable(props) {
     }
   }
   return (() => {
-    var _el$ = _tmpl$$2();
+    var _el$ = _tmpl$$1();
     _el$.$$input = onInput;
     _el$.$$keydown = onKeyDown;
     _el$.$$beforeinput = onInput;
@@ -5539,7 +5512,7 @@ function ContentEditable(props) {
         return config.editable;
       }
     }, rest), false);
-    insert(_el$, () => config.transform?.template(value) ?? value());
+    insert(_el$, value);
     return _el$;
   })();
 }
@@ -5570,29 +5543,8 @@ function every(...accessors) {
   return callback;
 }
 
-var _tmpl$$1 = /* @__PURE__ */ template(`<span>`);
-const REGISTRY = new mainExports.Registry({
-  // @ts-ignore
-  onigLib: oniguruma,
-  loadGrammar: (grammar) => fetchFromCDN("grammar", grammar).then((response) => {
-    response.scopeName = grammar;
-    return response;
-  })
-});
-const [WASM_LOADED] = createRoot(() => createResource(async () => fetch(urlFromCDN("oniguruma", null)).then((buffer) => buffer.arrayBuffer()).then((buffer) => mainExports$1.loadWASM(buffer)).then(() => true)));
-const TOKENIZER_CACHE = {};
-const HIGHLIGHTS = /* @__PURE__ */ new Map();
-let HIGHLIGHTER_COUNTER = 0;
-function addHighlight(css) {
-  const id = `tm-highlight-${HIGHLIGHTER_COUNTER}`;
-  const highlight = new Highlight();
-  HIGHLIGHTS.set(css, highlight);
-  CSS.highlights.set(id, highlight);
-  const style = document.createElement("style");
-  style.textContent = `::highlight(${id}) {${css}}`;
-  setTimeout(() => document.head.appendChild(style), 0);
-  HIGHLIGHTER_COUNTER++;
-}
+const endsWithSingleNewline = (str) => /(?<!\n)\n$/.test(str);
+
 class ThemeManager {
   themeData;
   constructor(themeData) {
@@ -5631,115 +5583,38 @@ class ThemeManager {
     return this.themeData.colors?.["editor.foreground"] || void 0;
   }
 }
-function traverseNodes(node, callbacks) {
-  function recurse(currentNode) {
-    if (callbacks.onNodeEnter) {
-      if (callbacks.onNodeEnter(currentNode)) {
-        return true;
-      }
-    }
-    if (currentNode.nodeType === Node.ELEMENT_NODE) {
-      for (const child of currentNode.childNodes) {
-        if (recurse(child))
-          return true;
-      }
-    }
-    if (callbacks.onNodeExit) {
-      if (callbacks.onNodeExit(currentNode)) {
-        return true;
-      }
-    }
-    return false;
-  }
-  recurse(node);
-}
-function flattenTextNodes(node) {
-  const nodes = [];
-  const lengths = [];
-  let totalLength = 0;
-  traverseNodes(node, {
-    onNodeEnter: (currentNode) => {
-      if (currentNode.nodeType === Node.TEXT_NODE) {
-        nodes.push(currentNode);
-        lengths.push(totalLength);
-        totalLength += currentNode.textContent?.length || 0;
-      }
-    },
-    onNodeExit: (currentNode) => {
-      if (currentNode.nodeType === Node.ELEMENT_NODE) {
-        if (isBlockElement(currentNode) || currentNode.nodeName === "BR") {
-          totalLength++;
-        }
-      }
-    }
-  });
-  return {
-    nodes,
-    lengths,
-    totalLength
-  };
-}
-function isBlockElement(node) {
-  return ["DIV", "P", "H1", "H2", "H3", "H4", "H5", "H6", "LI", "BLOCKQUOTE", "HR", "TABLE"].includes(node.nodeName);
-}
-function findNodeAtPosition(nodes, lengths, index) {
-  let nodeIndex = lengths.findIndex((length) => index < length);
-  if (nodeIndex === -1) {
-    nodeIndex = nodes.length - 1;
-  } else if (nodeIndex > 0) {
-    nodeIndex--;
-  }
-  const node = nodes[nodeIndex];
-  const nodeStart = lengths[nodeIndex];
-  const offset = Math.min(index - nodeStart, node.textContent.length);
-  return {
-    node,
-    offset
-  };
-}
-function createRangeFactory(container) {
-  const {
-    nodes,
-    lengths
-  } = flattenTextNodes(container);
-  return (start, end) => {
-    const startNode = findNodeAtPosition(nodes, lengths, start);
-    const endNode = findNodeAtPosition(nodes, lengths, end);
-    const range = document.createRange();
-    range.setStart(startNode.node, startNode.offset);
-    range.setEnd(endNode.node, endNode.offset);
-    return range;
-  };
-}
-function createRange(container, start, end) {
-  return createRangeFactory(container)(start, end);
-}
-function getOffset(parent, child, localOffset) {
-  let globalOffset = 0;
-  traverseNodes(parent, {
-    onNodeEnter: (currentNode) => {
-      if (currentNode === child) {
-        globalOffset += localOffset;
-        return true;
-      }
-      if (currentNode.nodeType === Node.TEXT_NODE) {
-        globalOffset += currentNode.textContent?.length || 0;
-      }
-    },
-    onNodeExit: (currentNode) => {
-      if (currentNode.nodeType === Node.ELEMENT_NODE && currentNode.nextSibling) {
-        if (currentNode.nextSibling.nodeName === "BR") {
-          globalOffset++;
-        }
-      }
-    }
-  });
-  return globalOffset;
+const REGISTRY = new mainExports.Registry({
+  // @ts-ignore
+  onigLib: oniguruma,
+  loadGrammar: (grammar) => fetchFromCDN("grammar", grammar).then((response) => {
+    response.scopeName = grammar;
+    return response;
+  })
+});
+const [WASM_LOADED] = createRoot(() => createResource(async () => fetch(urlFromCDN("oniguruma", null)).then((buffer) => buffer.arrayBuffer()).then((buffer) => mainExports$1.loadWASM(buffer)).then(() => true)));
+const TOKENIZER_CACHE = {};
+const HIGHLIGHTS = /* @__PURE__ */ new Map();
+let HIGHLIGHTER_COUNTER = 0;
+function addHighlight(css) {
+  const id = `tm-highlight-${HIGHLIGHTER_COUNTER}`;
+  const highlight = new Highlight();
+  HIGHLIGHTS.set(css, highlight);
+  CSS.highlights.set(id, highlight);
+  const style = document.createElement("style");
+  style.textContent = `::highlight(${id}) {${css}}`;
+  setTimeout(() => document.head.appendChild(style), 0);
+  HIGHLIGHTER_COUNTER++;
 }
 function createTmTextarea(styles) {
   return function TmTextarea(props) {
     const [config, rest] = splitProps(props, ["style", "value", "theme", "grammar", "class"]);
-    const [value, setValue] = createWritable(() => props.value);
+    const [value, setValue] = createWritable(() => {
+      if (!endsWithSingleNewline(props.value)) {
+        return `${props.value}
+`;
+      }
+      return props.value;
+    });
     const [tokenizer] = createResource(every(() => props.grammar, WASM_LOADED), async ([grammar]) => grammar in TOKENIZER_CACHE ? TOKENIZER_CACHE[grammar] : TOKENIZER_CACHE[grammar] = await REGISTRY.loadGrammar(grammar));
     const [theme] = createResource(() => props.theme, async (theme2) => fetchFromCDN("theme", theme2).then((theme3) => new ThemeManager(theme3)));
     return createComponent(ContentEditable, mergeProps({
@@ -5748,7 +5623,6 @@ function createTmTextarea(styles) {
           const lines = value().split("\n");
           requestAnimationFrame(() => {
             const clearedHighlights = /* @__PURE__ */ new Set();
-            const createRange2 = createRangeFactory(element);
             let offset = 0;
             let currentStack = mainExports.INITIAL;
             for (const line of lines) {
@@ -5767,40 +5641,24 @@ function createTmTextarea(styles) {
                   highlight.clear();
                   clearedHighlights.add(highlight);
                 }
-                highlight.add(createRange2(token.startIndex + offset, token.endIndex + offset));
+                const range = new Range();
+                const firstChild = element.firstChild;
+                const max = firstChild.textContent?.length || 0;
+                range.setStart(firstChild, Math.min(max, token.startIndex + offset));
+                range.setEnd(firstChild, Math.min(max, token.endIndex + offset));
+                highlight.add(range);
               }
               offset += line.length + 1;
             }
           });
         }));
       },
-      get ["class"]() {
-        return cn(styles.container, config.class);
-      },
       get value() {
         return value();
       },
       onValue: setValue,
-      transform: {
-        getOffset,
-        createRange,
-        template: () => createComponent(For, {
-          get each() {
-            return value().split("\n");
-          },
-          children: (line, index) => [(() => {
-            var _el$ = _tmpl$$1();
-            insert(_el$, line);
-            createRenderEffect(() => index() != null ? _el$.style.setProperty("--line-number", index()) : _el$.style.removeProperty("--line-number"));
-            return _el$;
-          })(), createComponent(Show, {
-            get when() {
-              return index() !== value().split("\n").length - 1;
-            },
-            children: `
-`
-          })]
-        })
+      get ["class"]() {
+        return cn(styles.container, config.class);
       },
       get style() {
         return {
@@ -5812,12 +5670,12 @@ function createTmTextarea(styles) {
   };
 }
 
-const container$1 = "_container_q8bbn_5";
+const container$1 = "_container_1yd02_5";
 const styles$1 = {
 	container: container$1
 };
 
-const css = "tm-textarea {\n  display: contents;\n  white-space: pre-wrap;\n\n  & ._container_q8bbn_5 {\n    all: inherit;\n    display: block;\n    font-family: monospace;\n    white-space: inherit;\n\n    & span {\n      display: inline-flex;\n    }\n  }\n}\n";
+const css = "tm-textarea {\n  display: contents;\n}\n\ntm-textarea ._container_1yd02_5 {\n  all: inherit;\n  display: block;\n  font-family: monospace;\n  white-space: pre-wrap;\n}\n";
 
 let _initClass, _classDecs, _init_editable, _init_grammar, _init_stylesheet, _init_theme, _init_value, _init_bindings;
 function _applyDecs(e, t, r, n, o, a) {
@@ -5977,6 +5835,7 @@ new class extends _identity {
     stylesheet = _init_stylesheet(this, "");
     theme = _init_theme(this, "dark-plus");
     value = _init_value(this, "");
+    // @signal textarea: HTMLTextAreaElement = null!
     bindings = _init_bindings(this, {});
     template = () => {
       const _self$ = this;
@@ -6014,7 +5873,7 @@ function register() {
   }
 }
 
-function Indentation(event, getSelection) {
+function Indentation(event) {
   event.preventDefault();
   const outdent = event.shiftKey;
   const element = event.currentTarget;
@@ -6452,7 +6311,7 @@ const themes = [
 
 const tsx = ""+new URL('tsx-Da1Z4H1i.json', import.meta.url).href+"";
 
-var _tmpl$ = /* @__PURE__ */ template(`<tm-textarea>`, true, false), _tmpl$2 = /* @__PURE__ */ template(`<div class=app><div class=side-panel><h1>Tm Textarea</h1><footer><div><label for=mode>mode</label><button id=mode></button></div><br><div><label for=theme>themes</label><select id=theme></select></div><div><label for=lang>languages</label><select id=lang></select></div><br><div><label for=LOC>LOC</label><input id=LOC type=number></div><div><label for=tab-size>tab-size</label><input id=tab-size type=number></div><div><label for=word-wrap>word-wrap</label><button id=word-wrap></button></div><div><label for=padding>padding</label><input id=padding type=number></div><div><label for=font-size>font-size</label><input id=font-size type=number></div><div><label for=line-numbers>Line Numbers</label><button id=line-numbers></button></div><div><label for=editable>editable</label><button id=editable></button></div></footer></div><main>`), _tmpl$3 = /* @__PURE__ */ template(`<option>`);
+var _tmpl$ = /* @__PURE__ */ template(`<tm-textarea>`, true, false), _tmpl$2 = /* @__PURE__ */ template(`<div class=app><div class=side-panel><h1>Tm Textarea</h1><footer><div><label for=mode>mode</label><button id=mode></button></div><br><div><label for=theme>themes</label><select id=theme></select></div><div><label for=lang>languages</label><select id=lang></select></div><br><div><label for=LOC>LOC</label><input id=LOC type=number></div><div><label for=tab-size>tab-size</label><input id=tab-size type=number></div><div><label for=padding>padding</label><input id=padding type=number></div><div><label for=font-size>font-size</label><input id=font-size type=number></div><div><label for=line-numbers>Line Numbers</label><button id=line-numbers></button></div><div><label for=editable>editable</label><button id=editable></button></div></footer></div><main>`), _tmpl$3 = /* @__PURE__ */ template(`<option>`);
 register();
 setCDN((type, id) => {
   switch (type) {
@@ -6473,7 +6332,6 @@ const App = () => {
   const [tabSize, setTabSize] = createSignal(4);
   const [editable, setEditable] = createSignal(true);
   const [lineNumbers, setLineNumbers] = createSignal(false);
-  const [wordWrap, setWordWrap] = createSignal(false);
   const [LOC, setLOC] = createSignal(100);
   const [value, setValue] = createSignal(null);
   const formattedSelf = Indentation.format(self$1, 2);
@@ -6484,7 +6342,7 @@ const App = () => {
     const lines = input.split("\n");
     const totalLines = lines.length;
     let result = "";
-    for (let i = 0; i < lineCount - 1; i++) {
+    for (let i = 0; i < lineCount; i++) {
       if (i === lineCount - 1) {
         result += lines[i % totalLines];
       } else {
@@ -6494,7 +6352,7 @@ const App = () => {
     return result;
   }
   return (() => {
-    var _el$ = _tmpl$2(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild, _el$4 = _el$3.nextSibling, _el$5 = _el$4.firstChild, _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling, _el$8 = _el$5.nextSibling, _el$9 = _el$8.nextSibling, _el$10 = _el$9.firstChild, _el$11 = _el$10.nextSibling, _el$12 = _el$9.nextSibling, _el$13 = _el$12.firstChild, _el$14 = _el$13.nextSibling, _el$15 = _el$12.nextSibling, _el$16 = _el$15.nextSibling, _el$17 = _el$16.firstChild, _el$18 = _el$17.nextSibling, _el$19 = _el$16.nextSibling, _el$20 = _el$19.firstChild, _el$21 = _el$20.nextSibling, _el$22 = _el$19.nextSibling, _el$23 = _el$22.firstChild, _el$24 = _el$23.nextSibling, _el$25 = _el$22.nextSibling, _el$26 = _el$25.firstChild, _el$27 = _el$26.nextSibling, _el$28 = _el$25.nextSibling, _el$29 = _el$28.firstChild, _el$30 = _el$29.nextSibling, _el$31 = _el$28.nextSibling, _el$32 = _el$31.firstChild, _el$33 = _el$32.nextSibling, _el$34 = _el$31.nextSibling, _el$35 = _el$34.firstChild, _el$36 = _el$35.nextSibling, _el$37 = _el$2.nextSibling;
+    var _el$ = _tmpl$2(), _el$2 = _el$.firstChild, _el$3 = _el$2.firstChild, _el$4 = _el$3.nextSibling, _el$5 = _el$4.firstChild, _el$6 = _el$5.firstChild, _el$7 = _el$6.nextSibling, _el$8 = _el$5.nextSibling, _el$9 = _el$8.nextSibling, _el$10 = _el$9.firstChild, _el$11 = _el$10.nextSibling, _el$12 = _el$9.nextSibling, _el$13 = _el$12.firstChild, _el$14 = _el$13.nextSibling, _el$15 = _el$12.nextSibling, _el$16 = _el$15.nextSibling, _el$17 = _el$16.firstChild, _el$18 = _el$17.nextSibling, _el$19 = _el$16.nextSibling, _el$20 = _el$19.firstChild, _el$21 = _el$20.nextSibling, _el$22 = _el$19.nextSibling, _el$23 = _el$22.firstChild, _el$24 = _el$23.nextSibling, _el$25 = _el$22.nextSibling, _el$26 = _el$25.firstChild, _el$27 = _el$26.nextSibling, _el$28 = _el$25.nextSibling, _el$29 = _el$28.firstChild, _el$30 = _el$29.nextSibling, _el$31 = _el$28.nextSibling, _el$32 = _el$31.firstChild, _el$33 = _el$32.nextSibling, _el$34 = _el$2.nextSibling;
     _el$7.$$click = (e) => {
       setMode((mode2) => mode2 === "custom-element" ? "solid" : "custom-element");
     };
@@ -6503,37 +6361,33 @@ const App = () => {
     insert(_el$11, createComponent(For, {
       each: themes,
       children: (theme2) => (() => {
-        var _el$39 = _tmpl$3();
-        insert(_el$39, theme2);
-        return _el$39;
+        var _el$36 = _tmpl$3();
+        insert(_el$36, theme2);
+        return _el$36;
       })()
     }));
     _el$14.$$input = (e) => setCurrentLanguageName(e.currentTarget.value);
     insert(_el$14, createComponent(For, {
       each: grammars,
       children: (grammar2) => (() => {
-        var _el$40 = _tmpl$3();
-        insert(_el$40, grammar2);
-        return _el$40;
+        var _el$37 = _tmpl$3();
+        insert(_el$37, grammar2);
+        return _el$37;
       })()
     }));
     _el$18.$$input = (e) => setLOC(+e.currentTarget.value);
     _el$21.$$input = (e) => setTabSize(+e.currentTarget.value);
-    _el$24.$$click = (e) => {
-      setWordWrap((bool) => !bool);
-    };
-    insert(_el$24, () => wordWrap() ? "enabled" : "disabled");
-    _el$27.$$input = (e) => setPadding(+e.currentTarget.value);
-    _el$30.$$input = (e) => setFontSize(+e.currentTarget.value);
-    _el$33.$$click = (e) => {
+    _el$24.$$input = (e) => setPadding(+e.currentTarget.value);
+    _el$27.$$input = (e) => setFontSize(+e.currentTarget.value);
+    _el$30.$$click = (e) => {
       setLineNumbers((bool) => !bool);
     };
-    insert(_el$33, () => lineNumbers() ? "enabled" : "disabled");
-    _el$36.$$click = (e) => {
+    insert(_el$30, () => lineNumbers() ? "enabled" : "disabled");
+    _el$33.$$click = (e) => {
       setEditable((bool) => !bool);
     };
-    insert(_el$36, () => editable() ? "enabled" : "disabled");
-    insert(_el$37, createComponent(Show, {
+    insert(_el$33, () => editable() ? "enabled" : "disabled");
+    insert(_el$34, createComponent(Show, {
       get when() {
         return mode() === "custom-element";
       },
@@ -6554,8 +6408,7 @@ const App = () => {
           get style() {
             return {
               padding: `${padding()}px`,
-              "tab-size": tabSize(),
-              "white-space": wordWrap() ? "pre-wrap" : "pre"
+              "tab-size": tabSize()
             };
           },
           get ["class"]() {
@@ -6568,23 +6421,22 @@ const App = () => {
         });
       },
       get children() {
-        var _el$38 = _tmpl$();
-        _el$38.addEventListener("value", ({
+        var _el$35 = _tmpl$();
+        _el$35.addEventListener("value", ({
           value: value2
         }) => setValue(value2));
-        _el$38.bindings = {
+        _el$35.bindings = {
           Tab: Indentation
         };
-        _el$38._$owner = getOwner();
+        _el$35._$owner = getOwner();
         createRenderEffect((_p$) => {
-          var _v$ = grammar(), _v$2 = theme(), _v$3 = editable(), _v$4 = `${padding()}px`, _v$5 = tabSize(), _v$6 = wordWrap() ? "pre-wrap" : "pre", _v$7 = lineNumbers() ? "line-numbers tm-textarea" : "tm-textarea";
-          _v$ !== _p$.e && (_el$38.grammar = _p$.e = _v$);
-          _v$2 !== _p$.t && (_el$38.theme = _p$.t = _v$2);
-          _v$3 !== _p$.a && (_el$38.editable = _p$.a = _v$3);
-          _v$4 !== _p$.o && ((_p$.o = _v$4) != null ? _el$38.style.setProperty("padding", _v$4) : _el$38.style.removeProperty("padding"));
-          _v$5 !== _p$.i && ((_p$.i = _v$5) != null ? _el$38.style.setProperty("tab-size", _v$5) : _el$38.style.removeProperty("tab-size"));
-          _v$6 !== _p$.n && ((_p$.n = _v$6) != null ? _el$38.style.setProperty("white-space", _v$6) : _el$38.style.removeProperty("white-space"));
-          _v$7 !== _p$.s && className(_el$38, _p$.s = _v$7);
+          var _v$ = grammar(), _v$2 = theme(), _v$3 = editable(), _v$4 = `${padding()}px`, _v$5 = tabSize(), _v$6 = lineNumbers() ? "line-numbers tm-textarea" : "tm-textarea";
+          _v$ !== _p$.e && (_el$35.grammar = _p$.e = _v$);
+          _v$2 !== _p$.t && (_el$35.theme = _p$.t = _v$2);
+          _v$3 !== _p$.a && (_el$35.editable = _p$.a = _v$3);
+          _v$4 !== _p$.o && ((_p$.o = _v$4) != null ? _el$35.style.setProperty("padding", _v$4) : _el$35.style.removeProperty("padding"));
+          _v$5 !== _p$.i && ((_p$.i = _v$5) != null ? _el$35.style.setProperty("tab-size", _v$5) : _el$35.style.removeProperty("tab-size"));
+          _v$6 !== _p$.n && className(_el$35, _p$.n = _v$6);
           return _p$;
         }, {
           e: void 0,
@@ -6592,19 +6444,18 @@ const App = () => {
           a: void 0,
           o: void 0,
           i: void 0,
-          n: void 0,
-          s: void 0
+          n: void 0
         });
-        createRenderEffect(() => _el$38.value = value());
-        return _el$38;
+        createRenderEffect(() => _el$35.value = value());
+        return _el$35;
       }
     }));
     createRenderEffect(() => _el$11.value = theme());
     createRenderEffect(() => _el$14.value = grammar());
     createRenderEffect(() => _el$18.value = LOC());
     createRenderEffect(() => _el$21.value = tabSize());
-    createRenderEffect(() => _el$27.value = padding());
-    createRenderEffect(() => _el$30.value = fontSize());
+    createRenderEffect(() => _el$24.value = padding());
+    createRenderEffect(() => _el$27.value = fontSize());
     return _el$;
   })();
 };

@@ -5543,8 +5543,6 @@ function every(...accessors) {
   return callback;
 }
 
-const endsWithSingleNewline = (str) => /(?<!\n)\n$/.test(str);
-
 class ThemeManager {
   themeData;
   constructor(themeData) {
@@ -5608,13 +5606,7 @@ function addHighlight(css) {
 function createTmTextarea(styles) {
   return function TmTextarea(props) {
     const [config, rest] = splitProps(props, ["style", "value", "theme", "grammar", "class"]);
-    const [value, setValue] = createWritable(() => {
-      if (!endsWithSingleNewline(props.value)) {
-        return `${props.value}
-`;
-      }
-      return props.value;
-    });
+    const [value, setValue] = createWritable(() => props.value);
     const [tokenizer] = createResource(every(() => props.grammar, WASM_LOADED), async ([grammar]) => grammar in TOKENIZER_CACHE ? TOKENIZER_CACHE[grammar] : TOKENIZER_CACHE[grammar] = await REGISTRY.loadGrammar(grammar));
     const [theme] = createResource(() => props.theme, async (theme2) => fetchFromCDN("theme", theme2).then((theme3) => new ThemeManager(theme3)));
     return createComponent(ContentEditable, mergeProps({

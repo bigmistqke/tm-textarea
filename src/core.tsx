@@ -372,7 +372,7 @@ export function createTmTextarea(styles: Record<string, string>) {
               {(line, index) => (
                 <>
                   <span style={{ '--line-number': index() }}>{line}</span>
-                  <br />
+                  {`\n`}
                 </>
               )}
             </For>

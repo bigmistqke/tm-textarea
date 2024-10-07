@@ -1417,7 +1417,7 @@ const App: Component = () => {
     const totalLines = lines.length
     let result = ''
 
-    for (let i = 0; i < lineCount; i++) {
+    for (let i = 0; i < lineCount - 1; i++) {
       if (i === lineCount - 1) {
         result += lines[i % totalLines]
       } else {
@@ -5570,9 +5570,7 @@ function every(...accessors) {
   return callback;
 }
 
-const endsWithSingleNewline = (str) => /(?<!\n)\n$/.test(str);
-
-var _tmpl$$1 = /* @__PURE__ */ template(`<span>`), _tmpl$2$1 = /* @__PURE__ */ template(`<br>`);
+var _tmpl$$1 = /* @__PURE__ */ template(`<span>`);
 const REGISTRY = new mainExports.Registry({
   // @ts-ignore
   onigLib: oniguruma,
@@ -5741,13 +5739,7 @@ function getOffset(parent, child, localOffset) {
 function createTmTextarea(styles) {
   return function TmTextarea(props) {
     const [config, rest] = splitProps(props, ["style", "value", "theme", "grammar", "class"]);
-    const [value, setValue] = createWritable(() => {
-      if (!endsWithSingleNewline(props.value)) {
-        return `${props.value}
-`;
-      }
-      return props.value;
-    });
+    const [value, setValue] = createWritable(() => props.value);
     const [tokenizer] = createResource(every(() => props.grammar, WASM_LOADED), async ([grammar]) => grammar in TOKENIZER_CACHE ? TOKENIZER_CACHE[grammar] : TOKENIZER_CACHE[grammar] = await REGISTRY.loadGrammar(grammar));
     const [theme] = createResource(() => props.theme, async (theme2) => fetchFromCDN("theme", theme2).then((theme3) => new ThemeManager(theme3)));
     return createComponent(ContentEditable, mergeProps({
@@ -5792,16 +5784,22 @@ function createTmTextarea(styles) {
       transform: {
         getOffset,
         createRange,
-        template: (value2) => createComponent(For, {
+        template: () => createComponent(For, {
           get each() {
-            return value2().split("\n");
+            return value().split("\n");
           },
           children: (line, index) => [(() => {
             var _el$ = _tmpl$$1();
             insert(_el$, line);
             createRenderEffect(() => index() != null ? _el$.style.setProperty("--line-number", index()) : _el$.style.removeProperty("--line-number"));
             return _el$;
-          })(), _tmpl$2$1()]
+          })(), createComponent(Show, {
+            get when() {
+              return index() !== value().split("\n").length - 1;
+            },
+            children: `
+`
+          })]
         })
       },
       get style() {
@@ -6486,7 +6484,7 @@ const App = () => {
     const lines = input.split("\n");
     const totalLines = lines.length;
     let result = "";
-    for (let i = 0; i < lineCount; i++) {
+    for (let i = 0; i < lineCount - 1; i++) {
       if (i === lineCount - 1) {
         result += lines[i % totalLines];
       } else {

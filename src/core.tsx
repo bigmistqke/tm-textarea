@@ -1,4 +1,4 @@
-import { createEffect, createResource, createRoot, For, splitProps, type JSX } from 'solid-js'
+import { createEffect, createResource, createRoot, For, Show, splitProps, type JSX } from 'solid-js'
 import * as oniguruma from 'vscode-oniguruma'
 import * as textmate from 'vscode-textmate'
 import { fetchFromCDN, urlFromCDN } from './cdn'
@@ -6,7 +6,6 @@ import { ContentEditable, type ContentEditableProps } from './contenteditable'
 import { cn } from './utils/cn'
 import { every, when } from './utils/conditionals'
 import { createWritable } from './utils/create-writable'
-import { endsWithSingleNewline } from './utils/ends-with-single-line'
 
 /**********************************************************************************/
 /*                                                                                */
@@ -298,12 +297,7 @@ export interface TmTextareaProps extends Omit<ContentEditableProps, 'style'> {
 export function createTmTextarea(styles: Record<string, string>) {
   return function TmTextarea(props: TmTextareaProps) {
     const [config, rest] = splitProps(props, ['style', 'value', 'theme', 'grammar', 'class'])
-    const [value, setValue] = createWritable(() => {
-      if (!endsWithSingleNewline(props.value)) {
-        return `${props.value}\n`
-      }
-      return props.value
-    })
+    const [value, setValue] = createWritable(() => props.value)
 
     const [tokenizer] = createResource(
       every(() => props.grammar, WASM_LOADED),
@@ -324,7 +318,6 @@ export function createTmTextarea(styles: Record<string, string>) {
           createEffect(
             when(every(tokenizer, theme), ([tokenizer, theme]) => {
               const lines = value().split('\n')
-
               // Have to wait a frame to ensure that the value has been rendered in the container.
               requestAnimationFrame(() => {
                 const clearedHighlights = new Set()
@@ -367,12 +360,12 @@ export function createTmTextarea(styles: Record<string, string>) {
         transform={{
           getOffset,
           createRange,
-          template: value => (
+          template: () => (
             <For each={value().split('\n')}>
               {(line, index) => (
                 <>
                   <span style={{ '--line-number': index() }}>{line}</span>
-                  {`\n`}
+                  <Show when={index() !== value().split('\n').length - 1}>{`\n`}</Show>
                 </>
               )}
             </For>

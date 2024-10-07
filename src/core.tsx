@@ -6,7 +6,6 @@ import { ContentEditable, type ContentEditableProps } from './contenteditable'
 import { cn } from './utils/cn'
 import { every, when } from './utils/conditionals'
 import { createWritable } from './utils/create-writable'
-import { endsWithSingleNewline } from './utils/ends-with-single-line'
 
 /**********************************************************************************/
 /*                                                                                */
@@ -144,12 +143,7 @@ export interface TmTextareaProps extends Omit<ContentEditableProps, 'style'> {
 export function createTmTextarea(styles: Record<string, string>) {
   return function TmTextarea(props: TmTextareaProps) {
     const [config, rest] = splitProps(props, ['style', 'value', 'theme', 'grammar', 'class'])
-    const [value, setValue] = createWritable(() => {
-      if (!endsWithSingleNewline(props.value)) {
-        return `${props.value}\n`
-      }
-      return props.value
-    })
+    const [value, setValue] = createWritable(() => props.value)
 
     const [tokenizer] = createResource(
       every(() => props.grammar, WASM_LOADED),

@@ -47,7 +47,7 @@ const App: Component = () => {
     const totalLines = lines.length
     let result = ''
 
-    for (let i = 0; i < lineCount; i++) {
+    for (let i = 0; i < lineCount - 1; i++) {
       if (i === lineCount - 1) {
         result += lines[i % totalLines]
       } else {

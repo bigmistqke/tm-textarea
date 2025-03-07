@@ -1,4 +1,4 @@
-import { createEffect, createResource, createRoot, splitProps, type JSX } from 'solid-js'
+import { createEffect, createResource, createRoot, onCleanup, splitProps, type JSX } from 'solid-js'
 import * as oniguruma from 'vscode-oniguruma'
 import * as textmate from 'vscode-textmate'
 import { fetchFromCDN, urlFromCDN } from './cdn'
@@ -166,7 +166,7 @@ export function createTmTextarea(styles: Record<string, string>) {
               const lines = value().split('\n')
 
               // Have to wait a frame to ensure that the value has been rendered in the container.
-              requestAnimationFrame(() => {
+              const frame = requestAnimationFrame(() => {
                 const clearedHighlights = new Set()
 
                 let offset = 0
@@ -203,6 +203,8 @@ export function createTmTextarea(styles: Record<string, string>) {
                   offset += line.length + 1
                 }
               })
+
+              onCleanup(() => cancelAnimationFrame(frame))
             }),
           )
         }}

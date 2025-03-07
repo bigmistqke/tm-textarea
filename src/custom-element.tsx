@@ -2,8 +2,10 @@ import {
   booleanAttribute,
   element,
   Element,
-  ElementAttributes,
+  eventAttribute,
   stringAttribute,
+  type ElementAttributes,
+  type EventListener,
 } from '@lume/element'
 import { signal } from 'classy-solid'
 import { Patch } from './contenteditable'
@@ -14,50 +16,26 @@ import { Grammar, Theme } from './tm'
 
 /**********************************************************************************/
 /*                                                                                */
-/*                                      Types                                     */
-/*                                                                                */
-/**********************************************************************************/
-
-interface TmTextareaAttributes
-  extends Omit<
-    ElementAttributes<TmTextareaElement, 'grammar' | 'theme' | 'editable' | 'bindings'>,
-    'onInput' | 'oninput'
-  > {
-  oninput?: (event: InputEvent & { currentTarget: TmTextareaElement }) => any
-  onInput?: (event: InputEvent & { currentTarget: TmTextareaElement }) => any
-  onvalue?: (event: ValueEvent & { currentTarget: TmTextareaElement }) => any
-  onValue?: (event: ValueEvent & { currentTarget: TmTextareaElement }) => any
-  value: string
-}
-declare module 'solid-js/jsx-runtime' {
-  namespace JSX {
-    interface IntrinsicElements {
-      'tm-textarea': TmTextareaAttributes
-    }
-  }
-}
-
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      'tm-textarea': TmTextareaAttributes
-    }
-  }
-}
-
-/**********************************************************************************/
-/*                                                                                */
 /*                                 Custom Element                                 */
 /*                                                                                */
 /**********************************************************************************/
 
 const TmTextarea = createTmTextarea(styles)
 
-class ValueEvent extends Event {
+export class ValueEvent extends Event {
   constructor(public value: string) {
     super('value')
   }
 }
+
+type TmTextareaAttributes =
+  | 'editable'
+  | 'grammar'
+  | 'stylesheet'
+  | 'theme'
+  | 'value'
+  | 'bindings'
+  | 'onvalue'
 
 @element('tm-textarea')
 export class TmTextareaElement extends Element {
@@ -68,11 +46,13 @@ export class TmTextareaElement extends Element {
   @stringAttribute stylesheet = ''
   @stringAttribute theme: Theme = 'dark-plus'
   @stringAttribute value = ''
-  // @signal textarea: HTMLTextAreaElement = null!
   @signal bindings: Record<
     string,
     (event: KeyboardEvent & { currentTarget: HTMLElement }) => Patch | null
   > = {}
+
+  @eventAttribute onvalue: EventListener<ValueEvent & { currentTarget: TmTextareaElement }> | null =
+    null
 
   static css = css
 
@@ -97,5 +77,27 @@ export class TmTextareaElement extends Element {
 export function register() {
   if (!customElements.get('tm-textarea')) {
     customElements.define('tm-textarea', TmTextareaElement)
+  }
+}
+
+/**********************************************************************************/
+/*                                                                                */
+/*                                      Types                                     */
+/*                                                                                */
+/**********************************************************************************/
+
+declare module 'solid-js/jsx-runtime' {
+  namespace JSX {
+    interface IntrinsicElements {
+      'tm-textarea': ElementAttributes<TmTextareaElement, TmTextareaAttributes>
+    }
+  }
+}
+
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'tm-textarea': ElementAttributes<TmTextareaElement, TmTextareaAttributes>
+    }
   }
 }

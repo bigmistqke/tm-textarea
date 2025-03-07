@@ -186,7 +186,7 @@ const App: Component = () => {
               'tab-size': tabSize(),
             }}
             class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
-            onValue={({ value }) => setValue(value)}
+            onvalue={({ value }) => setValue(value)}
             bindings={{
               Tab: Indentation,
             }}

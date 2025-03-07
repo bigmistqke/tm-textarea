@@ -22,6 +22,7 @@ https://github.com/user-attachments/assets/6e785c75-75ae-4274-a904-5e1004153b76
     - [Type Checking In Frameworks](#type-checking-in-frameworks)
       - [Solid.js](#solidjs)
       - [Vue](#vue)
+      - [Stencil.js](#stenciljs)
       - [React](#react)
       - [Preact](#preact)
       - [Svelte](#svelte)
@@ -163,6 +164,20 @@ Besides importing the element file, also import the Vue type definition:
 import 'tm-textarea' // defines the element
 import type {} from 'tm-textarea/framework-types/vue'
 ```
+
+#### Stencil.js
+
+Besides importing the element file, also import the Stencil type definition:
+
+```ts
+import 'tm-textarea' // defines the element
+import type {} from 'tm-textarea/framework-types/stencil'
+```
+
+> [!Note]
+> Stencil's type definition currently works with projects using `jsxFactory` in
+> tsconfig (that's the default), not in projects using `jsxImportSource`.
+> This will be fixed in https://github.com/stenciljs/core/issues/6180
 
 #### React
 

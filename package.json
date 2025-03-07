@@ -28,7 +28,8 @@
     "./cdn": "./dist/cdn.js",
     "./solid": "./dist/solid.js",
     "./tm": "./dist/tm/index.js",
-    "./bindings/tab-indentation": "./dist/bindings/tab-indentation.js"
+    "./bindings/tab-indentation": "./dist/bindings/tab-indentation.js",
+    "./framework-types/": "./dist/framework-types/"
   },
   "typesVersions": {
     "*": {
@@ -68,7 +69,25 @@
     "update-deps": "pnpm up -Li"
   },
   "peerDependencies": {
-    "solid-js": "^1.6.0"
+    "@stencil/core": "^4.0.0",
+    "@types/react": "*",
+    "solid-js": "^1.6.0",
+    "svelte": "^5.0.0",
+    "vue": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@stencil/core": {
+      "optional": true
+    },
+    "@types/react": {
+      "optional": true
+    },
+    "svelte": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@lume/element": "^0.15.0",
@@ -82,7 +101,9 @@
     "@babel/cli": "^7.25.6",
     "@babel/core": "^7.25.2",
     "@babel/plugin-proposal-decorators": "^7.24.7",
+    "@stencil/core": "^4.27.2",
     "@types/node": "^20.12.12",
+    "@types/react": "^19.0.10",
     "@typescript-eslint/eslint-plugin": "^7.9.0",
     "@typescript-eslint/parser": "^7.9.0",
     "concurrently": "^8.2.2",
@@ -90,6 +111,7 @@
     "postcss-selector-parser": "^6.1.2",
     "prettier": "3.0.0",
     "solid-js": "^1.8.17",
+    "svelte": "^5.22.5",
     "typescript": "^5.4.5",
     "vite": "^5.2.11",
     "vite-plugin-css-classnames": "^0.0.2",
@@ -97,7 +119,8 @@
     "vite-plugin-lib-inject-css": "^2.1.1",
     "vite-plugin-solid": "^2.10.2",
     "vite-tsconfig-paths": "^4.3.2",
-    "vitest": "^1.6.0"
+    "vitest": "^1.6.0",
+    "vue": "^3.5.13"
   },
   "keywords": [
     "solid"

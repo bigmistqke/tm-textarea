@@ -28,7 +28,7 @@ export class ValueEvent extends Event {
   }
 }
 
-type TmTextareaAttributes =
+export type TmTextareaAttributes =
   | 'editable'
   | 'grammar'
   | 'stylesheet'
@@ -99,5 +99,12 @@ declare global {
     interface IntrinsicElements {
       'tm-textarea': ElementAttributes<TmTextareaElement, TmTextareaAttributes>
     }
+  }
+}
+
+// Hook up the type for use in DOM APIs
+declare global {
+  interface HTMLElementTagNameMap {
+    'tm-textarea': TmTextareaElement
   }
 }

@@ -518,13 +518,15 @@ export function createTmTextarea(styles: Record<string, string>) {
           />
           <code
             ref={element => {
-              new ResizeObserver(([entry]) => {
-                const { height, width } = getComputedStyle(entry!.target)
-                setCharacter({
-                  height: Number(height.replace('px', '')),
-                  width: Number(width.replace('px', '')),
-                })
-              }).observe(element)
+              onMount(() => {
+                new ResizeObserver(([entry]) => {
+                  const { height, width } = getComputedStyle(entry!.target)
+                  setCharacter({
+                    height: Number(height.replace('px', '')),
+                    width: Number(width.replace('px', '')),
+                  })
+                }).observe(element)
+              })
             }}
             aria-hidden
             class={styles.character}

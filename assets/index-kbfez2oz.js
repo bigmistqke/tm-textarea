@@ -286,6 +286,43 @@ function createResource(pSource, pFetcher, pOptions) {
     }
   ];
 }
+function createSelector(source, fn = equalFn, options) {
+  const subs = new Map();
+  const node = createComputation(
+    p => {
+      const v = source();
+      for (const [key, val] of subs.entries())
+        if (fn(key, v) !== fn(key, p)) {
+          for (const c of val.values()) {
+            c.state = STALE;
+            if (c.pure) Updates.push(c);
+            else Effects.push(c);
+          }
+        }
+      return v;
+    },
+    undefined,
+    true,
+    STALE
+  );
+  updateComputation(node);
+  return key => {
+    const listener = Listener;
+    if (listener) {
+      let l;
+      if ((l = subs.get(key))) l.add(listener);
+      else subs.set(key, (l = new Set([listener])));
+      onCleanup(() => {
+        l.delete(listener);
+        !l.size && subs.delete(key);
+      });
+    }
+    return fn(
+      key,
+      node.value
+    );
+  };
+}
 function untrack(fn) {
   if (Listener === null) return fn();
   const listener = Listener;
@@ -296,6 +333,9 @@ function untrack(fn) {
   } finally {
     Listener = listener;
   }
+}
+function onMount(fn) {
+  createEffect(() => untrack(fn));
 }
 function onCleanup(fn) {
   if (Owner === null);
@@ -322,6 +362,28 @@ function runWithOwner(o, fn) {
     Owner = prev;
     Listener = prevListener;
   }
+}
+function createContext(defaultValue, options) {
+  const id = Symbol("context");
+  return {
+    id,
+    Provider: createProvider(id),
+    defaultValue
+  };
+}
+function useContext(context) {
+  return Owner && Owner.context && Owner.context[context.id] !== undefined
+    ? Owner.context[context.id]
+    : context.defaultValue;
+}
+function children(fn) {
+  const children = createMemo(fn);
+  const memo = createMemo(() => resolveChildren(children()));
+  memo.toArray = () => {
+    const c = memo();
+    return Array.isArray(c) ? c : c != null ? [c] : [];
+  };
+  return memo;
 }
 let SuspenseContext;
 function readSignal() {
@@ -564,6 +626,35 @@ function handleError(err, owner = Owner) {
   const error = castError(err);
   throw error;
 }
+function resolveChildren(children) {
+  if (typeof children === "function" && !children.length) return resolveChildren(children());
+  if (Array.isArray(children)) {
+    const results = [];
+    for (let i = 0; i < children.length; i++) {
+      const result = resolveChildren(children[i]);
+      Array.isArray(result) ? results.push.apply(results, result) : results.push(result);
+    }
+    return results;
+  }
+  return children;
+}
+function createProvider(id, options) {
+  return function provider(props) {
+    let res;
+    createRenderEffect(
+      () =>
+        (res = untrack(() => {
+          Owner.context = {
+            ...Owner.context,
+            [id]: props.value
+          };
+          return children(() => props.children);
+        })),
+      undefined
+    );
+    return res;
+  };
+}
 
 const FALLBACK = Symbol("fallback");
 function dispose(d) {
@@ -676,6 +767,66 @@ function mapArray(list, mapFn, options = {}) {
         return mapFn(newItems[j], s);
       }
       return mapFn(newItems[j]);
+    }
+  };
+}
+function indexArray(list, mapFn, options = {}) {
+  let items = [],
+    mapped = [],
+    disposers = [],
+    signals = [],
+    len = 0,
+    i;
+  onCleanup(() => dispose(disposers));
+  return () => {
+    const newItems = list() || [];
+    newItems[$TRACK];
+    return untrack(() => {
+      if (newItems.length === 0) {
+        if (len !== 0) {
+          dispose(disposers);
+          disposers = [];
+          items = [];
+          mapped = [];
+          len = 0;
+          signals = [];
+        }
+        if (options.fallback) {
+          items = [FALLBACK];
+          mapped[0] = createRoot(disposer => {
+            disposers[0] = disposer;
+            return options.fallback();
+          });
+          len = 1;
+        }
+        return mapped;
+      }
+      if (items[0] === FALLBACK) {
+        disposers[0]();
+        disposers = [];
+        items = [];
+        mapped = [];
+        len = 0;
+      }
+      for (i = 0; i < newItems.length; i++) {
+        if (i < items.length && items[i] !== newItems[i]) {
+          signals[i](() => newItems[i]);
+        } else if (i >= items.length) {
+          mapped[i] = createRoot(mapper);
+        }
+      }
+      for (; i < items.length; i++) {
+        disposers[i]();
+      }
+      len = signals.length = disposers.length = newItems.length;
+      items = newItems.slice(0);
+      return (mapped = mapped.slice(0, len));
+    });
+    function mapper(disposer) {
+      disposers[i] = disposer;
+      const [s, set] = createSignal(newItems[i]);
+      signals[i] = set;
+      return mapFn(s, i);
     }
   };
 }
@@ -860,6 +1011,12 @@ function For(props) {
     fallback: () => props.fallback
   };
   return createMemo(mapArray(() => props.each, props.children, fallback || undefined));
+}
+function Index(props) {
+  const fallback = "fallback" in props && {
+    fallback: () => props.fallback
+  };
+  return createMemo(indexArray(() => props.each, props.children, fallback || undefined));
 }
 function Show(props) {
   const keyed = props.keyed;
@@ -1148,6 +1305,11 @@ function style(node, value, prev) {
 }
 function spread(node, props = {}, isSVG, skipChildren) {
   const prevProps = {};
+  if (!skipChildren) {
+    createRenderEffect(
+      () => (prevProps.children = insertExpression(node, props.children, prevProps.children))
+    );
+  }
   createRenderEffect(() =>
     typeof props.ref === "function" ? use(props.ref, node) : (props.ref = node)
   );
@@ -1371,15 +1533,13 @@ function cleanChildren(parent, current, marker, replacement) {
 const self$1 = `import self from '.?raw'
 import { createRenderEffect, createSignal, For, Show, type Component } from 'solid-js'
 import { render } from 'solid-js/web'
-import { register } from 'tm-textarea'
-import { Indentation } from 'tm-textarea/bindings/indentation'
+import 'tm-textarea'
+import { TabIndentation } from 'tm-textarea/bindings/tab-indentation'
 import { setCDN } from 'tm-textarea/cdn'
 import { TmTextarea } from 'tm-textarea/solid'
 import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
 import './index.css'
 import tsx from './tsx.json?url'
-
-register()
 
 setCDN((type, id) => {
   switch (type) {
@@ -1401,11 +1561,11 @@ const App: Component = () => {
   const [padding, setPadding] = createSignal(20)
   const [tabSize, setTabSize] = createSignal(4)
   const [editable, setEditable] = createSignal(true)
-  const [lineNumbers, setLineNumbers] = createSignal(false)
+  const [lineNumbers, setLineNumbers] = createSignal(true)
 
-  const [LOC, setLOC] = createSignal(100)
+  const [LOC, setLOC] = createSignal(10_000)
   const [value, setValue] = createSignal<string>(null!)
-  const formattedSelf = Indentation.format(self, 2)
+  const formattedSelf = TabIndentation.format(self, 2)
 
   createRenderEffect(() => {
     setValue(loopLines(formattedSelf, LOC()))
@@ -1530,6 +1690,7 @@ const App: Component = () => {
           when={mode() === 'custom-element'}
           fallback={
             <TmTextarea
+              ref={TabIndentation.binding}
               value={value()}
               grammar={grammar()}
               theme={theme()}
@@ -1539,14 +1700,12 @@ const App: Component = () => {
                 'tab-size': tabSize(),
               }}
               class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
-              onValue={value => setValue(value)}
-              bindings={{
-                Tab: Indentation,
-              }}
+              onInput={e => setValue(e.currentTarget.value)}
             />
           }
         >
           <tm-textarea
+            ref={TabIndentation.binding}
             value={value()}
             grammar={grammar()}
             theme={theme()}
@@ -1556,10 +1715,7 @@ const App: Component = () => {
               'tab-size': tabSize(),
             }}
             class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
-            onValue={({ value }) => setValue(value)}
-            bindings={{
-              Tab: Indentation,
-            }}
+            onInput={e => setValue(e.currentTarget.value)}
           />
         </Show>
       </main>
@@ -3074,6 +3230,27 @@ function __handleAttributeValue(value, handler) {
 function descriptorError(prop) {
     throw new TypeError(`Missing descriptor for property "${String(prop)}" while mapping attributes to properties. Make sure the @element decorator is the first decorator on your element class, and if you're using 'static observedAttributes' or 'static observedAttributeHandlers' make sure you also define the respective class fields for the initial values. If a pre-existing class is already decoratored with other decorators, extend from it, then use @element directly on the subclass.`);
 }
+
+var EQUALS_FALSE_OPTIONS = { equals: false };
+
+function createLazyMemo(calc, value, options) {
+  let isReading = false, isStale = true;
+  const [track, trigger] = createSignal(void 0, EQUALS_FALSE_OPTIONS), memo = createMemo(
+    (p) => isReading ? calc(p) : (isStale = !track(), p),
+    value,
+    EQUALS_FALSE_OPTIONS
+  );
+  return () => {
+    isReading = true;
+    if (isStale)
+      isStale = trigger();
+    const v = memo();
+    isReading = false;
+    return v;
+  };
+}
+
+function r(e){var t,f,n="";if("string"==typeof e||"number"==typeof e)n+=e;else if("object"==typeof e)if(Array.isArray(e)){var o=e.length;for(t=0;t<o;t++)e[t]&&(f=r(e[t]))&&(n&&(n+=" "),n+=f);}else for(f in e)e[f]&&(n&&(n+=" "),n+=f);return n}function clsx(){for(var e,t,f=0,n="",o=arguments.length;f<o;f++)(e=arguments[f])&&(t=r(e))&&(n&&(n+=" "),n+=t);return n}
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
@@ -5268,258 +5445,27 @@ async function fetchFromCDN(type, key) {
   return CACHE[type][key] = typeof value !== "string" ? value : fetch(value).then((response) => response.ok ? response.json() : null).catch(console.error);
 }
 
-function createWritable(value) {
-  const [signal, setSignal] = createSignal(null);
-  createRenderEffect(() => setSignal(value()));
-  return [signal, setSignal];
+function applyStyle(element, props, key) {
+  let previous;
+  createRenderEffect(() => {
+    const value = props.style?.[key];
+    value !== previous && ((previous = value) != null ? element.style.setProperty(key, typeof value === "undefined" ? null : value.toString()) : element.style.removeProperty(key));
+  });
 }
 
-const isTabOrSpace = (char) => char === " " || char === "	";
-
-var _tmpl$$1 = /* @__PURE__ */ template(`<div>`);
-function getSelection(element) {
-  const selection = document.getSelection();
-  if (selection && selection.rangeCount > 0) {
-    const range = selection.getRangeAt(0);
-    const preSelectionRange = document.createRange();
-    preSelectionRange.selectNodeContents(element);
-    preSelectionRange.setEnd(range.startContainer, range.startOffset);
-    const start = preSelectionRange.toString().length;
-    const end = start + range.toString().length;
-    return [start, end];
-  }
-  return [0, 0];
+function hexToRgb(hex) {
+  let bigint = parseInt(hex.slice(1), 16);
+  let r = bigint >> 16 & 255;
+  let g = bigint >> 8 & 255;
+  let b = bigint & 255;
+  return [r, g, b];
 }
-function createHistory() {
-  const [past, setPast] = createSignal([]);
-  const [future, setFuture] = createSignal([]);
-  function clearFuture() {
-    setFuture((future2) => future2.length > 0 ? [] : future2);
-  }
-  function push(patch) {
-    setPast((patches) => [...patches, patch]);
-  }
-  function pop() {
-    const patch = past().pop();
-    if (patch) {
-      setFuture((patches) => [...patches, patch]);
-    }
-    return patch;
-  }
-  return {
-    get past() {
-      return past();
-    },
-    get future() {
-      return future();
-    },
-    clearFuture,
-    push,
-    pop
-  };
-}
-function createPatch(e, source) {
-  console.log(e.inputType);
-  const selection = getSelection(e.currentTarget);
-  let [start, end] = selection;
-  const defaultUndo = [source.slice(start, end), selection];
-  switch (e.inputType) {
-    case "insertText": {
-      return [[selection, e.data || ""], defaultUndo];
-    }
-    case "insertParagraph": {
-      return [[selection, "\n"], defaultUndo];
-    }
-    case "insertReplacementText":
-    case "insertFromPaste": {
-      const data = e.dataTransfer?.getData("text");
-      return [[selection, data], defaultUndo];
-    }
-    case "deleteContentBackward": {
-      const offset = start === end ? Math.max(0, start - 1) : start;
-      return [[[offset, end]], [source.slice(offset, end), selection]];
-    }
-    case "deleteContentForward": {
-      const offset = start === end ? Math.min(source.length - 1, end + 1) : end;
-      return [[[start, offset]], [source.slice(start, offset), selection]];
-    }
-    case "deleteByCut": {
-      return [[selection], defaultUndo];
-    }
-    case "deleteWordBackward": {
-      if (start === end) {
-        if (isTabOrSpace(source[start - 1])) {
-          while (start > 0 && isTabOrSpace(source[start - 1])) {
-            start--;
-          }
-        }
-        while (start > 0 && !isTabOrSpace(source[start - 1])) {
-          start--;
-        }
-      }
-      return [[[start, end]], [source.slice(start, end), selection]];
-    }
-    case "deleteWordForward": {
-      if (start === end) {
-        if (isTabOrSpace(source[start])) {
-          while (end < source.length - 1 && isTabOrSpace(source[end])) {
-            end++;
-          }
-        }
-        while (end < source.length - 1 && isTabOrSpace(source[end])) {
-          end++;
-        }
-      }
-      return [[[start, end]], [source.slice(start, end), selection]];
-    }
-    case "deleteSoftLineBackward": {
-      if (start === end) {
-        if (source[start - 1] === "\n") {
-          start--;
-        } else {
-          while (start > 0 && source[start - 1] !== "\n") {
-            start--;
-          }
-        }
-      }
-      return [[[start, end]], [source.slice(start, end), selection]];
-    }
-    default:
-      throw `Unsupported inputType: ${e.inputType}`;
-  }
-}
-function ContentEditable(props) {
-  const [config, rest] = splitProps(mergeProps({
-    spellcheck: false,
-    editable: true
-  }, props), ["onValue", "value", "bindings", "style", "editable"]);
-  const [element, setElement] = createSignal();
-  const [value, setValue] = createWritable(() => props.value);
-  const history = createHistory();
-  function applyPatch(patch) {
-    history.push(patch);
-    const [[[start, end], data]] = patch;
-    setValue((value2) => `${value2.slice(0, start)}${data || ""}${value2.slice(end)}`);
-    props.onValue?.(value());
-  }
-  function select(start, end) {
-    const node = element()?.firstChild;
-    if (!(node instanceof Node)) {
-      console.error("node is not an instance of Node", node);
-      return;
-    }
-    const selection = document.getSelection();
-    const range = document.createRange();
-    selection.removeAllRanges();
-    selection.addRange(range);
-    range.setStart(node, start);
-    if (end) {
-      range.setEnd(node, end);
-    } else {
-      range.setEnd(node, start);
-    }
-  }
-  function onInput(event) {
-    event.preventDefault();
-    switch (event.inputType) {
-      case "historyUndo": {
-        const patch = history.pop();
-        if (!patch)
-          return;
-        const [[[start], data = ""], undo] = patch;
-        const [reverse = "", selection] = undo ?? [];
-        setValue((value2) => `${value2.slice(0, start)}${reverse}${value2.slice(start + data.length)}`);
-        if (selection) {
-          select(...selection);
-        } else {
-          select(start + reverse.length);
-        }
-        props.onValue?.(value());
-        break;
-      }
-      case "historyRedo": {
-        const patch = history.future.pop();
-        if (!patch)
-          return;
-        applyPatch(patch);
-        const [[[start], data = "", selection]] = patch;
-        if (selection) {
-          select(...selection);
-        } else {
-          select(start + data.length);
-        }
-        break;
-      }
-      default: {
-        history.clearFuture();
-        const text = event.currentTarget.innerText;
-        const patch = createPatch(event, text);
-        applyPatch(patch);
-        const [[[start], data = "", selection]] = patch;
-        if (selection) {
-          select(...selection);
-        } else {
-          select(start + data.length);
-        }
-        break;
-      }
-    }
-  }
-  function onKeyDown(event) {
-    if (event.key in props.bindings) {
-      const patch = props.bindings[event.key](event);
-      if (patch) {
-        applyPatch(patch);
-        const [[range, data, selection]] = patch;
-        if (selection) {
-          select(...selection);
-        }
-      }
-    }
-    if (event.ctrlKey || event.metaKey) {
-      switch (event.key) {
-        case "z": {
-          event.preventDefault();
-          event.currentTarget.dispatchEvent(new InputEvent("input", {
-            inputType: "historyUndo",
-            bubbles: true,
-            cancelable: true
-          }));
-          break;
-        }
-        case "Z": {
-          event.preventDefault();
-          event.currentTarget.dispatchEvent(new InputEvent("input", {
-            inputType: "historyRedo",
-            bubbles: true,
-            cancelable: true
-          }));
-        }
-      }
-    }
-  }
-  return (() => {
-    var _el$ = _tmpl$$1();
-    _el$.$$input = onInput;
-    _el$.$$keydown = onKeyDown;
-    _el$.$$beforeinput = onInput;
-    use(setElement, _el$);
-    spread(_el$, mergeProps({
-      get style() {
-        return config.style;
-      },
-      get contenteditable() {
-        return config.editable;
-      }
-    }, rest), false);
-    insert(_el$, value);
-    return _el$;
-  })();
-}
-delegateEvents(["beforeinput", "keydown", "input"]);
-
-function cn(...args) {
-  return args.filter(Boolean).join(" ");
+function luminance(r, g, b) {
+  const a = [r, g, b].map((v) => {
+    v /= 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  });
+  return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
 }
 
 function once(accessor, callback, fallback) {
@@ -5543,6 +5489,56 @@ function every(...accessors) {
   return callback;
 }
 
+function countDigits(value) {
+  if (value === 0)
+    return 1;
+  return Math.floor(Math.log10(Math.abs(value))) + 1;
+}
+
+function escapeHTML(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function getLongestLineSize(lines) {
+  let maxLength = 0;
+  for (const line of lines) {
+    if (line.length > maxLength) {
+      maxLength = line.length;
+    }
+  }
+  return maxLength;
+}
+
+class Stack {
+  #array = [];
+  peek() {
+    return this.#array[this.#array.length - 1];
+  }
+  push(value) {
+    this.#array.push(value);
+  }
+  pop() {
+    return this.#array.pop();
+  }
+}
+
+const _css = ":host {\n  display: contents;\n  tab-size: 4;\n\n  & .container {\n    all: inherit;\n    display: flex;\n    position: relative;\n    box-sizing: border-box;\n    background: var(--tm-background-color, inherit);\n    overflow: auto;\n    color: var(--tm-foreground-color, inherit);\n  }\n}\n\n.container {\n  --tm-min-height: calc(var(--tm-line-count) * var(--tm-char-height));\n  --tm-min-width: calc(var(--tm-line-size) * 1ch);\n  display: flex;\n  position: relative;\n  box-sizing: border-box;\n  background-color: var(--tm-background-color);\n  overflow: auto;\n  color: var(--tm-foreground-color);\n  font-size: 13px;\n  tab-size: 4;\n\n  & .code {\n    display: block;\n    position: absolute;\n    z-index: 1;\n    /* fixes color change when textarea is focused */\n    backface-visibility: hidden;\n    contain: layout;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    white-space: pre;\n\n    & .line {\n      position: absolute;\n      top: calc(var(--tm-line-number) * var(--tm-char-height));\n      contain: layout;\n      margin: 0px;\n\n      & span {\n        margin: 0px;\n        background: transparent !important;\n      }\n    }\n  }\n\n  & .character {\n    position: absolute;\n    align-self: start;\n    visibility: hidden;\n    pointer-events: none;\n    font-size: inherit;\n    line-height: inherit;\n  }\n\n  & .textarea {\n    transition: color 0.5s;\n    outline: none;\n    border: none;\n    background: transparent;\n    padding: 0px;\n    width: 100%;\n    min-width: var(--tm-min-width);\n    height: 100%;\n    min-height: var(--tm-min-height);\n    overflow: hidden;\n    overflow-anchor: none;\n    resize: none;\n    color: transparent;\n    caret-color: var(--tm-foreground-color);\n    font-size: inherit;\n    line-height: inherit;\n    font-family: monospace;\n    text-align: inherit;\n    white-space: pre;\n  }\n\n  & .textarea::selection {\n    background: var(--tm-selection-color);\n  }\n}\n";
+
+const css = _css;
+
+var _tmpl$$1 = /* @__PURE__ */ template(`<pre part=line>`), _tmpl$2$1 = /* @__PURE__ */ template(`<div part=root><code part=code></code><textarea part=textarea autocomplete=off inputmode=none></textarea><code aria-hidden>&nbsp;`);
+const SEGMENT_SIZE = 100;
+const WINDOW = 50;
+const TOKENIZER_CACHE = {};
+const REGISTRY = new mainExports.Registry({
+  // @ts-ignore
+  onigLib: oniguruma,
+  loadGrammar: (grammar) => fetchFromCDN("grammar", grammar).then((response) => {
+    response.scopeName = grammar;
+    return response;
+  })
+});
+const [WASM_LOADED] = createRoot(() => createResource(async () => fetch(urlFromCDN("oniguruma", null)).then((buffer) => buffer.arrayBuffer()).then((buffer) => mainExports$1.loadWASM(buffer)).then(() => true)));
 class ThemeManager {
   themeData;
   constructor(themeData) {
@@ -5571,8 +5567,7 @@ class ThemeManager {
         }
       }
     }
-    const serializedStyle = Object.entries(finalStyle).map(([key, value]) => `${key === "foreground" ? "color" : key}: ${value};`).join("\n");
-    return this.#scopes[id] = serializedStyle;
+    return this.#scopes[id] = finalStyle;
   }
   getBackgroundColor() {
     return this.themeData.colors?.["editor.background"] || void 0;
@@ -5581,95 +5576,284 @@ class ThemeManager {
     return this.themeData.colors?.["editor.foreground"] || void 0;
   }
 }
-const REGISTRY = new mainExports.Registry({
-  // @ts-ignore
-  onigLib: oniguruma,
-  loadGrammar: (grammar) => fetchFromCDN("grammar", grammar).then((response) => {
-    response.scopeName = grammar;
-    return response;
-  })
-});
-const [WASM_LOADED] = createRoot(() => createResource(async () => fetch(urlFromCDN("oniguruma", null)).then((buffer) => buffer.arrayBuffer()).then((buffer) => mainExports$1.loadWASM(buffer)).then(() => true)));
-const TOKENIZER_CACHE = {};
-const HIGHLIGHTS = /* @__PURE__ */ new Map();
-let HIGHLIGHTER_COUNTER = 0;
-function addHighlight(css) {
-  const id = `tm-highlight-${HIGHLIGHTER_COUNTER}`;
-  const highlight = new Highlight();
-  HIGHLIGHTS.set(css, highlight);
-  CSS.highlights.set(id, highlight);
-  const style = document.createElement("style");
-  style.textContent = `::highlight(${id}) {${css}}`;
-  setTimeout(() => document.head.appendChild(style), 0);
-  HIGHLIGHTER_COUNTER++;
+function compareStacks(stateA, stateB) {
+  let changed = false;
+  if (stateA === stateB)
+    return true;
+  if (!stateA || !stateB) {
+    return false;
+  }
+  if (stateA.ruleId !== stateB.ruleId) {
+    changed = true;
+  }
+  if (stateA.depth !== stateB.depth) {
+    changed = true;
+  }
+  if (!compareScopes(stateA.nameScopesList, stateB.nameScopesList)) {
+    changed = true;
+  }
+  if (!compareScopes(stateA.contentNameScopesList, stateB.contentNameScopesList)) {
+    changed = true;
+  }
+  return !changed;
+}
+function compareScopes(scopeA, scopeB) {
+  if (!scopeA && !scopeB)
+    return true;
+  if (!scopeA || !scopeB)
+    return false;
+  if (scopeA.scopePath?.scopeName !== scopeB.scopePath?.scopeName) {
+    return false;
+  }
+  if (scopeA.tokenAttributes !== scopeB.tokenAttributes) {
+    return false;
+  }
+  return true;
+}
+const TmTextareaContext = createContext(null);
+function useTmTextarea() {
+  const context = useContext(TmTextareaContext);
+  if (!context) {
+    throw `useTextarea should be used in a descendant of TmTextarea`;
+  }
+  return context;
 }
 function createTmTextarea(styles) {
+  function Segment(props) {
+    const context = useTmTextarea();
+    const previous = context.segments.peek();
+    const [stack, setStack] = createSignal(previous?.stack || mainExports.INITIAL, {
+      equals: compareStacks
+    });
+    const start = props.index * SEGMENT_SIZE;
+    const end = start + SEGMENT_SIZE;
+    const html = createLazyMemo(when(every(() => context.tokenizer, () => context.theme), ([tokenizer, theme]) => {
+      let currentStack = previous?.stack || mainExports.INITIAL;
+      const result = context.lines.slice(start, end).map((line) => {
+        const {
+          ruleStack,
+          tokens
+        } = tokenizer.tokenizeLine(line, currentStack);
+        currentStack = ruleStack;
+        return tokens.map((token) => {
+          const style = theme.resolveScope(token.scopes);
+          const tokenValue = line.slice(token.startIndex, token.endIndex);
+          return `<span style="${style.foreground ? `color:${style.foreground};` : ""}${style.fontStyle ? `text-decoration:${style.fontStyle}` : ""}">${escapeHTML(tokenValue)}</span>`;
+        }).join("");
+      });
+      setStack(currentStack);
+      return result;
+    }, () => context.lines.slice(start, end).map(escapeHTML)));
+    context.segments.push({
+      get stack() {
+        return stack();
+      }
+    });
+    onCleanup(() => context.segments.pop());
+    return createComponent(Show, {
+      get when() {
+        return context.isSegmentVisible(props.index * SEGMENT_SIZE);
+      },
+      get children() {
+        return createComponent(For, {
+          get each() {
+            return html();
+          },
+          children: (line, index) => createComponent(Show, {
+            get when() {
+              return context.isVisible(props.index * SEGMENT_SIZE + index());
+            },
+            get children() {
+              var _el$ = _tmpl$$1();
+              _el$.innerHTML = line;
+              createRenderEffect((_p$) => {
+                var _v$ = styles.line, _v$2 = props.index * SEGMENT_SIZE + index();
+                _v$ !== _p$.e && className(_el$, _p$.e = _v$);
+                _v$2 !== _p$.t && ((_p$.t = _v$2) != null ? _el$.style.setProperty("--tm-line-number", _v$2) : _el$.style.removeProperty("--tm-line-number"));
+                return _p$;
+              }, {
+                e: void 0,
+                t: void 0
+              });
+              return _el$;
+            }
+          })
+        });
+      }
+    });
+  }
   return function TmTextarea(props) {
-    const [config, rest] = splitProps(props, ["style", "value", "theme", "grammar", "class"]);
-    const [value, setValue] = createWritable(() => props.value);
+    const [config, rest] = splitProps(mergeProps({
+      editable: true
+    }, props), ["class", "grammar", "onInput", "value", "style", "theme", "editable", "onScroll", "textareaRef"]);
+    const [textareaProps, containerProps] = splitProps(rest, ["onKeyDown", "onKeyPress", "onKeyUp", "onChange"]);
+    let container;
+    const [character, setCharacter] = createSignal();
+    const [viewport, setViewport] = createSignal();
+    const [scrollTop, setScrollTop] = createSignal(0);
+    const [source, setSource] = createSignal(props.value);
     const [tokenizer] = createResource(every(() => props.grammar, WASM_LOADED), async ([grammar]) => grammar in TOKENIZER_CACHE ? TOKENIZER_CACHE[grammar] : TOKENIZER_CACHE[grammar] = await REGISTRY.loadGrammar(grammar));
     const [theme] = createResource(() => props.theme, async (theme2) => fetchFromCDN("theme", theme2).then((theme3) => new ThemeManager(theme3)));
-    return createComponent(ContentEditable, mergeProps({
-      ref: (element) => {
-        createEffect(when(every(tokenizer, theme), ([tokenizer2, theme2]) => {
-          const lines = value().split("\n");
-          requestAnimationFrame(() => {
-            const clearedHighlights = /* @__PURE__ */ new Set();
-            let offset = 0;
-            let currentStack = mainExports.INITIAL;
-            for (const line of lines) {
-              const {
-                ruleStack,
-                tokens
-              } = tokenizer2.tokenizeLine(line, currentStack);
-              currentStack = ruleStack;
-              for (const token of tokens) {
-                const style = theme2.resolveScope(token.scopes);
-                if (!HIGHLIGHTS.has(style)) {
-                  addHighlight(style);
-                }
-                const highlight = HIGHLIGHTS.get(style);
-                if (!clearedHighlights.has(highlight)) {
-                  highlight.clear();
-                  clearedHighlights.add(highlight);
-                }
-                const range = new Range();
-                const firstChild = element.firstChild;
-                const max = firstChild.textContent?.length || 0;
-                range.setStart(firstChild, Math.min(max, token.startIndex + offset));
-                range.setEnd(firstChild, Math.min(max, token.endIndex + offset));
-                highlight.add(range);
-              }
-              offset += line.length + 1;
-            }
-          });
-        }));
-      },
+    const lines = createMemo(() => source().split("\n"));
+    const lineSize = createMemo(() => getLongestLineSize(lines()));
+    const minLine = createMemo(() => Math.floor(scrollTop() / (character()?.height || 1)));
+    const maxLine = createMemo(() => Math.floor((scrollTop() + (viewport()?.height || 0)) / (character()?.height || 1)));
+    const minSegment = createMemo(() => Math.floor(minLine() / SEGMENT_SIZE));
+    const maxSegment = createMemo(() => Math.ceil(maxLine() / SEGMENT_SIZE));
+    const selectionColor = when(theme, (theme2) => {
+      const bg = theme2.getBackgroundColor();
+      const commentLuminance = luminance(...hexToRgb(bg));
+      const opacity = commentLuminance > 0.9 ? 0.1 : commentLuminance < 0.1 ? 0.25 : 0.175;
+      return `rgba(98, 114, 164, ${opacity})`;
+    });
+    const style = when(() => config.style, (style2) => splitProps(style2, ["width", "height"])[1]);
+    onMount(() => new ResizeObserver(([entry]) => setViewport(entry?.contentRect)).observe(container));
+    createRenderEffect(() => setSource(props.value));
+    createRenderEffect(() => console.log(theme()?.getForegroundColor()));
+    return createComponent(TmTextareaContext.Provider, {
       get value() {
-        return value();
-      },
-      onValue: setValue,
-      get ["class"]() {
-        return cn(styles.container, config.class);
-      },
-      get style() {
         return {
-          background: theme()?.getBackgroundColor(),
-          ...props.style
+          get viewport() {
+            return viewport();
+          },
+          get character() {
+            return character();
+          },
+          get scrollTop() {
+            return scrollTop();
+          },
+          get lines() {
+            return lines();
+          },
+          get theme() {
+            return theme();
+          },
+          get tokenizer() {
+            return tokenizer();
+          },
+          segments: new Stack(),
+          isVisible: createSelector(() => [minLine(), maxLine()], (index, [viewportMin, viewportMax]) => {
+            if (index > lines().length - 1) {
+              return false;
+            }
+            return index + WINDOW > viewportMin && index - WINDOW < viewportMax;
+          }),
+          isSegmentVisible: createSelector(() => [minSegment(), maxSegment()], (index) => {
+            const segmentMin = Math.floor((index - WINDOW) / SEGMENT_SIZE);
+            const segmentMax = Math.ceil((index + WINDOW) / SEGMENT_SIZE);
+            return segmentMin <= minSegment() && segmentMax >= maxSegment() || segmentMin >= minSegment() && segmentMin <= maxSegment() || segmentMax >= minSegment() && segmentMax <= maxSegment();
+          })
         };
+      },
+      get children() {
+        var _el$2 = _tmpl$2$1(), _el$3 = _el$2.firstChild, _el$4 = _el$3.nextSibling, _el$5 = _el$4.nextSibling;
+        _el$2.addEventListener("scroll", (e) => {
+          setScrollTop(e.currentTarget.scrollTop);
+          props.onScroll?.(e);
+        });
+        use((element) => {
+          container = element;
+          applyStyle(element, props, "width");
+          applyStyle(element, props, "height");
+        }, _el$2);
+        spread(_el$2, mergeProps({
+          get ["class"]() {
+            return clsx(styles.container, config.class);
+          },
+          get style() {
+            return {
+              "--tm-background-color": theme()?.getBackgroundColor(),
+              "--tm-char-height": `${character()?.height || 0}px`,
+              "--tm-char-width": `${character()?.width || 0}px`,
+              "--tm-foreground-color": theme()?.getForegroundColor(),
+              "--tm-line-count": lines().length,
+              "--tm-line-size": lineSize(),
+              "--tm-selection-color": selectionColor(),
+              "--tm-line-digits": countDigits(lines().length),
+              ...style()
+            };
+          }
+        }, containerProps), false, true);
+        insert(_el$3, createComponent(Index, {
+          get each() {
+            return Array.from({
+              length: Math.ceil(lines().length / SEGMENT_SIZE)
+            });
+          },
+          children: (_, segmentIndex) => createComponent(Segment, {
+            index: segmentIndex
+          })
+        }));
+        _el$4.addEventListener("scroll", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        });
+        var _ref$ = config.textareaRef;
+        typeof _ref$ === "function" ? use(_ref$, _el$4) : config.textareaRef = _el$4;
+        setAttribute(_el$4, "spellcheck", false);
+        _el$4.addEventListener("input", (e) => {
+          const target = e.currentTarget;
+          const value = target.value;
+          setSource(value);
+          config.onInput?.(e);
+        });
+        spread(_el$4, mergeProps({
+          get ["class"]() {
+            return styles.textarea;
+          },
+          get disabled() {
+            return !config.editable;
+          },
+          get value() {
+            return config.value;
+          },
+          get rows() {
+            return lines().length;
+          }
+        }, textareaProps), false, false);
+        use((element) => {
+          new ResizeObserver(([entry]) => {
+            const {
+              height,
+              width
+            } = getComputedStyle(entry.target);
+            setCharacter({
+              height: Number(height.replace("px", "")),
+              width: Number(width.replace("px", ""))
+            });
+          }).observe(element);
+        }, _el$5);
+        createRenderEffect((_p$) => {
+          var _v$3 = styles.code, _v$4 = styles.character;
+          _v$3 !== _p$.e && className(_el$3, _p$.e = _v$3);
+          _v$4 !== _p$.t && className(_el$5, _p$.t = _v$4);
+          return _p$;
+        }, {
+          e: void 0,
+          t: void 0
+        });
+        return _el$2;
       }
-    }, rest));
+    });
   };
 }
 
-const container$1 = "_container_1yd02_5";
-const styles$1 = {
-	container: container$1
-};
+const classnames = ["container","code","line","character","textarea"];
 
-const css = "tm-textarea {\n  display: contents;\n}\n\ntm-textarea ._container_1yd02_5 {\n  all: inherit;\n  display: block;\n  font-family: monospace;\n  white-space: pre-wrap;\n}\n";
+const cache = /* @__PURE__ */ new Map();
+function sheet(text) {
+  if (text instanceof CSSStyleSheet) {
+    return text;
+  }
+  if (!cache.has(text)) {
+    const stylesheet = new CSSStyleSheet();
+    stylesheet.replace(text);
+    cache.set(text, stylesheet);
+  }
+  return cache.get(text);
+}
 
-let _initClass, _classDecs, _init_editable, _init_grammar, _init_stylesheet, _init_theme, _init_value, _init_bindings;
+let _initClass, _classDecs, _init_editable, _init_grammar, _init_stylesheet, _init_theme, _init_value, _init_textarea, _init_jsx, _init_finalize;
 function _applyDecs(e, t, r, n, o, a) {
   function i(e2, t2, r2) {
     return function(n2, o2) {
@@ -5801,216 +5985,243 @@ function _checkInRHS(e) {
     throw TypeError("right-hand side of 'in' should be an object, got " + (null !== e ? typeof e : "null"));
   return e;
 }
-function _identity(t) {
-  return t;
-}
-const TmTextarea$1 = createTmTextarea(styles$1);
-class ValueEvent extends Event {
-  constructor(value) {
-    super("value");
-    this.value = value;
-  }
-}
+const TmTextarea$1 = createTmTextarea(Object.fromEntries(classnames.map((name) => [name, name])));
+const TmTextareaStyleSheet = sheet(css);
 _classDecs = [element("tm-textarea")];
 let _TmTextareaElement;
-new class extends _identity {
-  static [class TmTextareaElement extends LumeElement {
-    static {
-      ({
-        e: [_init_editable, _init_grammar, _init_stylesheet, _init_theme, _init_value, _init_bindings],
-        c: [_TmTextareaElement, _initClass]
-      } = _applyDecs(this, [[booleanAttribute, 0, "editable"], [stringAttribute, 0, "grammar"], [stringAttribute, 0, "stylesheet"], [stringAttribute, 0, "theme"], [stringAttribute, 0, "value"], [signal, 0, "bindings"]], _classDecs, 0, void 0, LumeElement));
-    }
-    hasShadow = false;
-    editable = _init_editable(this, true);
-    grammar = _init_grammar(this, "tsx");
-    stylesheet = _init_stylesheet(this, "");
-    theme = _init_theme(this, "dark-plus");
-    value = _init_value(this, "");
-    // @signal textarea: HTMLTextAreaElement = null!
-    bindings = _init_bindings(this, {});
-    template = () => {
-      const _self$ = this;
-      return createComponent(TmTextarea$1, {
-        get grammar() {
-          return _self$.grammar;
-        },
-        get theme() {
-          return _self$.theme;
-        },
-        get value() {
-          return _self$.value;
-        },
-        get editable() {
-          return _self$.editable;
-        },
-        onValue: (value) => {
-          _self$.value = value;
-          _self$.dispatchEvent(new ValueEvent(value));
-        },
-        get bindings() {
-          return _self$.bindings;
-        }
-      });
-    };
-  }];
-  css = css;
+class TmTextareaElement extends LumeElement {
+  static {
+    ({
+      e: [_init_editable, _init_grammar, _init_stylesheet, _init_theme, _init_value, _init_textarea, _init_jsx, _init_finalize],
+      c: [_TmTextareaElement, _initClass]
+    } = _applyDecs(this, [[booleanAttribute, 0, "editable"], [stringAttribute, 0, "grammar"], [stringAttribute, 0, "stylesheet"], [stringAttribute, 0, "theme"], [stringAttribute, 0, "value"], [signal, 0, "textarea"], [signal, 0, "jsx"], [signal, 0, "finalize", (o) => o.#finalize, (o, v) => o.#finalize = v]], _classDecs, 0, (_) => #finalize in _, LumeElement));
+  }
+  shadowOptions = {
+    mode: "open",
+    serializable: true
+  };
+  editable = _init_editable(this, true);
+  grammar = _init_grammar(this, "tsx");
+  stylesheet = _init_stylesheet(this, "");
+  theme = _init_theme(this, "dark-plus");
+  value = _init_value(this, "");
+  textarea = _init_textarea(this, null);
+  jsx = _init_jsx(this);
+  #finalize = _init_finalize(this);
   constructor() {
-    super(_TmTextareaElement), _initClass();
-  }
-}();
-function register() {
-  if (!customElements.get("tm-textarea")) {
-    customElements.define("tm-textarea", _TmTextareaElement);
-  }
-}
-
-function Indentation(event) {
-  event.preventDefault();
-  const outdent = event.shiftKey;
-  const element = event.currentTarget;
-  const [start, end] = getSelection(element);
-  const value = element.innerText;
-  const tabSize = +getComputedStyle(element).tabSize;
-  if (start !== end) {
-    const lineStart = Indentation.getLineStart(value, start);
-    const lineEnd = Indentation.getLineEnd(value, end - 1);
-    const original = value.slice(lineStart, lineEnd);
-    const originalLines = original.split("\n");
-    const processedLines = originalLines.map((line) => {
-      return outdent ? Indentation.outdentLine(line, tabSize) : Indentation.indentLine(line);
+    super();
+    const self = this;
+    this.jsx = createComponent(TmTextarea$1, {
+      textareaRef: (element2) => {
+        self.textarea = element2;
+      },
+      get grammar() {
+        return self.grammar;
+      },
+      get theme() {
+        return self.theme;
+      },
+      get value() {
+        return self.value;
+      },
+      get editable() {
+        return self.editable;
+      },
+      onInput: (e) => self.value = e.currentTarget.value
     });
-    const processed = processedLines.join("\n");
-    if (processed.length === original.length) {
-      return null;
+  }
+  template = () => {
+    const adoptedStyleSheets = this.shadowRoot.adoptedStyleSheets;
+    adoptedStyleSheets.push(TmTextareaStyleSheet);
+    if (this.stylesheet) {
+      adoptedStyleSheets.push(sheet(this.stylesheet));
     }
-    let newStart = start;
-    {
-      const originalFirstLine = originalLines[0];
-      const originalLeadingWhitespaceCount = Indentation.getLeadingWhitespace(originalFirstLine).length;
-      if (originalLeadingWhitespaceCount > 0) {
-        const processedFirstLine = processed.split("\n")[0];
-        const relativeStart = start - lineStart;
-        const offset = processedFirstLine.length - originalFirstLine.length;
-        if (originalLeadingWhitespaceCount <= relativeStart) {
-          newStart += offset;
-        } else {
-          if (outdent) {
-            const processedLeadingWhitespaceCount = Indentation.getLeadingWhitespace(processedFirstLine).length;
-            if (processedLeadingWhitespaceCount < relativeStart) {
-              newStart += offset + 1;
-            }
-          }
-        }
-      } else if (!outdent) {
-        newStart += 1;
-      }
-    }
-    let newEnd = end;
-    {
-      const originalLeadingWhitespaceCount = Indentation.getLeadingWhitespace(
-        originalLines[originalLines.length - 1]
-      ).length;
-      const originalLastLineStart = lineStart + originalLines.slice(0, -1).join("\n").length + 1;
-      const relativeEnd = end - originalLastLineStart;
-      if (relativeEnd < originalLeadingWhitespaceCount) {
-        const processedLeadingWhitespaceCount = Indentation.getLeadingWhitespace(
-          processedLines[processedLines.length - 1]
-        ).length;
-        const processedLastLineStart = lineStart + processedLines.slice(0, -1).join("\n").length + 1;
-        if (relativeEnd > processedLeadingWhitespaceCount) {
-          newEnd = processedLastLineStart + processedLeadingWhitespaceCount;
-        } else {
-          newEnd = processedLastLineStart + relativeEnd;
-        }
-      } else {
-        newEnd += processed.length - original.length;
-      }
-    }
-    return [
-      [[lineStart, lineEnd], processed, [newStart, newEnd]],
-      [value.slice(lineStart, lineEnd), [start, end]]
-    ];
-  } else {
-    if (!outdent) {
-      return [[[start, start], "	", [start + 1]]];
-    } else {
-      const lineStart = Indentation.getLineStart(value, start);
-      const original = value.slice(lineStart, end);
-      const processed = Indentation.outdentLine(value.slice(lineStart, end), tabSize);
-      if (processed.length === original.length) {
-        return null;
-      }
-      return [
-        [[lineStart, end], processed, [lineStart + processed.length]],
-        [value.slice(lineStart, end)]
-      ];
-    }
+    return this.jsx;
+  };
+  get selectionStart() {
+    return this.textarea.selectionStart;
+  }
+  set selectionStart(start) {
+    this.textarea.selectionStart = start;
+  }
+  get selectionEnd() {
+    return this.textarea.selectionEnd;
+  }
+  set selectionEnd(end) {
+    this.textarea.selectionEnd = end;
+  }
+  setRangeText(replacement, start, end, selectMode) {
+    this.textarea.setRangeText(replacement, start, end, selectMode);
+    this.value = this.textarea.value;
+  }
+  setSelectionRange(selectionStart, selectionEnd, selectionDirection) {
+    this.textarea.setSelectionRange(selectionStart, selectionEnd, selectionDirection);
+  }
+  select() {
+    this.textarea.select();
+  }
+  static {
+    _initClass();
   }
 }
-Indentation.outdentLine = (source, tabSize) => {
-  const leadingWhitespace = Indentation.getLeadingWhitespace(source);
-  if (leadingWhitespace.length === 0)
-    return source;
-  const blocks = Indentation.getTabBlocks(leadingWhitespace, tabSize);
-  return source.replace(leadingWhitespace, blocks.slice(0, -1).join(""));
-};
-Indentation.indentLine = (source) => {
-  const leadingWhitespace = Indentation.getLeadingWhitespace(source);
-  return source.replace(leadingWhitespace, leadingWhitespace + "	");
-};
-Indentation.getLeadingWhitespace = (source) => {
-  return source?.match(/^\s*/)?.[0] || "";
-};
-Indentation.getLineStart = (value, position) => {
-  if (value[position] === "\n") {
-    position = Math.max(0, position - 1);
-  }
-  while (position > 0 && value[position] !== "\n") {
-    position--;
-  }
-  return position === 0 ? 0 : position + 1;
-};
-Indentation.getLineEnd = (value, position) => {
-  while (position < value.length - 1 && value[position] !== "\n") {
-    position++;
-  }
-  return position;
-};
-Indentation.getTabBlocks = (source, tabSize) => {
-  const unmergedTabBlocks = (source.match(/(\t| +)/g) || []).flatMap((segment) => {
-    if (segment === "	") {
-      return [segment];
+
+const TabIndentation = {
+  binding(element) {
+    element.addEventListener("keydown", TabIndentation.onKeyDown);
+    element.addEventListener("input", TabIndentation.onInput);
+    return function dispose() {
+      element.removeEventListener("keydown", TabIndentation.onKeyDown);
+      element.addEventListener("input", TabIndentation.onInput);
+    };
+  },
+  /**
+   * Handles keydown events for indenting and outdenting lines in a textarea.
+   * It triggers an 'input' event with types 'formatIndent' or 'formatOutdent'
+   * based on whether the tab was pressed with the shift key.
+   *
+   * @param event - The keyboard event triggered when a key is pressed.
+   */
+  onKeyDown(event) {
+    if (event.key === "Tab") {
+      event.preventDefault();
+      const inputEvent = new InputEvent("input", {
+        inputType: event.shiftKey ? "formatOutdent" : "formatIndent",
+        bubbles: true,
+        cancelable: true
+      });
+      event.currentTarget.dispatchEvent(inputEvent);
     }
-    return Array.from(
-      { length: Math.ceil(segment.length / tabSize) },
-      (_, i) => segment.substr(i * tabSize, tabSize)
-    );
-  });
-  const tabBlocks = [];
-  for (let i = 0; i < unmergedTabBlocks.length; i++) {
-    const current = unmergedTabBlocks[i];
-    const next = unmergedTabBlocks[i + 1];
-    if (current === "	" || current.length >= tabSize || i === unmergedTabBlocks.length - 1) {
-      tabBlocks.push(current);
-      continue;
+  },
+  /**
+   * Handles 'input' events specifically for processing 'formatIndent' and 'formatOutdent' input types.
+   * Modifies the textarea's content based on the type of indentation required.
+   *
+   * @param e - The input event that was dispatched during indentation handling.
+   */
+  onInput(event) {
+    if (event.inputType !== "formatIndent" && event.inputType !== "formatOutdent") {
+      return;
     }
-    tabBlocks.push(current + next);
-    i++;
+    event.preventDefault();
+    const textarea = event.currentTarget;
+    const { selectionStart, selectionEnd, value } = textarea;
+    const tabSize = +getComputedStyle(textarea).tabSize;
+    if (selectionStart !== selectionEnd) {
+      const start = TabIndentation.getLineStart(value, selectionStart);
+      let newSelectionStart = selectionStart;
+      let newSelectionEnd = selectionEnd;
+      let result = value.slice(start === 0 ? 0 : start + 1, selectionEnd).split("\n").map((line, index) => {
+        const initialLength = line.length;
+        const modifiedLine = event.inputType === "formatOutdent" ? TabIndentation.outdent(line, tabSize) : TabIndentation.indent(line);
+        const lengthChange = modifiedLine.length - initialLength;
+        if (index === 0) {
+          newSelectionStart += lengthChange;
+        }
+        newSelectionEnd += lengthChange;
+        return modifiedLine;
+      }).join("\n");
+      result = start === 0 ? result : `
+${result}`;
+      textarea.setRangeText(result, start, selectionEnd);
+      textarea.setSelectionRange(newSelectionStart, newSelectionEnd);
+    } else {
+      if (event.inputType === "formatIndent") {
+        textarea.setRangeText("	", selectionStart, selectionStart, "end");
+      } else {
+        const isNewLine = value[selectionStart] === "\n";
+        const start = TabIndentation.getLineStart(
+          value,
+          // Skip the leading newline.
+          isNewLine ? Math.max(0, selectionStart - 1) : selectionStart
+        );
+        let result = TabIndentation.outdent(value.slice(start, selectionEnd), tabSize);
+        result = start === 0 ? result : `
+${result}`;
+        textarea.setRangeText(result, start, selectionEnd, "end");
+      }
+    }
+  },
+  outdent(source, tabSize) {
+    const leadingWhitespace = TabIndentation.getLeadingWhitespace(source);
+    if (leadingWhitespace.length === 0)
+      return source;
+    const segments = TabIndentation.getIndentationSegments(leadingWhitespace, tabSize);
+    return source.replace(leadingWhitespace, segments.slice(0, -1).join(""));
+  },
+  indent(source) {
+    const leadingWhitespace = TabIndentation.getLeadingWhitespace(source);
+    return source.replace(leadingWhitespace, leadingWhitespace + "	");
+  },
+  getLeadingWhitespace(source) {
+    return source.match(/^\s*/)?.[0] || "";
+  },
+  getLineStart(value, position) {
+    while (position > 0 && value[position] !== "\n") {
+      position--;
+    }
+    return position;
+  },
+  /**
+   * Calculates the whitespace segments for a string of leading whitespace, merging certain segments for visual consistency.
+   *
+   * This function is designed to normalize the leading whitespace into consistent tab or space segments. It ensures that partial
+   * tab-sized segments of spaces are merged into single tabs or combined to fit the defined tab size, aiding in consistent indentation handling.
+   *
+   * @param leadingWhitespace - The string of leading whitespace from a line of text.
+   * @param tabSize - The number of spaces that constitute a tab segment.
+   * @returns {string[]} - An array of strings, each representing a coherent segment of indentation.
+   */
+  getIndentationSegments(leadingWhitespace, tabSize) {
+    const unmergedSegments = (leadingWhitespace.match(/(\t| +)/g) || []).flatMap((segment) => {
+      if (segment === "	") {
+        return [segment];
+      }
+      return Array.from(
+        { length: Math.ceil(segment.length / tabSize) },
+        (_, i) => segment.substr(i * tabSize, tabSize)
+      );
+    });
+    const segments = [];
+    for (let i = 0; i < unmergedSegments.length; i++) {
+      const current = unmergedSegments[i];
+      const next = unmergedSegments[i + 1];
+      if (current === "	" || current.length >= tabSize || i === unmergedSegments.length - 1) {
+        segments.push(current);
+        continue;
+      }
+      segments.push(current + next);
+      i++;
+    }
+    return segments;
+  },
+  /**
+   * Formats the indentation of each line in a given source string using tabs.
+   * It calculates the amount of leading whitespace in each line and replaces it with tabs based on the specified tab size.
+   *
+   * @param source - The string of text to format.
+   * @param tabSize - The number of spaces that represent a single tabulation in the context of the source text.
+   * @returns The source text with spaces replaced by tabs as per the calculated indentation levels.
+   */
+  format(source, tabSize) {
+    return source.split("\n").map((line) => {
+      const whitespace = TabIndentation.getLeadingWhitespace(line);
+      const segments = TabIndentation.getIndentationSegments(whitespace, tabSize);
+      return line.replace(whitespace, "	".repeat(segments.length));
+    }).join("\n");
   }
-  return tabBlocks;
-};
-Indentation.format = (source, tabSize) => {
-  return source.split("\n").map((line) => {
-    const whitespace = Indentation.getLeadingWhitespace(line);
-    const segments = Indentation.getTabBlocks(whitespace, tabSize);
-    return line.replace(whitespace, "	".repeat(segments.length));
-  }).join("\n");
 };
 
-const container = "_container_xibl7_1";
+const container = "_container_io2pm_5";
+const code = "_code_io2pm_28";
+const line = "_line_io2pm_41";
+const character = "_character_io2pm_54";
+const textarea = "_textarea_io2pm_63";
 const styles = {
-	container: container
+	container: container,
+	code: code,
+	line: line,
+	character: character,
+	textarea: textarea
 };
 
 const TmTextarea = createTmTextarea(styles);
@@ -6304,7 +6515,6 @@ const themes = [
 const tsx = ""+new URL('tsx-Da1Z4H1i.json', import.meta.url).href+"";
 
 var _tmpl$ = /* @__PURE__ */ template(`<tm-textarea>`, true, false), _tmpl$2 = /* @__PURE__ */ template(`<div class=app><div class=side-panel><h1>Tm Textarea</h1><footer><div><label for=mode>mode</label><button id=mode></button></div><br><div><label for=theme>themes</label><select id=theme></select></div><div><label for=lang>languages</label><select id=lang></select></div><br><div><label for=LOC>LOC</label><input id=LOC type=number></div><div><label for=tab-size>tab-size</label><input id=tab-size type=number></div><div><label for=padding>padding</label><input id=padding type=number></div><div><label for=font-size>font-size</label><input id=font-size type=number></div><div><label for=line-numbers>Line Numbers</label><button id=line-numbers></button></div><div><label for=editable>editable</label><button id=editable></button></div></footer></div><main>`), _tmpl$3 = /* @__PURE__ */ template(`<option>`);
-register();
 setCDN((type, id) => {
   switch (type) {
     case "theme":
@@ -6323,10 +6533,10 @@ const App = () => {
   const [padding, setPadding] = createSignal(20);
   const [tabSize, setTabSize] = createSignal(4);
   const [editable, setEditable] = createSignal(true);
-  const [lineNumbers, setLineNumbers] = createSignal(false);
-  const [LOC, setLOC] = createSignal(100);
+  const [lineNumbers, setLineNumbers] = createSignal(true);
+  const [LOC, setLOC] = createSignal(1e4);
   const [value, setValue] = createSignal(null);
-  const formattedSelf = Indentation.format(self$1, 2);
+  const formattedSelf = TabIndentation.format(self$1, 2);
   createRenderEffect(() => {
     setValue(loopLines(formattedSelf, LOC()));
   });
@@ -6385,6 +6595,10 @@ const App = () => {
       },
       get fallback() {
         return createComponent(TmTextarea, {
+          ref(r$) {
+            var _ref$2 = TabIndentation.binding;
+            typeof _ref$2 === "function" ? _ref$2(r$) : TabIndentation.binding = r$;
+          },
           get value() {
             return value();
           },
@@ -6406,20 +6620,14 @@ const App = () => {
           get ["class"]() {
             return lineNumbers() ? "line-numbers tm-textarea" : "tm-textarea";
           },
-          onValue: (value2) => setValue(value2),
-          bindings: {
-            Tab: Indentation
-          }
+          onInput: (e) => setValue(e.currentTarget.value)
         });
       },
       get children() {
         var _el$35 = _tmpl$();
-        _el$35.addEventListener("value", ({
-          value: value2
-        }) => setValue(value2));
-        _el$35.bindings = {
-          Tab: Indentation
-        };
+        _el$35.$$input = (e) => setValue(e.currentTarget.value);
+        var _ref$ = TabIndentation.binding;
+        typeof _ref$ === "function" ? use(_ref$, _el$35) : TabIndentation.binding = _el$35;
         _el$35._$owner = getOwner();
         createRenderEffect((_p$) => {
           var _v$ = grammar(), _v$2 = theme(), _v$3 = editable(), _v$4 = `${padding()}px`, _v$5 = tabSize(), _v$6 = lineNumbers() ? "line-numbers tm-textarea" : "tm-textarea";

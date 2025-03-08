@@ -6,7 +6,7 @@
     "paths": {
       "tm-textarea/*": ["../src/*"],
       "tm-textarea/bindings/*": ["../src/bindings/*"],
-      "tm-textarea": ["../src/index.tsx"]
+      "tm-textarea": ["../src/custom-element.tsx"]
     }
   },
   "exclude": ["node_modules", "dist"],

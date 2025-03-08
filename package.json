@@ -58,6 +58,7 @@
     "build-watch": "vite build --watch",
     "build:dev": "vite build dev",
     "preview:dev": "vite preview dev",
+    "serve:dev": "vite preview dev",
     "prepublishOnly": "pnpm build",
     "types": "tsc",
     "format": "prettier --ignore-path .gitignore -w \"src/**/*.{js,ts,json,css,tsx,jsx}\" \"dev/**/*.{js,ts,json,css,tsx,jsx}\"",

@@ -14,37 +14,6 @@ import { sheet } from './utils/sheet'
 
 /**********************************************************************************/
 /*                                                                                */
-/*                                      Types                                     */
-/*                                                                                */
-/**********************************************************************************/
-
-interface TmTextareaAttributes
-  extends Omit<
-    ElementAttributes<TmTextareaElement, 'grammar' | 'theme' | 'editable'>,
-    'onInput' | 'oninput'
-  > {
-  oninput?: (event: InputEvent & { currentTarget: TmTextareaElement }) => any
-  onInput?: (event: InputEvent & { currentTarget: TmTextareaElement }) => any
-  value: string
-}
-declare module 'solid-js/jsx-runtime' {
-  namespace JSX {
-    interface IntrinsicElements {
-      'tm-textarea': TmTextareaAttributes
-    }
-  }
-}
-
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      'tm-textarea': TmTextareaAttributes
-    }
-  }
-}
-
-/**********************************************************************************/
-/*                                                                                */
 /*                                 Custom Element                                 */
 /*                                                                                */
 /**********************************************************************************/
@@ -52,6 +21,8 @@ declare global {
 const TmTextarea = createTmTextarea(Object.fromEntries(classnames.map(name => [name, name])))
 
 const TmTextareaStyleSheet = sheet(css)
+
+export type TmTextareaAttributes = 'editable' | 'grammar' | 'stylesheet' | 'theme' | 'value'
 
 @element('tm-textarea')
 export class TmTextareaElement extends Element {
@@ -142,5 +113,34 @@ export class TmTextareaElement extends Element {
 export function register() {
   if (!customElements.get('tm-textarea')) {
     customElements.define('tm-textarea', TmTextareaElement)
+  }
+}
+
+/**********************************************************************************/
+/*                                                                                */
+/*                                      Types                                     */
+/*                                                                                */
+/**********************************************************************************/
+
+declare module 'solid-js/jsx-runtime' {
+  namespace JSX {
+    interface IntrinsicElements {
+      'tm-textarea': ElementAttributes<TmTextareaElement, TmTextareaAttributes>
+    }
+  }
+}
+
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'tm-textarea': ElementAttributes<TmTextareaElement, TmTextareaAttributes>
+    }
+  }
+}
+
+// Hook up the type for use in DOM APIs
+declare global {
+  interface HTMLElementTagNameMap {
+    'tm-textarea': TmTextareaElement
   }
 }

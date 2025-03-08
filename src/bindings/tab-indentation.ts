@@ -1,4 +1,4 @@
-import { TmTextareaElement } from 'src'
+import { TmTextareaElement } from 'src/custom-element'
 
 /**
  * Provides key bindings for tab-based indentation in textareas. This includes both single line and multi-line indentation.

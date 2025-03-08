@@ -13,17 +13,31 @@ https://github.com/user-attachments/assets/6e785c75-75ae-4274-a904-5e1004153b76
 
 ## Table of Contents
 
-- [Installation](#installation)
-- [Custom Element (`tm-textarea`)](#custom-element-tm-textarea)
-  - [Usage](#usage)
-  - [Styling The Custom Element](#styling-the-custom-element)
-- [Solid Component (`tm-textarea/solid`)](#solid-component-tm-textareasolid)
-  - [Usage](#usage-1)
-- [CDN (`tm-textarea/cdn`)](#cdn-tm-textareacdn)
-- [Themes & Grammars (`tm-textarea/tm`)](#themes--grammars-tm-textareatm)
-- [Bindings](#themes--grammars-tm-textareatm)
-    - [Tab Indentation (`tm-textarea/bindings/tab-indentation`)](#tabindentation-tm-textareabindingstab-indentation)
-- [Line Numbers](#line-numbers)
+- [📄 tm-textarea](#-tm-textarea)
+  - [Table of Contents](#table-of-contents)
+  - [Installation](#installation)
+  - [Custom Element (`tm-textarea`)](#custom-element-tm-textarea)
+    - [Usage](#usage)
+    - [Styling The Custom Element](#styling-the-custom-element)
+    - [Type Checking In Frameworks](#type-checking-in-frameworks)
+      - [Solid.js](#solidjs)
+      - [Vue](#vue)
+      - [Stencil.js](#stenciljs)
+      - [React](#react)
+      - [Preact](#preact)
+      - [Svelte](#svelte)
+  - [Solid Component (`tm-textarea/solid`)](#solid-component-tm-textareasolid)
+    - [Usage](#usage-1)
+  - [CDN (`tm-textarea/cdn`)](#cdn-tm-textareacdn)
+    - [Usage](#usage-2)
+  - [Themes \& Grammars (`tm-textarea/tm`)](#themes--grammars-tm-textareatm)
+  - [Bindings](#bindings)
+    - [TabIndentation (`tm-textarea/bindings/tab-indentation`)](#tabindentation-tm-textareabindingstab-indentation)
+      - [Importing and Usage](#importing-and-usage)
+  - [Line Numbers](#line-numbers)
+    - [Custom Element CSS Snippet](#custom-element-css-snippet)
+    - [Solid Component CSS Snippet](#solid-component-css-snippet)
+
 ## Installation
 
 ```bash
@@ -134,6 +148,62 @@ reused on the different `tm-textarea` instances.
   value="const sum = (a: string, b: string) => a + b"
   stylesheet="code, code * { font-style: normal; }"
 />
+```
+
+### Type Checking In Frameworks
+
+#### Solid.js
+
+Type checking of the `<tm-textarea>` is already enabled by default in Solid.js JSX.
+
+#### Vue
+
+Besides importing the element file, also import the Vue type definition:
+
+```ts
+import 'tm-textarea' // defines the element
+import type {} from 'tm-textarea/framework-types/vue'
+```
+
+#### Stencil.js
+
+Besides importing the element file, also import the Stencil type definition:
+
+```ts
+import 'tm-textarea' // defines the element
+import type {} from 'tm-textarea/framework-types/stencil'
+```
+
+> [!Note]
+> Stencil's type definition currently works with projects using `jsxFactory` in
+> tsconfig (that's the default), not in projects using `jsxImportSource`.
+> This will be fixed in https://github.com/stenciljs/core/issues/6180
+
+#### React
+
+Besides importing the element file, also import the React type definition:
+
+```ts
+import 'tm-textarea' // defines the element
+import type {} from 'tm-textarea/framework-types/react'
+```
+
+#### Preact
+
+The same as with React, besides importing the element file, also import the React type definition:
+
+```ts
+import 'tm-textarea' // defines the element
+import type {} from 'tm-textarea/framework-types/react'
+```
+
+#### Svelte
+
+Besides importing the element file, also import the Svelte type definition:
+
+```ts
+import 'tm-textarea' // defines the element
+import type {} from 'tm-textarea/framework-types/svelte'
 ```
 
 ## Solid Component (`tm-textarea/solid`)
@@ -280,14 +350,14 @@ export default App
 ## Line Numbers
 
 To keep the implementation of `tm-textarea` as generic as possible, we do not provide specific props/attributes to render line-numbers. Instead css-variables are set to assist with the rendering of css line-numbers:
-- `--tm-line-number`: the line number of a single line. This variable is set on `tm-textarea::part(line)` ([custom element](#custom-element-tm-textarea)) and `.tm-textarea pre` ([solid component](#solid-component-tm-textareasolid)). 
+- `--tm-line-number`: the line number of a single line. This variable is set on `tm-textarea::part(line)` ([custom element](#custom-element-tm-textarea)) and `.tm-textarea pre` ([solid component](#solid-component-tm-textareasolid)).
 - `--tm-line-digits`: the amount of digits of the current line-count, useful for preventing overflowing line-numbers.
 
 It can get a bit involved to account for all the possible edge cases, so we do provide the following css-snippets that you can use as a base:
 
 
 ### Custom Element CSS Snippet
- 
+
 ```css
 .line-numbers::part(root) {
   /* Calculate the offset from the digits of the current line-count and an additional ch for left-padding. */
@@ -314,7 +384,7 @@ It can get a bit involved to account for all the possible edge cases, so we do p
 }
 ```
 ### Solid Component CSS Snippet
- 
+
 ```css
 .line-numbers {
   /* Calculate the offset from the digits of the current line-count and an additional ch for left-padding. */

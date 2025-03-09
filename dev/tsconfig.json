@@ -1,13 +1,7 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "types": ["vite/client"],
-    "baseUrl": ".",
-    "paths": {
-      "tm-textarea/*": ["../src/*"],
-      "tm-textarea/bindings/*": ["../src/bindings/*"],
-      "tm-textarea": ["../src/custom-element.tsx"]
-    }
+    "types": ["vite/client"]
   },
   "exclude": ["node_modules", "dist"],
   "include": ["."]

@@ -16,7 +16,12 @@
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
     "types": ["vite/client", "vite-plugin-css-classnames"],
-    "baseUrl": "."
+    "baseUrl": ".",
+    "paths": {
+      "tm-textarea/*": ["./src/*"],
+      "tm-textarea/bindings/*": ["./src/bindings/*"],
+      "tm-textarea": ["./src/custom-element.tsx"]
+    }
   },
   "include": ["./src/**/*"]
 }

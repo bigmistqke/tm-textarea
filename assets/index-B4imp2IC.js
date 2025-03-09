@@ -6449,8 +6449,6 @@ const App: Component = () => {
     return result
   }
 
-  function ref(element: HTMLTextAreaElement) {}
-
   return (
     <div class="app">
       <div class="side-panel">

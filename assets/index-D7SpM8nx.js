@@ -1530,204 +1530,6 @@ function cleanChildren(parent, current, marker, replacement) {
   return [node];
 }
 
-const self$1 = `import self from '.?raw'
-import { createRenderEffect, createSignal, For, Show, type Component } from 'solid-js'
-import { render } from 'solid-js/web'
-import 'tm-textarea'
-import { TabIndentation } from 'tm-textarea/bindings/tab-indentation'
-import { setCDN } from 'tm-textarea/cdn'
-import { TmTextarea } from 'tm-textarea/solid'
-import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
-import './index.css'
-import tsx from './tsx.json?url'
-
-setCDN((type, id) => {
-  switch (type) {
-    case 'theme':
-      return \`https://esm.sh/tm-themes/themes/\${id}.json\`
-    case 'grammar':
-      return id === 'tsx' ? tsx : \`https://esm.sh/tm-grammars/grammars/\${id}.json\`
-    case 'oniguruma':
-      return \`https://esm.sh/vscode-oniguruma/release/onig.wasm\`
-  }
-})
-
-const App: Component = () => {
-  const [mode, setMode] = createSignal<'custom-element' | 'solid'>('custom-element')
-  const [theme, setCurrentThemeName] = createSignal<Theme>('light-plus')
-  const [grammar, setCurrentLanguageName] = createSignal<Grammar>('tsx')
-
-  const [fontSize, setFontSize] = createSignal(10)
-  const [padding, setPadding] = createSignal(20)
-  const [tabSize, setTabSize] = createSignal(4)
-  const [editable, setEditable] = createSignal(true)
-  const [lineNumbers, setLineNumbers] = createSignal(true)
-
-  const [LOC, setLOC] = createSignal(10_000)
-  const [value, setValue] = createSignal<string>(null!)
-  const formattedSelf = TabIndentation.format(self, 2)
-
-  createRenderEffect(() => {
-    setValue(loopLines(formattedSelf, LOC()))
-  })
-
-  function loopLines(input: string, lineCount: number): string {
-    const lines = input.split('\\n')
-    const totalLines = lines.length
-    let result = ''
-
-    for (let i = 0; i < lineCount; i++) {
-      if (i === lineCount - 1) {
-        result += lines[i % totalLines]
-      } else {
-        result += lines[i % totalLines] + '\\n'
-      }
-    }
-
-    return result
-  }
-
-  return (
-    <div class="app">
-      <div class="side-panel">
-        <h1>Tm Textarea</h1>
-        <footer>
-          <div>
-            <label for="mode">mode</label>
-            <button
-              id="mode"
-              onClick={e => {
-                setMode(mode => (mode === 'custom-element' ? 'solid' : 'custom-element'))
-              }}
-            >
-              {mode()}
-            </button>
-          </div>
-          <br />
-          <div>
-            <label for="theme">themes</label>
-            <select
-              id="theme"
-              value={theme()}
-              onInput={e => setCurrentThemeName(e.currentTarget.value as Theme)}
-            >
-              <For each={themes}>{theme => <option>{theme}</option>}</For>
-            </select>
-          </div>
-          <div>
-            <label for="lang">languages</label>
-            <select
-              id="lang"
-              value={grammar()}
-              onInput={e => setCurrentLanguageName(e.currentTarget.value as Grammar)}
-            >
-              <For each={grammars}>{grammar => <option>{grammar}</option>}</For>
-            </select>
-          </div>
-          <br />
-          <div>
-            <label for="LOC">LOC</label>
-            <input
-              id="LOC"
-              type="number"
-              value={LOC()}
-              onInput={e => setLOC(+e.currentTarget.value)}
-            />
-          </div>
-          <div>
-            <label for="tab-size">tab-size</label>
-            <input
-              id="tab-size"
-              type="number"
-              onInput={e => setTabSize(+e.currentTarget.value)}
-              value={tabSize()}
-            />
-          </div>
-          <div>
-            <label for="padding">padding</label>
-            <input
-              id="padding"
-              type="number"
-              onInput={e => setPadding(+e.currentTarget.value)}
-              value={padding()}
-            />
-          </div>
-          <div>
-            <label for="font-size">font-size</label>
-            <input
-              id="font-size"
-              type="number"
-              onInput={e => setFontSize(+e.currentTarget.value)}
-              value={fontSize()}
-            />
-          </div>
-          <div>
-            <label for="line-numbers">Line Numbers</label>
-            <button
-              id="line-numbers"
-              onClick={e => {
-                setLineNumbers(bool => !bool)
-              }}
-            >
-              {lineNumbers() ? 'enabled' : 'disabled'}
-            </button>
-          </div>
-          <div>
-            <label for="editable">editable</label>
-            <button
-              id="editable"
-              onClick={e => {
-                setEditable(bool => !bool)
-              }}
-            >
-              {editable() ? 'enabled' : 'disabled'}
-            </button>
-          </div>
-        </footer>
-      </div>
-      <main>
-        <Show
-          when={mode() === 'custom-element'}
-          fallback={
-            <TmTextarea
-              ref={TabIndentation.binding}
-              value={value()}
-              grammar={grammar()}
-              theme={theme()}
-              editable={editable()}
-              style={{
-                padding: \`\${padding()}px\`,
-                'tab-size': tabSize(),
-              }}
-              class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
-              onInput={e => setValue(e.currentTarget.value)}
-            />
-          }
-        >
-          <tm-textarea
-            ref={TabIndentation.binding}
-            value={value()}
-            grammar={grammar()}
-            theme={theme()}
-            editable={editable()}
-            style={{
-              padding: \`\${padding()}px\`,
-              'tab-size': tabSize(),
-            }}
-            class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
-            onInput={e => setValue(e.currentTarget.value)}
-          />
-        </Show>
-      </main>
-    </div>
-  )
-}
-
-export default App
-
-render(() => <App />, document.getElementById('root')!)
-`;
-
 /** Like Object.getOwnPropertyDescriptor, but looks up the prototype chain for the descriptor. */
 function getInheritedDescriptor(obj, key) {
     let currentProto = obj;
@@ -2750,7 +2552,6 @@ function handleAttributeDecoration(value, context, attributeHandler = {}) {
         throw new Error('@attribute is not supported on private fields yet.');
     if (isStatic)
         throw new Error('@attribute is not supported on static fields.');
-    // TODO decorate on prototype? Or decorate on instance?
     __classFinishers.push((Class) => __setUpAttribute(Class, name, attributeHandler));
     if (kind === 'field') {
         const signalInitializer = useSignal ? signal(value, context) : (v) => v;
@@ -2769,10 +2570,20 @@ function handleAttributeDecoration(value, context, attributeHandler = {}) {
     }
     else if (kind === 'getter' || kind === 'setter') {
         if (useSignal)
-            signal(value, context);
+            return signal(value, context);
+    }
+    else if (kind === 'accessor') {
+        context.addInitializer(function () {
+            const initialValue = this[name];
+            if (!('default' in attributeHandler))
+                attributeHandler.default = initialValue;
+            // attributeHandler.sideEffect?.(this, name, initialValue)
+        });
+        if (useSignal)
+            return signal(value, context);
     }
     else {
-        throw new Error('@attribute is only for use on fields, getters, and setters. Auto accessor support is coming next if there is demand for it.');
+        throw new Error('@attribute is only for use on fields, getters/setters, and auto accessors.');
     }
     return undefined; // shush TS
 }
@@ -2797,7 +2608,19 @@ function __setUpAttribute(ctor, propName, attributeHandler) {
     if (!Array.isArray(ctor.observedAttributes)) {
         throw new TypeError('observedAttributes is in the wrong format. Maybe you forgot to decorate your custom element class with the `@element` decorator.');
     }
-    const attrName = camelCaseToDash(propName);
+    const attrName = (attributeHandler.name ?? (attributeHandler.dashcase === false ? propName : camelCaseToDash(propName))).toLowerCase();
+    // @prod-prune
+    if (!attributeHandler.noWarn &&
+        !attributeHandler.name &&
+        attributeHandler.dashcase === false &&
+        attrName !== propName && // uppercase letters in propName
+        ctor.observedAttributes.includes(attrName)) {
+        console.warn(`The attribute name "${attrName}" is already used by another property that might have a different letter casing. If you know what you're doing, such as overriding a property in a subclass, disable this warning by setting the attribute option 'noWarn' to 'true'. If you don't know why you're seeing this warning, then it means you've caused an attribute name clash on your custom element from two different properties with possibly varying name case such as "fooBar" and "foobar" along with the attribute option 'dashcase' set to 'false', and you should either set 'dashcase' to 'true' to avoid name collisions, manually set a different attribute 'name', or change the property name to have different letters case insensitively.`);
+    }
+    // @prod-prune
+    if (!attributeHandler.noWarn && attributeHandler.name && ctor.observedAttributes.includes(attrName)) {
+        console.warn(`The attribute name "${attrName}" is already used by another property with the same attribute name. If you know what you're doing, such as overriding a property in a subclass, disable this warning by setting the attribute option 'noWarn' to 'true'. If you don't know why you're seeing this warning, then it means you've caused an attribute name clash on your custom element from two different properties with the same attribute name, and you should either pick a different attribute 'name' value, or unset the attribute 'name' option (without setting the 'dashcase' option) to avoid name collisions.`);
+    }
     if (!ctor.observedAttributes.includes(attrName))
         ctor.observedAttributes.push(attrName);
     mapAttributeToProp(ctor.prototype, attrName, propName, attributeHandler);
@@ -2840,8 +2663,8 @@ function mapAttributeToProp(prototype, attr, prop, attributeHandler) {
 }
 const toString = (str) => str;
 /**
- * An attribute type for use in the `static observedAttributeHandlers` map
- * when not using decorators.
+ * An attribute type for string attributes for use in the `static
+ * observedAttributeHandlers` map when not using decorators.
  *
  * Example usage without decorators:
  *
@@ -2902,8 +2725,8 @@ function stringAttribute(value, context) {
 }
 const toNumber = (str) => +str;
 /**
- * An attribute type for use in the `static observedAttributeHandlers` map
- * when not using decorators.
+ * An attribute type for number attributes for use in the `static
+ * observedAttributeHandlers` map when not using decorators.
  *
  * Example usage without decorators:
  *
@@ -2922,8 +2745,8 @@ const toNumber = (str) => +str;
 attribute.number = (() => ({ from: toNumber }));
 const toBoolean = (str) => str !== 'false';
 /**
- * An attribute type for use in the `static observedAttributeHandlers` map
- * when not using decorators.
+ * An attribute type for boolean attributes for use in the `static
+ * observedAttributeHandlers` map when not using decorators.
  *
  * Example usage without decorators:
  *
@@ -2985,6 +2808,58 @@ attribute.boolean = (() => ({ from: toBoolean }));
 function booleanAttribute(value, context) {
     return attribute(attribute.boolean())(value, context);
 }
+/**
+ * Converts an attribute string value (JS code) into a function for use as an
+ * event handler, similar to built-in event attributes such as "onclick".
+ */
+const toEvent = function (str) {
+    return new Function(str);
+};
+/**
+ * An attribute type for attribute events for use in the `static
+ * observedAttributeHandlers` map when not using decorators.
+ *
+ * Example usage without decorators:
+ *
+ * ```js
+ * element('my-el')(
+ *   class MyEl extends LumeElement {
+ *     static observedAttributeHandlers = {
+ *       "onsomeevent": attribute.event()
+ *     }
+ *
+ *     "onsomeevent" = null
+ *
+ *     connectedCallback() {
+ * 	     super.connectedCallback()
+ *       this.dispatchEvent(new Event('someevent'))
+ *     }
+ *   }
+ * )
+ *
+ * const el = document.createElement('my-el')
+ * el.onsomeevent = e => console.log('someevent', e)
+ * document.body.append(el) // will log "someevent Event {...}" when the element is connected
+ *
+ * const el2 = document.createElement('my-el')
+ * el2.setAttribute("onsomeevent", "console.log('someevent', event)")
+ * document.body.append(el2) // will log "someevent Event {...}" when the element is connected
+ * ```
+ */
+attribute.event = (() => ({
+    from: toEvent,
+    dashcase: false,
+    sideEffect(el, prop, handler) {
+        if (handler && typeof handler !== 'function')
+            throw new Error('Event handlers must be functions.');
+        const previousHandler = el[prop];
+        const eventName = prop.replace(/^on/, '');
+        if (previousHandler)
+            el.removeEventListener(eventName, previousHandler);
+        if (handler)
+            el.addEventListener(eventName, handler);
+    },
+}));
 
 const isAttributeHandler = Symbol('isAttributeHandler');
 function element(tagNameOrClass, autoDefineOrContext) {
@@ -3001,6 +2876,7 @@ function element(tagNameOrClass, autoDefineOrContext) {
 function applyElementDecoration(Class, context, tagName, autoDefine) {
     if (typeof Class !== 'function' || (context && context.kind !== 'class'))
         throw new Error('@element is only for use on classes.');
+    const usedAsDecorator = !!context;
     const { metadata = {} } = context ?? {}; // context may be undefined with plain-JS element() usage.
     // Check only own metadata.noSignal, we don't want to use the one inherited from a base class.
     const noSignal = (Object.hasOwn(metadata, 'noSignal') && metadata.noSignal) || undefined;
@@ -3031,6 +2907,14 @@ function applyElementDecoration(Class, context, tagName, autoDefine) {
     if (handlers)
         for (const prop of Object.keys(handlers))
             __setUpAttribute(Ctor, prop, handlers[prop]);
+    // @prod-prune
+    queueMicrotask(() => {
+        // If mixing @element with static observedAttributeHandlers, warn the user.
+        const handlers2 = Object.hasOwn(Class, 'observedAttributeHandlers') ? Class.observedAttributeHandlers : undefined;
+        if (usedAsDecorator && !handlers && handlers2) {
+            console.warn(`When using 'static observedAttributeHandlers' do not use the 'element' function as a decorator, instead call it as a plain function, otherwise 'static observedAttributeHandlers' will not handled because class static fields are initialized after class decorators.`);
+        }
+    });
     // We need to compose with @reactive so that it will signalify any @signal properties.
     Ctor = reactive(Ctor, context);
     class ElementDecorator extends Ctor {
@@ -3070,24 +2954,17 @@ function applyElementDecoration(Class, context, tagName, autoDefine) {
                     const useSignal = !noSignal?.has(prop);
                     if (!useSignal)
                         continue;
-                    let isField = false;
                     const fieldDesc = Object.getOwnPropertyDescriptor(this, prop);
                     const protoDesc = Object.getOwnPropertyDescriptor(Class.prototype, prop);
+                    const isField = !!fieldDesc;
                     // The decorated property is either on the instance (field), or the decorated class's prototype (getter/setter).
-                    let descriptor = fieldDesc;
-                    if (descriptor)
-                        isField = true; // not on prototype
-                    if (!descriptor)
-                        descriptor = protoDesc;
+                    let descriptor = fieldDesc ?? protoDesc;
                     if (!descriptor)
                         descriptorError(prop);
                     const { get, set } = descriptor;
                     const isAccessor = !!(descriptor && (get || set));
                     const initialValue = isAccessor && get ? get.call(this) : this[prop];
-                    signalify(isField ? this : Class.prototype, [
-                        prop,
-                        initialValue,
-                    ]);
+                    signalify(isField ? this : Class.prototype, [prop, initialValue]);
                 }
                 // Intercept JS values to run attribute handlers.
                 for (const propSpec of propSpecs) {
@@ -3095,19 +2972,11 @@ function applyElementDecoration(Class, context, tagName, autoDefine) {
                     const handler = propSpec.attributeHandler;
                     if (!handler)
                         continue;
-                    // Default values for fields are handled in their initializer,
-                    // and this catches default values for getters/setters.
-                    if (!('default' in handler))
-                        handler.default = this[prop];
-                    let isField = false;
                     const fieldDesc = Object.getOwnPropertyDescriptor(this, prop);
                     const protoDesc = Object.getOwnPropertyDescriptor(Class.prototype, prop);
+                    const isField = !!fieldDesc;
                     // The decorated property is either on the instance (field), or the decorated class's prototype (getter/setter).
-                    let descriptor = fieldDesc;
-                    if (descriptor)
-                        isField = true; // not on prototype
-                    if (!descriptor)
-                        descriptor = protoDesc;
+                    let descriptor = fieldDesc ?? protoDesc;
                     if (!descriptor)
                         descriptorError(prop);
                     const { get, set, writable } = descriptor;
@@ -3116,6 +2985,12 @@ function applyElementDecoration(Class, context, tagName, autoDefine) {
                         throw new Error(`Cannot map attribute to prototype value property "${String(prop)}". Only prototype getters/setters are supported. Either make the property a class field, or make two separate properties: one for the attribute as a class field, one for the prototype value property.`);
                     if ((isAccessor && !set) || (!isAccessor && !writable))
                         throw new Error(`An attribute decorator cannot be used on readonly property "${String(prop)}".`);
+                    const initialValue = isAccessor && get ? get.call(this) : this[prop];
+                    // Default values for fields are handled in their initializer,
+                    // and this catches default values for getters/setters.
+                    if (!('default' in handler))
+                        handler.default = initialValue;
+                    handler.sideEffect?.(this, prop, initialValue);
                     let storage;
                     // We check if we have an accessor, because sometimes we
                     // don't if the property is not signalified (f.e. if
@@ -3134,21 +3009,25 @@ function applyElementDecoration(Class, context, tagName, autoDefine) {
                     const location = isField ? this : Class.prototype;
                     const newGetter = isAccessor
                         ? get
-                        : // @ts-expect-error indexed access with symbol
-                            (() => this[storage]);
+                        : function () {
+                            // @ts-expect-error indexed access with symbol
+                            return this[storage];
+                        };
                     const newSetter = isAccessor
                         ? // function because it will be on the prototype, needs dynamic `this`
                             function (value) {
                                 if (typeof value === 'string' || value === null)
                                     value = __handleAttributeValue(value, handler);
+                                untrack(() => handler.sideEffect?.(this, prop, value));
                                 set.call(this, value);
                             }
-                        : ((value) => {
+                        : function (value) {
                             if (typeof value === 'string' || value === null)
                                 value = __handleAttributeValue(value, handler);
+                            untrack(() => handler.sideEffect?.(this, prop, value));
                             // @ts-expect-error indexed access with symbol
                             this[storage] = value;
-                        });
+                        };
                     newGetter && (newGetter[isAttributeHandler] = true);
                     newSetter[isAttributeHandler] = true;
                     Object.defineProperty(location, prop, {
@@ -5812,16 +5691,18 @@ function createTmTextarea(styles) {
           }
         }, textareaProps), false, false);
         use((element) => {
-          new ResizeObserver(([entry]) => {
-            const {
-              height,
-              width
-            } = getComputedStyle(entry.target);
-            setCharacter({
-              height: Number(height.replace("px", "")),
-              width: Number(width.replace("px", ""))
-            });
-          }).observe(element);
+          onMount(() => {
+            new ResizeObserver(([entry]) => {
+              const {
+                height,
+                width
+              } = getComputedStyle(entry.target);
+              setCharacter({
+                height: Number(height.replace("px", "")),
+                width: Number(width.replace("px", ""))
+              });
+            }).observe(element);
+          });
         }, _el$5);
         createRenderEffect((_p$) => {
           var _v$3 = styles.code, _v$4 = styles.character;
@@ -6512,6 +6393,203 @@ const themes = [
   "vitesse-light"
 ];
 
+const self$1 = `import { createRenderEffect, createSignal, For, Show, type Component } from 'solid-js'
+import 'tm-textarea'
+import { TabIndentation } from 'tm-textarea/bindings/tab-indentation'
+import { setCDN } from 'tm-textarea/cdn'
+import { TmTextarea } from 'tm-textarea/solid'
+import { Grammar, grammars, Theme, themes } from 'tm-textarea/tm'
+import self from './app?raw'
+import './index.css'
+import tsx from './tsx.json?url'
+
+setCDN((type, id) => {
+  switch (type) {
+    case 'theme':
+      return \`https://esm.sh/tm-themes/themes/\${id}.json\`
+    case 'grammar':
+      return id === 'tsx' ? tsx : \`https://esm.sh/tm-grammars/grammars/\${id}.json\`
+    case 'oniguruma':
+      return \`https://esm.sh/vscode-oniguruma/release/onig.wasm\`
+  }
+})
+
+const App: Component = () => {
+  const [mode, setMode] = createSignal<'custom-element' | 'solid'>('custom-element')
+  const [theme, setCurrentThemeName] = createSignal<Theme>('light-plus')
+  const [grammar, setCurrentLanguageName] = createSignal<Grammar>('tsx')
+
+  const [fontSize, setFontSize] = createSignal(10)
+  const [padding, setPadding] = createSignal(20)
+  const [tabSize, setTabSize] = createSignal(4)
+  const [editable, setEditable] = createSignal(true)
+  const [lineNumbers, setLineNumbers] = createSignal(true)
+
+  const [LOC, setLOC] = createSignal(10_000)
+  const [value, setValue] = createSignal<string>(null!)
+  const formattedSelf = TabIndentation.format(self, 2)
+
+  createRenderEffect(() => {
+    setValue(loopLines(formattedSelf, LOC()))
+  })
+
+  function loopLines(input: string, lineCount: number): string {
+    const lines = input.split('\\n')
+    const totalLines = lines.length
+    let result = ''
+
+    for (let i = 0; i < lineCount; i++) {
+      if (i === lineCount - 1) {
+        result += lines[i % totalLines]
+      } else {
+        result += lines[i % totalLines] + '\\n'
+      }
+    }
+
+    return result
+  }
+
+  function ref(element: HTMLTextAreaElement) {}
+
+  return (
+    <div class="app">
+      <div class="side-panel">
+        <h1>Tm Textarea</h1>
+        <footer>
+          <div>
+            <label for="mode">mode</label>
+            <button
+              id="mode"
+              onClick={e => {
+                setMode(mode => (mode === 'custom-element' ? 'solid' : 'custom-element'))
+              }}
+            >
+              {mode()}
+            </button>
+          </div>
+          <br />
+          <div>
+            <label for="theme">themes</label>
+            <select
+              id="theme"
+              value={theme()}
+              onInput={e => setCurrentThemeName(e.currentTarget.value as Theme)}
+            >
+              <For each={themes}>{theme => <option>{theme}</option>}</For>
+            </select>
+          </div>
+          <div>
+            <label for="lang">languages</label>
+            <select
+              id="lang"
+              value={grammar()}
+              onInput={e => setCurrentLanguageName(e.currentTarget.value as Grammar)}
+            >
+              <For each={grammars}>{grammar => <option>{grammar}</option>}</For>
+            </select>
+          </div>
+          <br />
+          <div>
+            <label for="LOC">LOC</label>
+            <input
+              id="LOC"
+              type="number"
+              value={LOC()}
+              onInput={e => setLOC(+e.currentTarget.value)}
+            />
+          </div>
+          <div>
+            <label for="tab-size">tab-size</label>
+            <input
+              id="tab-size"
+              type="number"
+              onInput={e => setTabSize(+e.currentTarget.value)}
+              value={tabSize()}
+            />
+          </div>
+          <div>
+            <label for="padding">padding</label>
+            <input
+              id="padding"
+              type="number"
+              onInput={e => setPadding(+e.currentTarget.value)}
+              value={padding()}
+            />
+          </div>
+          <div>
+            <label for="font-size">font-size</label>
+            <input
+              id="font-size"
+              type="number"
+              onInput={e => setFontSize(+e.currentTarget.value)}
+              value={fontSize()}
+            />
+          </div>
+          <div>
+            <label for="line-numbers">Line Numbers</label>
+            <button
+              id="line-numbers"
+              onClick={e => {
+                setLineNumbers(bool => !bool)
+              }}
+            >
+              {lineNumbers() ? 'enabled' : 'disabled'}
+            </button>
+          </div>
+          <div>
+            <label for="editable">editable</label>
+            <button
+              id="editable"
+              onClick={e => {
+                setEditable(bool => !bool)
+              }}
+            >
+              {editable() ? 'enabled' : 'disabled'}
+            </button>
+          </div>
+        </footer>
+      </div>
+      <main>
+        <Show
+          when={mode() === 'custom-element'}
+          fallback={
+            <TmTextarea
+              textareaRef={TabIndentation.binding}
+              value={value()}
+              grammar={grammar()}
+              theme={theme()}
+              editable={editable()}
+              style={{
+                padding: \`\${padding()}px\`,
+                'tab-size': tabSize(),
+              }}
+              class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
+              onInput={e => setValue(e.currentTarget.value)}
+            />
+          }
+        >
+          <tm-textarea
+            ref={TabIndentation.binding}
+            value={value()}
+            grammar={grammar()}
+            theme={theme()}
+            editable={editable()}
+            style={{
+              padding: \`\${padding()}px\`,
+              'tab-size': tabSize(),
+            }}
+            class={lineNumbers() ? 'line-numbers tm-textarea' : 'tm-textarea'}
+            onInput={e => setValue(e.currentTarget.value)}
+          />
+        </Show>
+      </main>
+    </div>
+  )
+}
+
+export default App
+`;
+
 const tsx = ""+new URL('tsx-Da1Z4H1i.json', import.meta.url).href+"";
 
 var _tmpl$ = /* @__PURE__ */ template(`<tm-textarea>`, true, false), _tmpl$2 = /* @__PURE__ */ template(`<div class=app><div class=side-panel><h1>Tm Textarea</h1><footer><div><label for=mode>mode</label><button id=mode></button></div><br><div><label for=theme>themes</label><select id=theme></select></div><div><label for=lang>languages</label><select id=lang></select></div><br><div><label for=LOC>LOC</label><input id=LOC type=number></div><div><label for=tab-size>tab-size</label><input id=tab-size type=number></div><div><label for=padding>padding</label><input id=padding type=number></div><div><label for=font-size>font-size</label><input id=font-size type=number></div><div><label for=line-numbers>Line Numbers</label><button id=line-numbers></button></div><div><label for=editable>editable</label><button id=editable></button></div></footer></div><main>`), _tmpl$3 = /* @__PURE__ */ template(`<option>`);
@@ -6595,9 +6673,8 @@ const App = () => {
       },
       get fallback() {
         return createComponent(TmTextarea, {
-          ref(r$) {
-            var _ref$2 = TabIndentation.binding;
-            typeof _ref$2 === "function" ? _ref$2(r$) : TabIndentation.binding = r$;
+          get textareaRef() {
+            return TabIndentation.binding;
           },
           get value() {
             return value();
@@ -6659,5 +6736,6 @@ const App = () => {
     return _el$;
   })();
 };
-render(() => createComponent(App, {}), document.getElementById("root"));
 delegateEvents(["click", "input"]);
+
+render(() => createComponent(App, {}), document.getElementById("root"));
